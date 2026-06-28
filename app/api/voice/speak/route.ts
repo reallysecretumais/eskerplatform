@@ -9,7 +9,8 @@ export const runtime = "nodejs";
 // spoken — never anything internal.
 
 const TTS_MODEL = process.env.ESKER_TTS_MODEL || "gpt-4o-mini-tts";
-const TTS_VOICE = process.env.ESKER_TTS_VOICE || "shimmer";
+const TTS_VOICE = process.env.ESKER_TTS_VOICE || "nova";
+const TTS_SPEED = Number(process.env.ESKER_TTS_SPEED || "1.15");
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -26,17 +27,30 @@ export async function POST(req: NextRequest) {
 
   const urdu = lang === "ur" || isUrduText(text);
   const persona =
-    "Voice: a warm, friendly young Pakistani woman, completely fluent in English. Tone: human, natural, and conversational — like a real person chatting with a guest, never robotic, stiff, or sing-song. Pace: brisk and lively, the way people actually speak — keep it moving, do NOT drag or slow down; clear with genuine warmth and a light smile in the voice.";
+    "Voice: a warm, friendly young Pakistani woman, completely fluent in English. Tone: human, natural, and conversational — like a real person chatting with a guest, never robotic, stiff, or sing-song. Pace: quick and lively — speak a little faster than normal, upbeat and energetic, keep it flowing; do NOT drag, pause, or slow down. Clear, with genuine warmth and a light smile in the voice.";
   const instructions = urdu
     ? `The text is Roman Urdu (the Urdu language written in Latin letters) — read it as natural spoken Urdu, NOT with English pronunciation. ${persona} She is fluent in both Urdu and English, so the English words she mixes in sound natural.`
     : `${persona}`;
 
-  try {
-    const res = await fetch("https://api.openai.com/v1/audio/speech", {
+  const call = (withSpeed: boolean) =>
+    fetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: TTS_MODEL, voice: TTS_VOICE, input: text, instructions, response_format: "mp3" }),
+      body: JSON.stringify({
+        model: TTS_MODEL,
+        voice: TTS_VOICE,
+        input: text,
+        instructions,
+        response_format: "mp3",
+        ...(withSpeed ? { speed: TTS_SPEED } : {}),
+      }),
     });
+
+  try {
+    // Speed up delivery via the `speed` param; if a model ever rejects it,
+    // fall back to a normal request rather than going silent.
+    let res = await call(true);
+    if (!res.ok) res = await call(false);
     if (!res.ok || !res.body) {
       console.error("[voice/speak] OpenAI", res.status);
       return new Response(null, { status: 204 });

@@ -4,12 +4,14 @@ import { useEffect, useRef, type MutableRefObject } from "react";
 
 export type OrbState = "idle" | "listening" | "thinking" | "speaking";
 
-// The voice "entity" — a living, molten-gold sphere and the signature of the
-// product. Internal plasma drifts, a sheen rotates, and particles orbit (all
-// via CSS, GPU-only). On top of that, one requestAnimationFrame loop scales the
-// sphere and brightens its glow from the LIVE audio level (mic while listening,
-// the actual voice while speaking) — so it visibly breathes with the
-// conversation at 60fps, no React re-renders.
+// The voice "entity" — a luminous gold sphere, the signature of the product.
+// Built to be PERFECTLY circular on every browser (incl. iOS Safari): every
+// layer is either the sphere itself or a `rounded-full` circle, and the glow is
+// a radial gradient — NOT a `filter: blur()` (large blurs clip to a square
+// bounding box and leak a visible rectangle, which is what we're fixing). One
+// requestAnimationFrame loop scales the sphere and brightens the glow from the
+// LIVE audio level (mic while listening, the real voice while speaking), so it
+// breathes with the conversation at 60fps with no React re-renders.
 export function VoiceOrb({
   levelRef,
   state,
@@ -32,22 +34,20 @@ export function VoiceOrb({
       const t = performance.now() / 1000;
       const s = stateRef.current;
       let target: number;
-      // listening + speaking ride the live audio level; thinking + idle use a
-      // gentle synthetic cadence so the entity always feels alive.
       if (s === "listening" || s === "speaking") target = Math.min(1, levelRef.current);
       else if (s === "thinking") target = 0.3 + 0.16 * (0.5 + 0.5 * Math.sin(t * 3.2));
       else target = 0.14 + 0.08 * (0.5 + 0.5 * Math.sin(t * 1.4)); // idle breathe
       smooth += (target - smooth) * 0.18;
 
-      if (core.current) core.current.style.transform = `scale(${1 + smooth * 0.34})`;
-      if (halo.current) halo.current.style.opacity = String(0.4 + smooth * 0.55);
+      if (core.current) core.current.style.transform = `scale(${1 + smooth * 0.32})`;
+      if (halo.current) halo.current.style.opacity = String(0.45 + smooth * 0.5);
       if (ring1.current) {
-        ring1.current.style.transform = `scale(${1.04 + smooth * 0.45})`;
-        ring1.current.style.opacity = String(0.5 - smooth * 0.32);
+        ring1.current.style.transform = `scale(${1.03 + smooth * 0.42})`;
+        ring1.current.style.opacity = String(0.55 - smooth * 0.35);
       }
       if (ring2.current) {
-        ring2.current.style.transform = `scale(${1.16 + smooth * 0.85})`;
-        ring2.current.style.opacity = String(0.3 - smooth * 0.24);
+        ring2.current.style.transform = `scale(${1.12 + smooth * 0.8})`;
+        ring2.current.style.opacity = String(0.32 - smooth * 0.24);
       }
       raf = requestAnimationFrame(tick);
     };
@@ -56,47 +56,39 @@ export function VoiceOrb({
   }, [levelRef]);
 
   return (
-    <div className="relative grid h-48 w-48 place-items-center sm:h-60 sm:w-60">
-      {/* reactive halo */}
+    <div className="relative grid h-44 w-44 place-items-center sm:h-56 sm:w-56">
+      {/* glow — radial gradient that fades to transparent (circular, no square) */}
       <div
         ref={halo}
-        className="absolute inset-3 rounded-full blur-3xl"
-        style={{ background: "radial-gradient(circle, rgba(201,168,76,0.75), rgba(201,168,76,0) 68%)" }}
+        className="pointer-events-none absolute rounded-full"
+        style={{ inset: "-42%", background: "radial-gradient(circle, rgba(201,168,76,0.42) 0%, rgba(201,168,76,0.15) 32%, rgba(201,168,76,0) 62%)" }}
       />
 
-      {/* reactive rings */}
-      <div ref={ring2} className="absolute h-40 w-40 rounded-full border border-gold/20 sm:h-52 sm:w-52" />
-      <div ref={ring1} className="absolute h-40 w-40 rounded-full border border-gold/35 sm:h-52 sm:w-52" />
+      {/* reactive rings (plain circular borders — always clip clean) */}
+      <div ref={ring2} className="pointer-events-none absolute rounded-full border border-gold/15" style={{ inset: "3%" }} />
+      <div ref={ring1} className="pointer-events-none absolute rounded-full border border-gold/30" style={{ inset: "12%" }} />
 
-      {/* orbiting particles */}
-      <div className="orb-spin pointer-events-none absolute h-44 w-44 sm:h-56 sm:w-56">
-        <span className="absolute left-1/2 top-0 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-gold shadow-[0_0_10px_3px_rgba(201,168,76,0.65)]" />
-        <span className="absolute left-0 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-gold/80 shadow-[0_0_8px_2px_rgba(201,168,76,0.5)]" />
+      {/* orbiting particles (circular dots; container is transparent) */}
+      <div className="orb-spin pointer-events-none absolute inset-0">
+        <span className="absolute left-1/2 top-[1%] h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-gold shadow-[0_0_10px_3px_rgba(201,168,76,0.6)]" />
+        <span className="absolute left-[5%] top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-gold/80 shadow-[0_0_8px_2px_rgba(201,168,76,0.5)]" />
       </div>
 
-      {/* the sphere — molten gold, alive */}
+      {/* the sphere — a single circular element, lit for 3D depth */}
       <div
         ref={core}
-        className="relative h-32 w-32 overflow-hidden rounded-full sm:h-40 sm:w-40"
+        className="relative h-[62%] w-[62%] overflow-hidden rounded-full"
         style={{
-          boxShadow: "0 0 80px 16px rgba(201,168,76,0.4), 0 0 34px 6px rgba(201,168,76,0.45)",
+          background:
+            "radial-gradient(circle at 30% 24%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 22%), radial-gradient(circle at 50% 50%, #f4dca0 0%, #dcbb6e 38%, #bd9743 70%, #8c6b2c 100%)",
+          boxShadow:
+            "0 0 55px 6px rgba(201,168,76,0.5), inset 0 8px 18px rgba(255,248,220,0.55), inset 0 -16px 28px rgba(74,54,18,0.6)",
           willChange: "transform",
         }}
       >
-        {/* base molten tone */}
-        <div className="absolute inset-0" style={{ background: "radial-gradient(circle at 50% 52%, #dcbd68 0%, #b1913f 64%, #7c5f24 100%)" }} />
-        {/* drifting plasma */}
-        <div className="orb-drift1 absolute -inset-5 rounded-full blur-2xl" style={{ background: "radial-gradient(circle at 36% 30%, #fff4d2, transparent 55%)" }} />
-        <div className="orb-drift2 absolute -inset-5 rounded-full blur-2xl" style={{ background: "radial-gradient(circle at 70% 74%, #8a6a2a, transparent 55%)" }} />
-        {/* rotating sheen */}
-        <div
-          className="orb-spin-slow absolute inset-0 opacity-30 mix-blend-screen"
-          style={{ background: "conic-gradient(from 0deg, transparent, rgba(255,246,214,0.7), transparent 38%, transparent 62%, rgba(255,246,214,0.45), transparent)" }}
-        />
-        {/* specular highlight (glass sphere) */}
-        <div className="absolute inset-0" style={{ background: "radial-gradient(circle at 34% 27%, rgba(255,255,255,0.9), transparent 38%)" }} />
-        {/* rim depth */}
-        <div className="absolute inset-0 rounded-full" style={{ boxShadow: "inset 0 2px 12px rgba(255,255,255,0.55), inset 0 -12px 28px rgba(85,62,18,0.6)" }} />
+        {/* molten life — soft circular blobs drift inside (no blur filter) */}
+        <div className="orb-drift1 absolute rounded-full" style={{ inset: "6%", background: "radial-gradient(circle at 40% 35%, rgba(255,249,228,0.7), rgba(255,249,228,0) 55%)" }} />
+        <div className="orb-drift2 absolute rounded-full" style={{ inset: "8%", background: "radial-gradient(circle at 66% 70%, rgba(120,92,38,0.5), rgba(120,92,38,0) 55%)" }} />
       </div>
     </div>
   );

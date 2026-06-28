@@ -463,12 +463,12 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
       </div>
 
       {/* center: orb */}
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 text-center">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center px-6 text-center">
         <button type="button" onClick={onOrb} aria-label="Tap to speak or interrupt" className="outline-none transition-transform active:scale-95">
           <VoiceOrb levelRef={levelRef} state={orbState} />
         </button>
 
-        <div className="mt-9 flex min-h-[2.25rem] max-w-lg items-start justify-center">
+        <div className="mt-7 flex min-h-[2.25rem] max-w-lg items-start justify-center">
           {muted && reply ? (
             <p dir="auto" className="rise font-display text-xl font-medium leading-relaxed tracking-tight text-white/90 sm:text-2xl">
               {reply}
@@ -486,10 +486,12 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
             </span>
           ) : null}
         </div>
+      </div>
 
-        {/* floating recommendations */}
-        {matches.length > 0 && (
-          <div className="mt-8 flex w-full max-w-3xl flex-wrap justify-center gap-4">
+      {/* floating recommendations — one contained row, never overflows the screen */}
+      {matches.length > 0 && (
+        <div className="relative z-10 px-4">
+          <div className="mx-auto flex max-w-3xl gap-3 overflow-x-auto pb-1 sm:justify-center [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {matches.slice(0, 4).map((l, i) => {
               const { amount, unit } = formatPrice(l.price, unitForCategory(l.category ?? ""));
               return (
@@ -498,7 +500,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
                   href={`/stays/${l.id}`}
                   onClick={end}
                   style={{ animationDelay: `${i * 90}ms` }}
-                  className="card-float group w-40 overflow-hidden rounded-2xl border border-white/15 bg-white/10 shadow-[0_18px_40px_-12px_rgba(0,0,0,0.6)] backdrop-blur-md transition hover:border-gold/50 hover:bg-white/15 sm:w-48"
+                  className="card-float group w-36 shrink-0 overflow-hidden rounded-2xl border border-white/15 bg-white/10 shadow-[0_16px_36px_-12px_rgba(0,0,0,0.6)] backdrop-blur-md transition hover:border-gold/50 hover:bg-white/15 sm:w-44"
                 >
                   <div
                     className="relative aspect-[4/3] bg-white/5"
@@ -506,10 +508,10 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
                   >
                     {l.esker_exclusive && <span className="absolute left-2 top-2 rounded-md bg-gold px-2 py-0.5 text-[10px] font-medium text-ink">Exclusive</span>}
                   </div>
-                  <div className="p-3 text-left">
+                  <div className="p-2.5 text-left">
                     <div className="truncate text-sm font-medium text-white">{l.title}</div>
                     <div className="text-xs text-white/55">{l.area ?? ""}</div>
-                    <div className="mt-1.5 text-sm text-gold tnum">
+                    <div className="mt-1 text-sm text-gold tnum">
                       {amount}<span className="text-white/45"> / {unit}</span>
                     </div>
                   </div>
@@ -517,8 +519,8 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
               );
             })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* controls — minimal */}
       <div className="relative z-10 flex flex-col items-center gap-3 px-6 pb-9 pt-3">

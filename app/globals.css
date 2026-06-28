@@ -147,14 +147,14 @@ body {
    reactive scale/glow is driven separately by JS from the live audio level. */
 @keyframes esker-orb-spin { to { transform: rotate(360deg); } }
 @keyframes esker-orb-drift1 {
-  0% { transform: translate(-6%, -4%) scale(1); }
-  50% { transform: translate(9%, 7%) scale(1.18); }
-  100% { transform: translate(-6%, -4%) scale(1); }
+  0% { transform: translate(-4%, -3%) scale(1); }
+  50% { transform: translate(5%, 4%) scale(1.08); }
+  100% { transform: translate(-4%, -3%) scale(1); }
 }
 @keyframes esker-orb-drift2 {
-  0% { transform: translate(7%, 6%) scale(1.1); }
-  50% { transform: translate(-8%, -7%) scale(0.92); }
-  100% { transform: translate(7%, 6%) scale(1.1); }
+  0% { transform: translate(4%, 4%) scale(1.06); }
+  50% { transform: translate(-5%, -4%) scale(0.96); }
+  100% { transform: translate(4%, 4%) scale(1.06); }
 }
 .orb-spin { animation: esker-orb-spin 18s linear infinite; }
 .orb-spin-slow { animation: esker-orb-spin 26s linear infinite; }
