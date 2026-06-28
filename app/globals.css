@@ -133,6 +133,15 @@ body {
   animation-direction: reverse;
 }
 
+/* Voice concierge overlay entrance — gentle fade + lift. */
+@keyframes esker-voice-in {
+  from { opacity: 0; transform: scale(0.985); }
+  to { opacity: 1; transform: scale(1); }
+}
+.voice-in {
+  animation: esker-voice-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .kb,
   .kb2,
@@ -145,6 +154,9 @@ body {
     opacity: 0;
   }
   .marq {
+    animation: none;
+  }
+  .voice-in {
     animation: none;
   }
 }

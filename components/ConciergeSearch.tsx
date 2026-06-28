@@ -2,16 +2,21 @@
 
 import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { MessageCircle } from "lucide-react";
+import dynamic from "next/dynamic";
+import { MessageCircle, Mic } from "lucide-react";
+import type { PublicListing } from "@/lib/data/listings";
+
+// The voice overlay is heavy (mic, audio, animation) and only needed on demand,
+// so it's loaded lazily — the hero stays light and fast on first paint.
+const VoiceConcierge = dynamic(() => import("@/components/VoiceConcierge").then((m) => m.VoiceConcierge), { ssr: false });
 
 const CHIPS = ["Pool, sleeps 6, this weekend", "Ground floor for my parents", "Under ₨20k near Centaurus"];
 
-// Concierge input shell. The AI isn't wired yet, but the interaction is built so
-// it slots in cleanly: focus states, Roman-Urdu example placeholder, and example
-// chips that PRE-FILL the input on tap. Later: simple query → filter the grid in
-// place; complex query → transition to the search page.
-export function ConciergeSearch() {
+// Concierge input shell: type OR speak. The text box routes to the results page;
+// the mic opens the full-screen voice concierge (English or Urdu, hands-free).
+export function ConciergeSearch({ listings = [] }: { listings?: PublicListing[] }) {
   const [value, setValue] = useState("");
+  const [voiceOpen, setVoiceOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -20,8 +25,6 @@ export function ConciergeSearch() {
     inputRef.current?.focus();
   };
 
-  // For now this routes to the results page with the text as a keyword search;
-  // the real AI concierge slots in here later (in-place filter / smart routing).
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const q = value.trim();
@@ -51,6 +54,21 @@ export function ConciergeSearch() {
         </button>
       </form>
 
+      {/* Voice entry — the signature moment */}
+      <div className="mt-4 flex justify-center">
+        <button
+          type="button"
+          onClick={() => setVoiceOpen(true)}
+          className="group inline-flex items-center gap-2.5 rounded-full border border-gold/40 bg-white/10 py-2.5 pl-2.5 pr-5 text-sm font-medium text-white backdrop-blur-md transition hover:bg-white/20"
+        >
+          <span className="relative grid h-8 w-8 place-items-center rounded-full bg-gold text-ink">
+            <span className="absolute inset-0 animate-ping rounded-full bg-gold/50 [animation-duration:2.2s]" />
+            <Mic size={16} className="relative" />
+          </span>
+          Speak to Esker — <span className="text-gold">English or Urdu</span>
+        </button>
+      </div>
+
       <div className="mt-5 flex flex-wrap justify-center gap-2">
         {CHIPS.map((c) => (
           <button
@@ -63,6 +81,8 @@ export function ConciergeSearch() {
           </button>
         ))}
       </div>
+
+      {voiceOpen && <VoiceConcierge listings={listings} onClose={() => setVoiceOpen(false)} />}
     </div>
   );
 }

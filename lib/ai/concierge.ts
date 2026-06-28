@@ -20,12 +20,24 @@ const RULES = `You are the Esker Stays concierge — a warm, concise, premium ho
 - You never handle payments, negotiate prices, or take bookings. Guide the guest to view a place and book on the site.
 - You only know the public listings provided. Never discuss or speculate about owners, finances, other guests, staff, or anything internal — you simply don't have that information.`;
 
-// Conversational (streaming) prompt: prose + a machine-readable tail.
-export const CONCIERGE_SYSTEM = `${RULES}
-
-At the very END of your reply, on its own new line, output exactly:
+// Shared machine-readable tail: the recommended ids ride home on one line the
+// client strips before display.
+const STAYS_TAIL = `At the very END of your reply, on its own new line, output exactly:
 STAYS: <comma-separated listing ids you are recommending, best first; leave empty if none>
 Never mention this line, the word STAYS, or any ids in your prose.`;
+
+// Conversational (streaming) prompt: prose + a machine-readable tail.
+export const CONCIERGE_SYSTEM = `${RULES}\n\n${STAYS_TAIL}`;
+
+// Voice prompt: same brain, but it MIRRORS the guest's language and stays
+// short + speakable (the reply is read aloud). Reuses every rule except the
+// English-only line, which is swapped for the bilingual one.
+const VOICE_RULES = RULES.replace(
+  `- Understand the guest even in Roman Urdu (e.g. "mujhe F-7 mein 2 din ke liye chahiye"), but ALWAYS reply in clean, natural English.`,
+  `- Understand the guest in English, Urdu, or Roman Urdu, and ALWAYS reply in the SAME language they used: warm, natural Urdu written in Urdu script (اردو — never Roman) when they speak Urdu or Roman Urdu; English when they speak English.
+- Your reply is READ ALOUD, so keep it to 1-3 short, easy-to-speak sentences. No markdown, lists, emoji, links, or code — just natural spoken language.`,
+);
+export const VOICE_SYSTEM = `${VOICE_RULES}\n\n${STAYS_TAIL}`;
 
 // Single-shot (JSON) prompt.
 const JSON_SYSTEM = `${RULES}

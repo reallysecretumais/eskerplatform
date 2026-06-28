@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { getListings } from "@/lib/data/listings";
-import { catalog, CONCIERGE_SYSTEM, MODEL } from "@/lib/ai/concierge";
+import { catalog, CONCIERGE_SYSTEM, VOICE_SYSTEM, MODEL } from "@/lib/ai/concierge";
 
 export const runtime = "nodejs";
 
@@ -13,10 +13,12 @@ type Msg = { role: "user" | "assistant"; content: string };
 export async function POST(req: NextRequest) {
   let messages: Msg[] = [];
   let context = "";
+  let voice = false;
   try {
     const body = await req.json();
     messages = Array.isArray(body?.messages) ? body.messages : [];
     context = typeof body?.context === "string" ? body.context : "";
+    voice = body?.voice === true;
   } catch {
     /* ignore */
   }
@@ -30,7 +32,8 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const system = `${CONCIERGE_SYSTEM}\n\nAvailable listings:\n${catalog(listings)}${context ? `\n\nContext: ${context}` : ""}`;
+  const base = voice ? VOICE_SYSTEM : CONCIERGE_SYSTEM;
+  const system = `${base}\n\nAvailable listings:\n${catalog(listings)}${context ? `\n\nContext: ${context}` : ""}`;
 
   const oa = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",

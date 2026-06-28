@@ -28,3 +28,9 @@ export function normalizeCategory(s: string): string {
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
+
+/** True if the text contains Urdu/Arabic script — used to pick the voice + RTL.
+ *  The concierge writes Urdu replies in script, so this reliably tags them. */
+export function isUrduText(s: string): boolean {
+  return /[؀-ۿݐ-ݿ]/.test(s);
+}

@@ -62,7 +62,7 @@ export default async function HomePage() {
             </p>
 
             <div className="mt-8">
-              <ConciergeSearch />
+              <ConciergeSearch listings={listings} />
             </div>
 
             <div className="mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-white/75">
