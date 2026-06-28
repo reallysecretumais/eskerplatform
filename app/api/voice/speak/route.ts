@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 // spoken — never anything internal.
 
 const TTS_MODEL = process.env.ESKER_TTS_MODEL || "gpt-4o-mini-tts";
-const TTS_VOICE = process.env.ESKER_TTS_VOICE || "shimmer";
+const TTS_VOICE = process.env.ESKER_TTS_VOICE || "coral";
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -25,9 +25,11 @@ export async function POST(req: NextRequest) {
   if (!apiKey || !text.trim()) return new Response(null, { status: 204 });
 
   const urdu = lang === "ur" || isUrduText(text);
+  const persona =
+    "Voice: a warm, friendly young Pakistani woman, completely fluent in English. Tone: human, natural, and conversational — like a real person welcoming a guest, never robotic, stiff, or sing-song. Delivery: relaxed, clear, and unhurried, with genuine hospitality warmth and a gentle smile in the voice.";
   const instructions = urdu
-    ? "The text is Roman Urdu (the Urdu language written in Latin letters). Read it aloud as natural, warm, conversational Urdu with a friendly Pakistani hospitality tone — NOT as English. Calm, clear, and unhurried."
-    : "Speak in warm, natural English with a friendly, premium hospitality tone. Calm, clear, and unhurried.";
+    ? `The text is Roman Urdu (the Urdu language written in Latin letters) — read it as natural spoken Urdu, NOT with English pronunciation. ${persona} She is fluent in both Urdu and English, so English place names and words sound natural too.`
+    : `${persona}`;
 
   try {
     const res = await fetch("https://api.openai.com/v1/audio/speech", {

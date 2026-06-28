@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { PublicListing } from "@/lib/data/listings";
 import { unitForCategory, formatPrice } from "@/lib/listings";
 import { thumb } from "@/lib/img";
+import { getAudioCtx } from "@/lib/voiceAudio";
 import { VoiceOrb, type OrbState } from "@/components/VoiceOrb";
 
 type Phase = "init" | "denied" | "idle" | "listening" | "transcribing" | "thinking" | "speaking";
@@ -27,9 +28,9 @@ function parseVoice(full: string) {
 
 // The full-screen, hands-free voice concierge — a cinematic, voice-first scene
 // (not a chat popup). One spoken turn = record → transcribe → answer (the same
-// safe public-listings retrieval, voice:true so it replies in the guest's
-// language; Urdu comes back as clean Roman Urdu) → speak → listen again. The
-// guest can interrupt (tap the orb), mute, type, or end at any time.
+// safe public-listings retrieval, voice:true; Urdu comes back as clean Roman
+// Urdu) → speak → listen again. Audio plays through the shared, gesture-unlocked
+// AudioContext so replies reliably play and the orb pulses with the real voice.
 export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[]; onClose: () => void }) {
   const byId = new Map(listings.map((l) => [l.id, l]));
 
@@ -50,11 +51,12 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
   const levelRef = useRef(0);
 
   const streamRef = useRef<MediaStream | null>(null);
-  const ctxRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
+  const micSrcRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const micAnRef = useRef<AnalyserNode | null>(null);
+  const outAnRef = useRef<AnalyserNode | null>(null);
+  const ttsRef = useRef<AudioBufferSourceNode | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const rafRef = useRef(0);
   const speechRef = useRef(false);
   const lastLoudRef = useRef(0);
@@ -156,7 +158,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
     }
   }
 
-  // ── speak ─────────────────────────────────────────────────────
+  // ── speak (Web Audio playback through the unlocked context) ────
   async function speak(text: string, l: Lang) {
     if (!aliveRef.current) return;
     if (mutedRef.current) return afterTurn();
@@ -168,19 +170,27 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
         body: JSON.stringify({ text, lang: l }),
       });
       if (!res.ok || res.status === 204) return afterTurn();
-      const blob = await res.blob();
+      const arr = await res.arrayBuffer();
       if (!aliveRef.current) return;
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      const done = () => {
-        URL.revokeObjectURL(url);
-        if (audioRef.current === audio) audioRef.current = null;
+      const ctx = getAudioCtx();
+      if (ctx.state === "suspended") await ctx.resume();
+      const buf = await ctx.decodeAudioData(arr);
+      if (!aliveRef.current) return;
+      const node = ctx.createBufferSource();
+      node.buffer = buf;
+      const out = outAnRef.current;
+      if (out) {
+        node.connect(out);
+        out.connect(ctx.destination);
+      } else {
+        node.connect(ctx.destination);
+      }
+      node.onended = () => {
+        if (ttsRef.current === node) ttsRef.current = null;
         afterTurn();
       };
-      audio.onended = done;
-      audio.onerror = done;
-      await audio.play().catch(done);
+      ttsRef.current = node;
+      node.start();
     } catch {
       afterTurn();
     }
@@ -193,13 +203,20 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
   }
 
   function stopAudio() {
-    const a = audioRef.current;
-    if (a) {
-      a.onended = null;
-      a.onerror = null;
-      a.pause();
-      a.src = "";
-      audioRef.current = null;
+    const n = ttsRef.current;
+    if (n) {
+      n.onended = null;
+      try {
+        n.stop();
+      } catch {
+        /* already stopped */
+      }
+      try {
+        n.disconnect();
+      } catch {
+        /* ignore */
+      }
+      ttsRef.current = null;
     }
   }
 
@@ -245,10 +262,16 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
     } catch {
       /* ignore */
     }
+    try {
+      micSrcRef.current?.disconnect();
+    } catch {
+      /* ignore */
+    }
     streamRef.current?.getTracks().forEach((t) => t.stop());
     cancelAnimationFrame(rafRef.current);
+    // keep the shared context alive (just idle it) so it stays unlocked next time
     try {
-      void ctxRef.current?.close();
+      void getAudioCtx().suspend();
     } catch {
       /* ignore */
     }
@@ -268,25 +291,34 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
         }
         streamRef.current = stream;
         micOkRef.current = true;
-        const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-        const ctx = new Ctx();
-        ctxRef.current = ctx;
-        const src = ctx.createMediaStreamSource(stream);
-        const an = ctx.createAnalyser();
-        an.fftSize = 1024;
-        src.connect(an);
-        analyserRef.current = an;
 
-        const buf = new Float32Array(an.fftSize);
+        const ctx = getAudioCtx();
+        if (ctx.state === "suspended") await ctx.resume();
+        const micSrc = ctx.createMediaStreamSource(stream);
+        micSrcRef.current = micSrc;
+        const micAn = ctx.createAnalyser();
+        micAn.fftSize = 1024;
+        micSrc.connect(micAn);
+        micAnRef.current = micAn;
+        const outAn = ctx.createAnalyser();
+        outAn.fftSize = 512;
+        outAnRef.current = outAn;
+
+        const micBuf = new Float32Array(new ArrayBuffer(micAn.fftSize * 4));
+        const outBuf = new Float32Array(new ArrayBuffer(outAn.fftSize * 4));
+        const rms = (an: AnalyserNode, b: Float32Array<ArrayBuffer>) => {
+          an.getFloatTimeDomainData(b);
+          let s = 0;
+          for (let i = 0; i < b.length; i++) s += b[i] * b[i];
+          return Math.sqrt(s / b.length);
+        };
         const loop = () => {
-          an.getFloatTimeDomainData(buf);
-          let sum = 0;
-          for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
-          const rms = Math.sqrt(sum / buf.length);
-          levelRef.current = Math.min(1, rms * 4);
+          const micRms = rms(micAn, micBuf);
+          if (phaseRef.current === "speaking") levelRef.current = Math.min(1, rms(outAn, outBuf) * 5);
+          else levelRef.current = Math.min(1, micRms * 4);
           if (phaseRef.current === "listening") {
             const now = performance.now();
-            if (rms > 0.045) {
+            if (micRms > 0.045) {
               speechRef.current = true;
               lastLoudRef.current = now;
             }

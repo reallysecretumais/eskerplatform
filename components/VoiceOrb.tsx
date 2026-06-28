@@ -32,8 +32,9 @@ export function VoiceOrb({
       const t = performance.now() / 1000;
       const s = stateRef.current;
       let target: number;
-      if (s === "listening") target = Math.min(1, levelRef.current);
-      else if (s === "speaking") target = 0.45 + 0.4 * Math.abs(Math.sin(t * 5.5));
+      // listening + speaking are driven by the live audio level (mic / voice);
+      // thinking + idle use a gentle synthetic cadence.
+      if (s === "listening" || s === "speaking") target = Math.min(1, levelRef.current);
       else if (s === "thinking") target = 0.26 + 0.14 * (0.5 + 0.5 * Math.sin(t * 3));
       else target = 0.12 + 0.07 * (0.5 + 0.5 * Math.sin(t * 1.4)); // idle breathe
       // ease toward target so mic spikes feel organic, not twitchy

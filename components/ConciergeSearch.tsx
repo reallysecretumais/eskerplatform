@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { MessageCircle, Mic } from "lucide-react";
 import type { PublicListing } from "@/lib/data/listings";
+import { unlockAudio } from "@/lib/voiceAudio";
 
 // The voice overlay is heavy (mic, audio, animation) and only needed on demand,
 // so it's loaded lazily — the hero stays light and fast on first paint.
@@ -58,7 +59,10 @@ export function ConciergeSearch({ listings = [] }: { listings?: PublicListing[] 
       <div className="mt-4 flex justify-center">
         <button
           type="button"
-          onClick={() => setVoiceOpen(true)}
+          onClick={() => {
+            void unlockAudio(); // unlock audio inside the gesture so replies play
+            setVoiceOpen(true);
+          }}
           className="group inline-flex items-center gap-2.5 rounded-full border border-gold/40 bg-white/10 py-2.5 pl-2.5 pr-5 text-sm font-medium text-white backdrop-blur-md transition hover:bg-white/20"
         >
           <span className="relative grid h-8 w-8 place-items-center rounded-full bg-gold text-ink">
