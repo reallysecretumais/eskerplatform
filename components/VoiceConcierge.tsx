@@ -348,14 +348,16 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
   const orbState: OrbState =
     phase === "listening" ? "listening" : phase === "speaking" ? "speaking" : phase === "thinking" || phase === "transcribing" ? "thinking" : "idle";
 
+  // Voice-first: no on-screen reply text (it carried mixed scripts and felt like
+  // a chatbot). The orb conveys thinking/speaking; only a tiny prompt shows when
+  // we're waiting on the guest. The reply text appears only as a fallback when
+  // the voice is muted.
   const statusLabel =
-    phase === "init" ? "Warming up" :
     phase === "denied" ? "Microphone is off — type below" :
     phase === "listening" ? "Listening" :
-    phase === "transcribing" ? "Got it" :
-    phase === "thinking" ? "Thinking" :
-    micOkRef.current ? "Tap to speak" : "Type your question";
-  const showDots = phase === "listening" || phase === "thinking";
+    phase === "idle" ? (micOkRef.current ? "Tap to speak" : "Type your question") :
+    "";
+  const showDots = phase === "listening";
 
   return (
     <div
@@ -391,12 +393,12 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
           <VoiceOrb levelRef={levelRef} state={orbState} />
         </button>
 
-        <div className="mt-10 flex min-h-[5.5rem] max-w-lg items-start justify-center">
-          {reply ? (
-            <p dir="auto" className="rise font-display text-2xl font-medium leading-relaxed tracking-tight text-white/95 sm:text-[1.7rem]">
+        <div className="mt-10 flex min-h-[2.5rem] max-w-lg items-start justify-center">
+          {muted && reply ? (
+            <p dir="auto" className="rise font-display text-xl font-medium leading-relaxed tracking-tight text-white/90 sm:text-2xl">
               {reply}
             </p>
-          ) : (
+          ) : statusLabel ? (
             <span className="inline-flex items-center gap-2 text-sm font-medium tracking-wide text-white/55">
               {statusLabel}
               {showDots && (
@@ -407,7 +409,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
                 </span>
               )}
             </span>
-          )}
+          ) : null}
         </div>
       </div>
 

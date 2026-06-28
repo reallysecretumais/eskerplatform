@@ -142,6 +142,25 @@ body {
   animation: esker-voice-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* ── Voice orb — a living, molten-gold "entity". Internal plasma drifts, a
+   sheen rotates, and particles orbit; all transform/opacity (GPU). The orb's
+   reactive scale/glow is driven separately by JS from the live audio level. */
+@keyframes esker-orb-spin { to { transform: rotate(360deg); } }
+@keyframes esker-orb-drift1 {
+  0% { transform: translate(-6%, -4%) scale(1); }
+  50% { transform: translate(9%, 7%) scale(1.18); }
+  100% { transform: translate(-6%, -4%) scale(1); }
+}
+@keyframes esker-orb-drift2 {
+  0% { transform: translate(7%, 6%) scale(1.1); }
+  50% { transform: translate(-8%, -7%) scale(0.92); }
+  100% { transform: translate(7%, 6%) scale(1.1); }
+}
+.orb-spin { animation: esker-orb-spin 18s linear infinite; }
+.orb-spin-slow { animation: esker-orb-spin 26s linear infinite; }
+.orb-drift1 { animation: esker-orb-drift1 9s ease-in-out infinite; will-change: transform; }
+.orb-drift2 { animation: esker-orb-drift2 13s ease-in-out infinite; will-change: transform; }
+
 @media (prefers-reduced-motion: reduce) {
   .kb,
   .kb2,
@@ -157,6 +176,12 @@ body {
     animation: none;
   }
   .voice-in {
+    animation: none;
+  }
+  .orb-spin,
+  .orb-spin-slow,
+  .orb-drift1,
+  .orb-drift2 {
     animation: none;
   }
 }
