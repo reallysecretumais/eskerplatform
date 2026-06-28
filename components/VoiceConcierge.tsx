@@ -13,24 +13,33 @@ type Phase = "init" | "denied" | "idle" | "listening" | "transcribing" | "thinki
 type Turn = { role: "user" | "assistant"; content: string };
 type Lang = "ur" | "en";
 
-// Strip the control lines (LANG / STAYS) the model appends, returning the clean
-// spoken reply, the tagged language, and the recommended ids.
+// LANG comes first, then the spoken reply, then STAYS. Returns the clean reply,
+// the language, and ids — works on partial text mid-stream too.
 function parseVoice(full: string) {
-  const iLang = full.indexOf("LANG:");
-  const iStay = full.indexOf("STAYS:");
-  const cuts = [iLang, iStay].filter((i) => i >= 0);
-  const cut = cuts.length ? Math.min(...cuts) : full.length;
-  const reply = full.slice(0, cut).trim();
   const lang: Lang = /LANG:\s*ur/i.test(full) ? "ur" : "en";
-  const ids = iStay >= 0 ? full.slice(iStay + 6).split(/[\s,]+/).map((s) => s.trim()).filter(Boolean) : [];
+  let body = full;
+  const m = body.match(/^\s*LANG:\s*(?:ur|en)\b[^\n]*\n?/i);
+  if (m) body = body.slice(m[0].length);
+  else if (/^\s*LANG/i.test(body)) body = ""; // LANG line still streaming
+  const iStay = body.indexOf("STAYS:");
+  const reply = (iStay >= 0 ? body.slice(0, iStay) : body).trim();
+  const ids = iStay >= 0 ? body.slice(iStay + 6).split(/[\s,]+/).map((s) => s.trim()).filter(Boolean) : [];
   return { reply, lang, ids };
 }
 
-// The full-screen, hands-free voice concierge — a cinematic, voice-first scene
-// (not a chat popup). One spoken turn = record → transcribe → answer (the same
-// safe public-listings retrieval, voice:true; Urdu comes back as clean Roman
-// Urdu) → speak → listen again. Audio plays through the shared, gesture-unlocked
-// AudioContext so replies reliably play and the orb pulses with the real voice.
+// Index just past the end of the first complete sentence at/after `from`, else -1.
+function sentenceEnd(text: string, from: number): number {
+  for (let i = from; i < text.length - 1; i++) {
+    const c = text[i];
+    if ((c === "." || c === "!" || c === "?" || c === "۔") && /\s/.test(text[i + 1])) return i + 1;
+  }
+  return -1;
+}
+
+// The voice concierge — a floating, voice-first scene over a frosted backdrop
+// (no boxy panel). Streams speech: the first sentence is spoken while the rest
+// is still being written, so there's almost no wait. The orb is the entity; the
+// matched stays float in. The guest can interrupt, mute, type, or end.
 export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[]; onClose: () => void }) {
   const byId = new Map(listings.map((l) => [l.id, l]));
 
@@ -62,6 +71,15 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
   const lastLoudRef = useRef(0);
   const recStartRef = useRef(0);
   const mimeRef = useRef("");
+
+  // streaming-speech state
+  const queueRef = useRef<AudioBuffer[]>([]);
+  const playingRef = useRef(false);
+  const pendingRef = useRef(0);
+  const streamDoneRef = useRef(false);
+  const finishedRef = useRef(false);
+  const spokenRef = useRef(0);
+  const synthSeqRef = useRef<Promise<void>>(Promise.resolve());
 
   const go = (p: Phase) => {
     phaseRef.current = p;
@@ -120,8 +138,17 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
     }
   }
 
-  // ── answer (same safe retrieval as the text concierge) ────────
+  // ── answer + streaming speech ─────────────────────────────────
   async function answer(text: string) {
+    stopAudio();
+    queueRef.current = [];
+    playingRef.current = false;
+    pendingRef.current = 0;
+    streamDoneRef.current = false;
+    finishedRef.current = false;
+    spokenRef.current = 0;
+    synthSeqRef.current = Promise.resolve();
+
     const hist: Turn[] = [...historyRef.current, { role: "user", content: text }];
     historyRef.current = hist;
     setReply("");
@@ -141,59 +168,120 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
         const { done, value } = await reader.read();
         if (done) break;
         full += dec.decode(value, { stream: true });
-        setReply(parseVoice(full).reply);
+        const p = parseVoice(full);
+        setReply(p.reply);
+        if (!mutedRef.current) flushSentences(p.reply, p.lang, false); // speak as it streams
       }
-      const { reply: r, lang: L, ids } = parseVoice(full);
+      const p = parseVoice(full);
       if (!aliveRef.current) return;
-      const finalReply = r || "Here's what I found for you.";
+      const finalReply = p.reply || "Here's what I found for you.";
       setReply(finalReply);
-      setLang(L);
-      setMatches(ids.map((id) => byId.get(id)).filter((l): l is PublicListing => Boolean(l)));
+      setLang(p.lang);
+      setMatches(p.ids.map((id) => byId.get(id)).filter((l): l is PublicListing => Boolean(l)));
       historyRef.current = [...hist, { role: "assistant", content: finalReply }];
-      void speak(finalReply, L);
+      streamDoneRef.current = true;
+      if (mutedRef.current) finishTurn();
+      else {
+        flushSentences(finalReply, p.lang, true);
+        maybeFinish();
+      }
     } catch {
       if (!aliveRef.current) return;
       setReply("Sorry — I had trouble just now. Please try again.");
-      afterTurn();
+      streamDoneRef.current = true;
+      finishTurn();
     }
   }
 
-  // ── speak (Web Audio playback through the unlocked context) ────
-  async function speak(text: string, l: Lang) {
-    if (!aliveRef.current) return;
-    if (mutedRef.current) return afterTurn();
-    go("speaking");
+  // pull whole sentences off the streaming reply and synthesize them in order
+  function flushSentences(replyText: string, l: Lang, isFinal: boolean) {
+    let end: number;
+    while ((end = sentenceEnd(replyText, spokenRef.current)) !== -1) {
+      const chunk = replyText.slice(spokenRef.current, end).trim();
+      spokenRef.current = end;
+      if (chunk) enqueueSpeak(chunk, l);
+    }
+    if (isFinal) {
+      const rest = replyText.slice(spokenRef.current).trim();
+      spokenRef.current = replyText.length;
+      if (rest) enqueueSpeak(rest, l);
+    }
+  }
+
+  function enqueueSpeak(text: string, l: Lang) {
+    pendingRef.current++;
+    synthSeqRef.current = synthSeqRef.current.then(() => synthChunk(text, l));
+  }
+
+  async function synthChunk(text: string, l: Lang) {
     try {
+      if (!aliveRef.current || mutedRef.current) return;
       const res = await fetch("/api/voice/speak", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text, lang: l }),
       });
-      if (!res.ok || res.status === 204) return afterTurn();
+      if (!res.ok || res.status === 204) return;
       const arr = await res.arrayBuffer();
-      if (!aliveRef.current) return;
+      if (!aliveRef.current || mutedRef.current) return;
       const ctx = getAudioCtx();
       if (ctx.state === "suspended") await ctx.resume();
       const buf = await ctx.decodeAudioData(arr);
-      if (!aliveRef.current) return;
-      const node = ctx.createBufferSource();
-      node.buffer = buf;
-      const out = outAnRef.current;
-      if (out) {
-        node.connect(out);
-        out.connect(ctx.destination);
-      } else {
-        node.connect(ctx.destination);
-      }
-      node.onended = () => {
-        if (ttsRef.current === node) ttsRef.current = null;
-        afterTurn();
-      };
-      ttsRef.current = node;
-      node.start();
+      if (!aliveRef.current || mutedRef.current) return;
+      if (phaseRef.current !== "speaking" && phaseRef.current !== "thinking") return; // barged out
+      queueRef.current.push(buf);
+      if (phaseRef.current !== "speaking") go("speaking");
+      startPlaying();
     } catch {
-      afterTurn();
+      /* ignore this chunk */
+    } finally {
+      pendingRef.current--;
+      maybeFinish();
     }
+  }
+
+  function startPlaying() {
+    if (!playingRef.current) playNext();
+  }
+
+  function playNext() {
+    if (!aliveRef.current) {
+      playingRef.current = false;
+      return;
+    }
+    const buf = queueRef.current.shift();
+    if (!buf) {
+      playingRef.current = false;
+      maybeFinish();
+      return;
+    }
+    playingRef.current = true;
+    const ctx = getAudioCtx();
+    const node = ctx.createBufferSource();
+    node.buffer = buf;
+    const out = outAnRef.current;
+    if (out) {
+      node.connect(out);
+      out.connect(ctx.destination);
+    } else {
+      node.connect(ctx.destination);
+    }
+    node.onended = () => {
+      if (ttsRef.current === node) ttsRef.current = null;
+      playNext();
+    };
+    ttsRef.current = node;
+    node.start();
+  }
+
+  function maybeFinish() {
+    if (!playingRef.current && queueRef.current.length === 0 && streamDoneRef.current && pendingRef.current === 0) finishTurn();
+  }
+
+  function finishTurn() {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
+    afterTurn();
   }
 
   function afterTurn() {
@@ -203,6 +291,8 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
   }
 
   function stopAudio() {
+    queueRef.current = [];
+    playingRef.current = false;
     const n = ttsRef.current;
     if (n) {
       n.onended = null;
@@ -225,6 +315,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
     const p = phaseRef.current;
     if (p === "listening") stopListening();
     else if (p === "speaking") {
+      finishedRef.current = true; // don't let the finishing pipeline also re-listen
       stopAudio();
       startListening();
     } else if (p === "idle" && micOkRef.current) startListening();
@@ -236,7 +327,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
     setMuted(next);
     if (next) {
       stopAudio();
-      if (phaseRef.current === "speaking") afterTurn();
+      if (phaseRef.current === "speaking") go("idle");
     }
   }
 
@@ -269,9 +360,8 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
     }
     streamRef.current?.getTracks().forEach((t) => t.stop());
     cancelAnimationFrame(rafRef.current);
-    // keep the shared context alive (just idle it) so it stays unlocked next time
     try {
-      void getAudioCtx().suspend();
+      void getAudioCtx().suspend(); // keep it alive (unlocked) for next time
     } catch {
       /* ignore */
     }
@@ -322,8 +412,8 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
               speechRef.current = true;
               lastLoudRef.current = now;
             }
-            const tooLong = now - recStartRef.current > 14000;
-            const silent = speechRef.current && now - lastLoudRef.current > 1200;
+            const tooLong = now - recStartRef.current > 13000;
+            const silent = speechRef.current && now - lastLoudRef.current > 900; // snappier turn-end
             if (tooLong || silent) stopListening();
           }
           rafRef.current = requestAnimationFrame(loop);
@@ -348,10 +438,8 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
   const orbState: OrbState =
     phase === "listening" ? "listening" : phase === "speaking" ? "speaking" : phase === "thinking" || phase === "transcribing" ? "thinking" : "idle";
 
-  // Voice-first: no on-screen reply text (it carried mixed scripts and felt like
-  // a chatbot). The orb conveys thinking/speaking; only a tiny prompt shows when
-  // we're waiting on the guest. The reply text appears only as a fallback when
-  // the voice is muted.
+  // Voice-first: the orb carries the state. Only a tiny prompt shows while we're
+  // waiting on the guest; the reply text appears only as a fallback when muted.
   const statusLabel =
     phase === "denied" ? "Microphone is off — type below" :
     phase === "listening" ? "Listening" :
@@ -360,46 +448,33 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
   const showDots = phase === "listening";
 
   return (
-    <div
-      className="voice-in fixed inset-0 z-[60] flex flex-col overflow-hidden text-white"
-      style={{ background: "radial-gradient(125% 90% at 50% 28%, #1a1712 0%, #0b0a08 55%, #060504 100%)" }}
-    >
-      {/* gold aura behind the orb */}
+    <div className="voice-in fixed inset-0 z-[60] flex flex-col overflow-hidden bg-ink/45 text-white backdrop-blur-2xl">
+      {/* gold aura — the only thing behind the orb (no panel/box) */}
       <div
-        className="pointer-events-none absolute left-1/2 top-[32%] h-[440px] w-[440px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[130px]"
-        style={{ background: "radial-gradient(circle, rgba(201,168,76,0.20), transparent 70%)" }}
+        className="pointer-events-none absolute left-1/2 top-[34%] h-[480px] w-[480px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[140px]"
+        style={{ background: "radial-gradient(circle, rgba(201,168,76,0.28), transparent 70%)" }}
       />
-      {/* cinematic vignette */}
-      <div className="pointer-events-none absolute inset-0" style={{ boxShadow: "inset 0 0 220px 60px rgba(0,0,0,0.55)" }} />
 
-      {/* top bar */}
-      <div className="relative z-10 flex items-center justify-between px-6 pt-6">
-        <span className="font-display text-sm font-semibold tracking-wide text-white/65">
-          Esker <span className="text-gold">voice</span>
-        </span>
-        <div className="flex items-center gap-2">
-          <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-white/55">
-            {lang === "ur" ? "Urdu" : "English"}
-          </span>
-          <button type="button" onClick={end} aria-label="Close" className="rounded-full border border-white/10 bg-white/5 p-2 text-white/80 transition hover:bg-white/15">
-            <X size={18} />
-          </button>
-        </div>
+      {/* close only */}
+      <div className="relative z-10 flex justify-end px-6 pt-6">
+        <button type="button" onClick={end} aria-label="Close" className="rounded-full bg-white/10 p-2.5 text-white/80 backdrop-blur transition hover:bg-white/20">
+          <X size={18} />
+        </button>
       </div>
 
-      {/* center: orb + reply */}
+      {/* center: orb */}
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 text-center">
         <button type="button" onClick={onOrb} aria-label="Tap to speak or interrupt" className="outline-none transition-transform active:scale-95">
           <VoiceOrb levelRef={levelRef} state={orbState} />
         </button>
 
-        <div className="mt-10 flex min-h-[2.5rem] max-w-lg items-start justify-center">
+        <div className="mt-9 flex min-h-[2.25rem] max-w-lg items-start justify-center">
           {muted && reply ? (
             <p dir="auto" className="rise font-display text-xl font-medium leading-relaxed tracking-tight text-white/90 sm:text-2xl">
               {reply}
             </p>
           ) : statusLabel ? (
-            <span className="inline-flex items-center gap-2 text-sm font-medium tracking-wide text-white/55">
+            <span className="inline-flex items-center gap-2 text-sm font-medium tracking-wide text-white/60">
               {statusLabel}
               {showDots && (
                 <span className="inline-flex gap-1">
@@ -411,20 +486,19 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
             </span>
           ) : null}
         </div>
-      </div>
 
-      {/* results — a clean gallery row that rises in */}
-      {matches.length > 0 && (
-        <div className="rise relative z-10 mx-auto w-full max-w-3xl px-6">
-          <div className="flex justify-start gap-3 overflow-x-auto pb-1 sm:justify-center [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {matches.slice(0, 4).map((l) => {
+        {/* floating recommendations */}
+        {matches.length > 0 && (
+          <div className="mt-8 flex w-full max-w-3xl flex-wrap justify-center gap-4">
+            {matches.slice(0, 4).map((l, i) => {
               const { amount, unit } = formatPrice(l.price, unitForCategory(l.category ?? ""));
               return (
                 <Link
                   key={l.id}
                   href={`/stays/${l.id}`}
                   onClick={end}
-                  className="group w-44 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur transition hover:border-gold/40 sm:w-52"
+                  style={{ animationDelay: `${i * 90}ms` }}
+                  className="card-float group w-40 overflow-hidden rounded-2xl border border-white/15 bg-white/10 shadow-[0_18px_40px_-12px_rgba(0,0,0,0.6)] backdrop-blur-md transition hover:border-gold/50 hover:bg-white/15 sm:w-48"
                 >
                   <div
                     className="relative aspect-[4/3] bg-white/5"
@@ -432,31 +506,31 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
                   >
                     {l.esker_exclusive && <span className="absolute left-2 top-2 rounded-md bg-gold px-2 py-0.5 text-[10px] font-medium text-ink">Exclusive</span>}
                   </div>
-                  <div className="p-3">
+                  <div className="p-3 text-left">
                     <div className="truncate text-sm font-medium text-white">{l.title}</div>
-                    <div className="text-xs text-white/50">{l.area ?? ""}</div>
+                    <div className="text-xs text-white/55">{l.area ?? ""}</div>
                     <div className="mt-1.5 text-sm text-gold tnum">
-                      {amount}<span className="text-white/40"> / {unit}</span>
+                      {amount}<span className="text-white/45"> / {unit}</span>
                     </div>
                   </div>
                 </Link>
               );
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* controls — minimal, glassy, voice-first */}
-      <div className="relative z-10 flex flex-col items-center gap-3 px-6 pb-9 pt-5">
+      {/* controls — minimal */}
+      <div className="relative z-10 flex flex-col items-center gap-3 px-6 pb-9 pt-3">
         {showInput && (
-          <form onSubmit={submitTyped} className="flex w-full max-w-md items-center gap-2 rounded-full border border-white/12 bg-white/8 px-3 py-2 backdrop-blur-md focus-within:border-gold/50">
+          <form onSubmit={submitTyped} className="flex w-full max-w-md items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-2 backdrop-blur-md focus-within:border-gold/50">
             <input
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
               dir="auto"
               autoFocus
               placeholder="Type your question…"
-              className="min-w-0 flex-1 bg-transparent px-1 text-sm text-white outline-none placeholder:text-white/40"
+              className="min-w-0 flex-1 bg-transparent px-1 text-sm text-white outline-none placeholder:text-white/45"
             />
             <button type="submit" aria-label="Send" className="shrink-0 rounded-full bg-gold p-1.5 text-ink transition hover:brightness-105">
               <Send size={15} />
@@ -470,7 +544,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
             onClick={toggleMute}
             aria-pressed={muted}
             title={muted ? "Voice off" : "Voice on"}
-            className={`grid h-11 w-11 place-items-center rounded-full border backdrop-blur transition ${muted ? "border-white/12 bg-white/5 text-white/50" : "border-gold/40 bg-gold/15 text-gold"}`}
+            className={`grid h-11 w-11 place-items-center rounded-full backdrop-blur transition ${muted ? "bg-white/8 text-white/50" : "bg-gold/20 text-gold"}`}
           >
             {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
           </button>
@@ -479,13 +553,11 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
             onClick={() => setShowInput((s) => !s)}
             aria-pressed={showInput}
             title="Type instead"
-            className={`grid h-11 w-11 place-items-center rounded-full border backdrop-blur transition ${showInput ? "border-gold/40 bg-gold/15 text-gold" : "border-white/12 bg-white/5 text-white/70"}`}
+            className={`grid h-11 w-11 place-items-center rounded-full backdrop-blur transition ${showInput ? "bg-gold/20 text-gold" : "bg-white/8 text-white/70"}`}
           >
             <Keyboard size={18} />
           </button>
         </div>
-
-        <p className="text-[11px] text-white/40">Tap the circle to talk · English or Urdu</p>
       </div>
     </div>
   );

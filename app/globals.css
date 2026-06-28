@@ -161,6 +161,20 @@ body {
 .orb-drift1 { animation: esker-orb-drift1 9s ease-in-out infinite; will-change: transform; }
 .orb-drift2 { animation: esker-orb-drift2 13s ease-in-out infinite; will-change: transform; }
 
+/* Recommendation cards gently float in + bob, so options feel weightless. */
+@keyframes esker-card-in {
+  from { opacity: 0; transform: translateY(22px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes esker-card-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+.card-float {
+  animation: esker-card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both, esker-card-bob 4.5s ease-in-out infinite;
+  will-change: transform;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .kb,
   .kb2,
@@ -182,6 +196,9 @@ body {
   .orb-spin-slow,
   .orb-drift1,
   .orb-drift2 {
+    animation: none;
+  }
+  .card-float {
     animation: none;
   }
 }

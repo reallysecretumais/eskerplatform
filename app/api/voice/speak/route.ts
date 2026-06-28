@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 // spoken — never anything internal.
 
 const TTS_MODEL = process.env.ESKER_TTS_MODEL || "gpt-4o-mini-tts";
-const TTS_VOICE = process.env.ESKER_TTS_VOICE || "coral";
+const TTS_VOICE = process.env.ESKER_TTS_VOICE || "shimmer";
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.OPENAI_API_KEY;

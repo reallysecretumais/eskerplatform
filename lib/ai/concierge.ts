@@ -43,12 +43,13 @@ const VOICE_RULES = RULES.replace(
 - Your reply is read aloud, so keep it SHORT: one natural sentence is best, two at most. Warm and conversational, no markdown, lists, emoji, links, or code.`,
 );
 
-// Voice tail: like STAYS_TAIL but also tags the language actually used (the
-// reply is Latin script either way, so the client can't infer it — the model
-// tells us, so the spoken voice matches).
-const VOICE_TAIL = `After your reply, add these two lines EXACTLY, in this order, and never mention them or their contents in your reply:
-LANG: <"ur" if YOU replied in Roman Urdu, otherwise "en">
-STAYS: <comma-separated listing ids you are recommending, best first; leave empty if none>`;
+// Voice tail: the language tag comes FIRST (on its own line) so the client knows
+// the voice to use the moment the reply starts streaming — that lets it begin
+// speaking the first sentence before the rest is generated. STAYS ids come last.
+const VOICE_TAIL = `Format your output EXACTLY like this, and never mention these labels in your spoken words:
+- The FIRST line must be: LANG: ur   (use "ur" if you reply in Roman Urdu, otherwise "en")
+- Then your spoken reply (one or two short sentences).
+- The LAST line must be: STAYS: <comma-separated listing ids you recommend, best first; leave empty if none>`;
 
 export const VOICE_SYSTEM = `${VOICE_RULES}\n\n${VOICE_TAIL}`;
 
