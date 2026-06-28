@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+/* ──────────────────────────────────────────────────────────────
+   ESKER STAYS — consumer design tokens (light, airy, premium).
+   The bright, aspirational opposite of the dark CRM. Exposed to
+   Tailwind v4 as utilities: bg-bg, bg-surface, text-ink, text-gold,
+   border-line, font-serif, etc. Gold is used sparingly — accents,
+   key prices, primary actions only.
+   ────────────────────────────────────────────────────────────── */
+@theme {
+  --color-bg: #faf8f4; /* warm ivory page */
+  --color-surface: #ffffff; /* cards, panels */
+  --color-surface-2: #f4f1ea; /* subtle warm fill */
+  --color-line: #e7e2d8; /* hairline border */
+  --color-line-hi: #d9d2c4; /* stronger border */
+  --color-ink: #211f1a; /* near-black warm (dark sections / hero) */
+  --color-text: #1c1b18; /* primary text */
+  --color-muted: #6b675e; /* secondary text */
+  --color-dim: #9a958a; /* tertiary text, labels */
+  --color-gold: #c9a84c; /* PRIMARY ACCENT — Esker gold */
+  --color-gold-deep: #9c7d2e; /* gold text on light surfaces */
+  --color-green: #2f9e6e; /* available / positive */
+  --color-red: #d9534f; /* alerts */
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, sans-serif;
+  --font-display: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Premium, restrained scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-hi) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-line-hi);
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-gold) 26%, transparent);
+  color: var(--color-ink);
+}
+
+/* Tabular numerals for aligned prices */
+.tnum {
+  font-feature-settings: "tnum" 1;
+  letter-spacing: -0.01em;
+}
+
+/* ── Hero collage motion ──────────────────────────────────────────
+   Slow, transform-only (compositor/GPU) so it stays cheap. Fully
+   disabled under prefers-reduced-motion. */
+@keyframes esker-kenburns {
+  from { transform: scale(1); }
+  to   { transform: scale(1.14); }
+}
+@keyframes esker-kenburns-alt {
+  from { transform: scale(1.12); }
+  to   { transform: scale(1); }
+}
+@keyframes esker-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.kb {
+  animation: esker-kenburns 32s ease-in-out infinite alternate;
+  transform-origin: center;
+  will-change: transform;
+}
+.kb2 {
+  animation: esker-kenburns-alt 40s ease-in-out infinite alternate;
+  transform-origin: 40% 60%;
+  will-change: transform;
+}
+.rise {
+  animation: esker-rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Hero cross-fade: a base photo is always visible; two overlay layers fade in
+   and out over the cycle, so the hero gently moves through real photos
+   full-bleed (never a half-empty mosaic). Pairs with the .kb drift on an
+   inner layer. */
+@keyframes esker-fade-b {
+  0%, 28% { opacity: 0; }
+  34%, 60% { opacity: 1; }
+  66%, 100% { opacity: 0; }
+}
+@keyframes esker-fade-c {
+  0%, 60% { opacity: 0; }
+  66%, 92% { opacity: 1; }
+  98%, 100% { opacity: 0; }
+}
+.fade-b {
+  animation: esker-fade-b 21s ease-in-out infinite;
+}
+.fade-c {
+  animation: esker-fade-c 21s ease-in-out infinite;
+}
+
+/* Hero photo-wall: columns of real photos drift slowly in alternating
+   directions behind the concierge. Content is duplicated and translated -50%
+   for a seamless loop. Transform-only (GPU). */
+@keyframes esker-marquee {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+.marq {
+  animation: esker-marquee 56s linear infinite;
+  will-change: transform;
+}
+.marq-rev {
+  animation-direction: reverse;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kb,
+  .kb2,
+  .rise {
+    animation: none;
+  }
+  .fade-b,
+  .fade-c {
+    animation: none;
+    opacity: 0;
+  }
+  .marq {
+    animation: none;
+  }
+}

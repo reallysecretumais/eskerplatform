@@ -1,0 +1,61 @@
+# PROJECT ARCHITECTURE — Esker Stays
+
+The technical source of truth: stack, file map, database, the security model, accounts, booking flow, AI, env, and CRM integration. Pair with `SESSION_HANDOFF.md` and `ROADMAP.md`.
+
+## Stack
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4 (`@theme` tokens in `app/globals.css`) · `@supabase/ssr` + `@supabase/supabase-js` · lucide-react · OpenAI (`gpt-4.1-mini`). Server Components by default; `"use client"` only for interactivity. Dev on **port 3100**.
+
+## Environment (`.env.local`, git-ignored — copied from the CRM)
+| Key | Use |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public, browser-safe; everything reads through these + RLS |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Server-only**; used ONLY by `app/book/actions.ts` via `lib/supabase/admin.ts`. Bypasses RLS. Never client |
+| `OPENAI_API_KEY` / `ESKER_AI_MODEL` (`gpt-4.1-mini`) | Concierge, ID vision check, description generation |
+
+## Database (shared with the CRM — ADD only, never duplicate)
+Migrations live in `supabase/` and are run by the founder in the Supabase SQL Editor:
+- **`01_public_listings.sql`** — adds public fields to `properties` (`public_listing`, `esker_exclusive`, `public_title`, `public_description`, `public_price`, `capacity`); creates **`public_listings`** (safe columns, only `public_listing=true`; `category` = `properties.kind`) and **`public_availability`** (busy date ranges only) — both `grant select to anon, authenticated`.
+- **`02_public_facts.sql`** — `properties.public_facts` (free text) + exposed in `public_listings`.
+- **`03_accounts.sql`** — `accounts` + `account_roles`; reroutes `handle_new_user`; RLS.
+- **`04_bookings.sql`** — `bookings.account_id` + `bookings_select_own` RLS. **(Run this — not yet applied.)**
+
+The website reads **only** the two views + `accounts`/`account_roles` (own) + own `bookings`. The base `properties`/`bookings`/`guests`/`owners`/`users` stay staff-only (their RLS uses `is_staff()`).
+
+## Security model (the wall — sacred)
+- **anon** → `public_listings` + `public_availability` only.
+- **Authenticated website user** = a row in **`accounts`**, NOT in staff **`users`** → `is_staff()` returns false → automatically locked out of every internal table. Verified adversarially.
+- **`handle_new_user` trigger** routes signups: if `raw_user_meta_data.account_type ∈ (guest,owner,partner)` → write to `accounts`/`account_roles` (never `users`); else → the original staff insert (unchanged). **CRM-safe** because the CRM upserts staff rows itself.
+- **Service role** writes bookings server-side (validated) — the only elevated path, never exposed to the browser.
+- Roles are **additive** (`account_roles` rows): one account can be guest + owner + partner. Self-signup grants `guest` (+`owner` if "list my place"); `partner` is admin-granted only.
+
+## Accounts / auth
+- `lib/supabase/middleware.ts` + `middleware.ts` — session refresh (@supabase/ssr).
+- `lib/auth.ts` — `getAccount()` (cached), `requireAccount()`, `getMyBookings()`.
+- `app/login`, `app/signup`, `app/auth/callback/route.ts`, `app/account` (+ `app/account/actions.ts`: `signOut`, `becomeHost`).
+- `components/AuthForm.tsx` (email+password live; phone+OTP path dormant until SMS provider).
+- `components/SiteNav.tsx` takes an `account` prop → shows "Account" + name when logged in (pages pass `getAccount()`).
+
+## Booking flow
+- Entry: `components/BookingWidget.tsx` "Reserve" → `/book/[id]?checkin&checkout&guests`.
+- `app/book/[id]/page.tsx` (server) — validates dates/availability, order summary; `components/CheckoutForm.tsx` (client) — details, first-time CNIC/passport, payment, screenshot.
+- `app/book/actions.ts` `createBooking` (server, **service role**): validates (public property, dates, no overlap, server-recomputed `amount`), find/create `guests` by phone, **CNIC required only if none on file** + **`lib/ai/idcheck.ts` vision check** (confirms CNIC/passport, reads number/name/expiry, **rejects expired**), inserts `bookings` (`status:'awaiting_payment'`, `source:'Website'`, `payment_status:'unpaid'`, `account_id`, notes incl. AI-read ID), uploads proof to `guest-docs/payments/<id>/…`, inserts `booking_payments(amount:0, proof_url)` so the proof shows in the CRM without marking paid.
+- `app/book/[id]/confirmation/page.tsx` — success/reassurance. "My bookings" on `/account`.
+- Payment accounts: `lib/payments.ts` — **ESKER RENTALS** · Soneri `PK64SONE0041020015820404` (primary) · Allied `13960010133695040020`. Pay via any Easypaisa/JazzCash/bank/SadaPay → screenshot. Money held until check-in (not advertised as escrow).
+
+## AI
+- **Concierge** — `lib/ai/concierge.ts` (`askConcierge` single-shot + `CONCIERGE_SYSTEM` + `catalog`), `app/api/concierge/route.ts` (streaming, accepts `messages` + per-property `context`). Retrieval-first: fed ONLY `public_listings` (+ `public_facts`) → cannot leak. Surfaces: `ConciergeStream` (on `/stays?q`) and `PropertyConcierge` ("Ask about this place", finds similar via a `STAYS: <ids>` tail). Roman-Urdu-in / English-out.
+- **ID check** — `lib/ai/idcheck.ts` (vision). **NADRA** verification slots in after this (verify extracted number).
+- **Descriptions** — generated once into `public_description` (host-assist).
+
+## Pages & components
+`app/`: `page.tsx` (home), `stays/page.tsx`, `stays/[id]/page.tsx`, `book/[id]/page.tsx` + `confirmation`, `login`, `signup`, `account`, `auth/callback`, `api/concierge`.
+`components/`: SiteNav, HeroCollage, ConciergeSearch, ConciergeStream, PropertyConcierge, CategoryShowcase, StayCard, Gallery, BookingWidget, AmenityList, PakistanDetails, LocationSection, AuthForm, CheckoutForm, BookingActions.
+`lib/`: `brand.ts`, `payments.ts`, `listings.ts` (units/price/format), `img.ts` (Supabase thumbnail transform), `data/listings.ts` (getListings/getListing/getAvailability/pick…), `auth.ts`, `ai/concierge.ts`, `ai/idcheck.ts`, `supabase/{client,server,admin,middleware}.ts`.
+
+## Design system
+Concept B — light/airy, photography-led. Esker gold `#C9A84C` (sparing). Display = **Sora** (`font-display`), body = **Inter** (`font-sans`). Tokens in `app/globals.css`: `bg-bg`, `bg-surface`, `text-ink`, `text-muted`, `text-gold`/`text-gold-deep`, `border-line`, etc. Mobile-first. Images served via `thumb()` (Supabase image transform).
+
+## CRM integration (cross-app)
+- The CRM toggles `public_listing`/`esker_exclusive` + public overrides (its property "Website" card) → **live source of truth**; the website reads live (currently no caching).
+- **Website bookings** appear in the CRM as `status=awaiting_payment`, `source=Website`, with the screenshot in `booking_payments` (amount 0). Team verifies → sets the amount → paid.
+- **TODO**: if the website later adds ISR/edge caching for speed, add a **revalidate webhook** the CRM (or DB) pings when publish flags change.
