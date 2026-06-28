@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   const urdu = lang === "ur" || isUrduText(text);
   const persona =
-    "Voice: a warm, friendly young Pakistani woman, completely fluent in English. Tone: human, natural, and conversational — like a real person chatting with a guest, never robotic, stiff, or sing-song. Pace: quick and lively — speak a little faster than normal, upbeat and energetic, keep it flowing; do NOT drag, pause, or slow down. Clear, with genuine warmth and a light smile in the voice.";
+    "Voice: a pretty, bright young Pakistani woman, completely fluent in English. Tone: sweet, warm, and melodic with a real smile in it — cheerful and charming, genuinely human, never robotic, flat, or harsh. Pace: lively and upbeat, a little faster than normal, light and flowing; do NOT drag or slow down, but stay smooth and pleasant to listen to.";
   const instructions = urdu
     ? `The text is Roman Urdu (the Urdu language written in Latin letters) — read it as natural spoken Urdu, NOT with English pronunciation. ${persona} She is fluent in both Urdu and English, so the English words she mixes in sound natural.`
     : `${persona}`;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import { X, Volume2, VolumeX, Send, Keyboard } from "lucide-react";
 import Link from "next/link";
 import type { PublicListing } from "@/lib/data/listings";
@@ -50,6 +51,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
   const [muted, setMuted] = useState(false);
   const [showInput, setShowInput] = useState(false);
   const [typed, setTyped] = useState("");
+  const [hasAsked, setHasAsked] = useState(false);
 
   // refs (imperative pipeline — avoids stale closures across the async chain)
   const phaseRef = useRef<Phase>("init");
@@ -58,6 +60,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
   const mutedRef = useRef(false);
   const historyRef = useRef<Turn[]>([]);
   const levelRef = useRef(0);
+  const pulseRef = useRef(0); // "heard you" pop timestamp
 
   const streamRef = useRef<MediaStream | null>(null);
   const micSrcRef = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -112,6 +115,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
 
   function stopListening() {
     if (phaseRef.current !== "listening") return;
+    pulseRef.current = performance.now(); // instant "heard you" pop
     go("transcribing");
     try {
       if (recRef.current && recRef.current.state !== "inactive") recRef.current.stop();
@@ -151,6 +155,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
 
     const hist: Turn[] = [...historyRef.current, { role: "user", content: text }];
     historyRef.current = hist;
+    setHasAsked(true);
     setReply("");
     setMatches([]);
     go("thinking");
@@ -413,7 +418,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
               lastLoudRef.current = now;
             }
             const tooLong = now - recStartRef.current > 13000;
-            const silent = speechRef.current && now - lastLoudRef.current > 900; // snappier turn-end
+            const silent = speechRef.current && now - lastLoudRef.current > 800; // snappier turn-end
             if (tooLong || silent) stopListening();
           }
           rafRef.current = requestAnimationFrame(loop);
@@ -447,8 +452,8 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
     "";
   const showDots = phase === "listening";
 
-  return (
-    <div className="voice-in fixed inset-0 z-[60] flex flex-col overflow-hidden bg-ink/45 text-white backdrop-blur-2xl">
+  const overlay = (
+    <div className="voice-in fixed inset-0 z-[60] flex flex-col overflow-hidden bg-ink/55 text-white backdrop-blur-2xl">
       {/* gold aura — the only thing behind the orb (no panel/box) */}
       <div
         className="pointer-events-none absolute left-1/2 top-[34%] h-[480px] w-[480px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[140px]"
@@ -465,7 +470,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
       {/* center: orb */}
       <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center px-6 text-center">
         <button type="button" onClick={onOrb} aria-label="Tap to speak or interrupt" className="outline-none transition-transform active:scale-95">
-          <VoiceOrb levelRef={levelRef} state={orbState} />
+          <VoiceOrb levelRef={levelRef} state={orbState} pulseRef={pulseRef} />
         </button>
 
         <div className="mt-7 flex min-h-[2.25rem] max-w-lg items-start justify-center">
@@ -486,6 +491,10 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
             </span>
           ) : null}
         </div>
+
+        {!hasAsked && (phase === "listening" || phase === "idle") && (
+          <p className="rise mt-3 text-xs text-white/40">Try: “pool ke saath ghar this weekend”</p>
+        )}
       </div>
 
       {/* floating recommendations — one contained row, never overflows the screen */}
@@ -563,4 +572,6 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
       </div>
     </div>
   );
+
+  return typeof document !== "undefined" ? createPortal(overlay, document.body) : null;
 }
