@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
   const urdu = lang === "ur" || isUrduText(text);
   const instructions = urdu
-    ? "Speak in warm, natural, conversational Urdu with a friendly Pakistani hospitality tone. Calm, clear, and unhurried."
+    ? "The text is Roman Urdu (the Urdu language written in Latin letters). Read it aloud as natural, warm, conversational Urdu with a friendly Pakistani hospitality tone — NOT as English. Calm, clear, and unhurried."
     : "Speak in warm, natural English with a friendly, premium hospitality tone. Calm, clear, and unhurried.";
 
   try {

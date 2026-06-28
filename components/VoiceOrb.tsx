@@ -64,15 +64,15 @@ export function VoiceOrb({
         style={{ background: "radial-gradient(circle, rgba(201,168,76,0.85), rgba(201,168,76,0) 70%)" }}
       />
       {/* expanding rings */}
-      <div ref={ring2} className="absolute h-36 w-36 rounded-full border border-gold/50 sm:h-44 sm:w-44" />
-      <div ref={ring1} className="absolute h-36 w-36 rounded-full border border-gold/70 sm:h-44 sm:w-44" />
+      <div ref={ring2} className="absolute h-36 w-36 rounded-full border border-gold/25 sm:h-44 sm:w-44" />
+      <div ref={ring1} className="absolute h-36 w-36 rounded-full border border-gold/40 sm:h-44 sm:w-44" />
       {/* core orb */}
       <div
         ref={core}
         className="relative h-28 w-28 rounded-full sm:h-32 sm:w-32"
         style={{
-          background: "radial-gradient(circle at 38% 32%, #fff7e4 0%, #e9cf86 32%, #c9a84c 64%, #9c7d2e 100%)",
-          boxShadow: "0 0 50px 8px rgba(201,168,76,0.55), inset 0 2px 14px rgba(255,255,255,0.6)",
+          background: "radial-gradient(circle at 36% 30%, #fffaf0 0%, #f0dca0 26%, #d4b25c 58%, #a9883a 100%)",
+          boxShadow: "0 0 70px 14px rgba(201,168,76,0.45), 0 0 30px 4px rgba(201,168,76,0.5), inset 0 3px 18px rgba(255,255,255,0.7), inset 0 -8px 22px rgba(120,90,30,0.45)",
           willChange: "transform",
         }}
       />

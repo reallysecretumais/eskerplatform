@@ -1,29 +1,44 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { X, Volume2, VolumeX, Send, Mic } from "lucide-react";
+import { X, Volume2, VolumeX, Send, Keyboard } from "lucide-react";
+import Link from "next/link";
 import type { PublicListing } from "@/lib/data/listings";
-import { isUrduText } from "@/lib/listings";
-import { StayCard } from "@/components/StayCard";
+import { unitForCategory, formatPrice } from "@/lib/listings";
+import { thumb } from "@/lib/img";
 import { VoiceOrb, type OrbState } from "@/components/VoiceOrb";
 
 type Phase = "init" | "denied" | "idle" | "listening" | "transcribing" | "thinking" | "speaking";
 type Turn = { role: "user" | "assistant"; content: string };
+type Lang = "ur" | "en";
 
-// The full-screen, hands-free voice concierge. One spoken turn = record →
-// transcribe (Whisper) → answer (the SAME safe retrieval as the text concierge,
-// voice:true so it replies in the guest's language) → speak (OpenAI TTS) →
-// listen again. The guest can interrupt (tap the orb), mute the voice, type
-// instead, or end at any time. Built to run at 60fps and feel instant: the
-// transcript and streamed reply + cards land before the voice plays.
+// Strip the control lines (LANG / STAYS) the model appends, returning the clean
+// spoken reply, the tagged language, and the recommended ids.
+function parseVoice(full: string) {
+  const iLang = full.indexOf("LANG:");
+  const iStay = full.indexOf("STAYS:");
+  const cuts = [iLang, iStay].filter((i) => i >= 0);
+  const cut = cuts.length ? Math.min(...cuts) : full.length;
+  const reply = full.slice(0, cut).trim();
+  const lang: Lang = /LANG:\s*ur/i.test(full) ? "ur" : "en";
+  const ids = iStay >= 0 ? full.slice(iStay + 6).split(/[\s,]+/).map((s) => s.trim()).filter(Boolean) : [];
+  return { reply, lang, ids };
+}
+
+// The full-screen, hands-free voice concierge — a cinematic, voice-first scene
+// (not a chat popup). One spoken turn = record → transcribe → answer (the same
+// safe public-listings retrieval, voice:true so it replies in the guest's
+// language; Urdu comes back as clean Roman Urdu) → speak → listen again. The
+// guest can interrupt (tap the orb), mute, type, or end at any time.
 export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[]; onClose: () => void }) {
   const byId = new Map(listings.map((l) => [l.id, l]));
 
   const [phase, setPhase] = useState<Phase>("init");
-  const [userText, setUserText] = useState("");
   const [reply, setReply] = useState("");
+  const [lang, setLang] = useState<Lang>("en");
   const [matches, setMatches] = useState<PublicListing[]>([]);
   const [muted, setMuted] = useState(false);
+  const [showInput, setShowInput] = useState(false);
   const [typed, setTyped] = useState("");
 
   // refs (imperative pipeline — avoids stale closures across the async chain)
@@ -107,7 +122,6 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
   async function answer(text: string) {
     const hist: Turn[] = [...historyRef.current, { role: "user", content: text }];
     historyRef.current = hist;
-    setUserText(text);
     setReply("");
     setMatches([]);
     go("thinking");
@@ -125,17 +139,16 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
         const { done, value } = await reader.read();
         if (done) break;
         full += dec.decode(value, { stream: true });
-        const i = full.indexOf("STAYS:");
-        setReply((i >= 0 ? full.slice(0, i) : full).trim());
+        setReply(parseVoice(full).reply);
       }
-      const i = full.indexOf("STAYS:");
-      const r = (i >= 0 ? full.slice(0, i) : full).trim() || "Here's what I found for you.";
-      const ids = i >= 0 ? full.slice(i + 6).split(/[\s,]+/).map((s) => s.trim()).filter(Boolean) : [];
+      const { reply: r, lang: L, ids } = parseVoice(full);
       if (!aliveRef.current) return;
-      setReply(r);
+      const finalReply = r || "Here's what I found for you.";
+      setReply(finalReply);
+      setLang(L);
       setMatches(ids.map((id) => byId.get(id)).filter((l): l is PublicListing => Boolean(l)));
-      historyRef.current = [...hist, { role: "assistant", content: r }];
-      void speak(r);
+      historyRef.current = [...hist, { role: "assistant", content: finalReply }];
+      void speak(finalReply, L);
     } catch {
       if (!aliveRef.current) return;
       setReply("Sorry — I had trouble just now. Please try again.");
@@ -144,7 +157,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
   }
 
   // ── speak ─────────────────────────────────────────────────────
-  async function speak(text: string) {
+  async function speak(text: string, l: Lang) {
     if (!aliveRef.current) return;
     if (mutedRef.current) return afterTurn();
     go("speaking");
@@ -152,7 +165,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
       const res = await fetch("/api/voice/speak", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, lang: isUrduText(text) ? "ur" : "en" }),
+        body: JSON.stringify({ text, lang: l }),
       });
       if (!res.ok || res.status === 204) return afterTurn();
       const blob = await res.blob();
@@ -287,6 +300,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
         startListening();
       } catch {
         micOkRef.current = false;
+        setShowInput(true);
         go("denied");
       }
     })();
@@ -301,90 +315,143 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
   // ── derived UI ────────────────────────────────────────────────
   const orbState: OrbState =
     phase === "listening" ? "listening" : phase === "speaking" ? "speaking" : phase === "thinking" || phase === "transcribing" ? "thinking" : "idle";
-  const lang = isUrduText(reply || userText) ? "ur" : "en";
-  const status =
-    phase === "init" ? "Starting…" :
+
+  const statusLabel =
+    phase === "init" ? "Warming up" :
     phase === "denied" ? "Microphone is off — type below" :
-    phase === "listening" ? "Listening…" :
-    phase === "transcribing" ? "Got it…" :
-    phase === "thinking" ? "Finding your stay…" :
-    phase === "speaking" ? "" :
-    micOkRef.current ? "Tap to speak" : "Type your question below";
+    phase === "listening" ? "Listening" :
+    phase === "transcribing" ? "Got it" :
+    phase === "thinking" ? "Thinking" :
+    micOkRef.current ? "Tap to speak" : "Type your question";
+  const showDots = phase === "listening" || phase === "thinking";
 
   return (
-    <div className="voice-in fixed inset-0 z-[60] flex flex-col bg-ink/95 text-white backdrop-blur-xl">
-      {/* ambient glow */}
-      <div className="pointer-events-none absolute inset-0 opacity-70" style={{ background: "radial-gradient(60% 50% at 50% 38%, rgba(201,168,76,0.16), transparent 70%)" }} />
+    <div
+      className="voice-in fixed inset-0 z-[60] flex flex-col overflow-hidden text-white"
+      style={{ background: "radial-gradient(125% 90% at 50% 28%, #1a1712 0%, #0b0a08 55%, #060504 100%)" }}
+    >
+      {/* gold aura behind the orb */}
+      <div
+        className="pointer-events-none absolute left-1/2 top-[32%] h-[440px] w-[440px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[130px]"
+        style={{ background: "radial-gradient(circle, rgba(201,168,76,0.20), transparent 70%)" }}
+      />
+      {/* cinematic vignette */}
+      <div className="pointer-events-none absolute inset-0" style={{ boxShadow: "inset 0 0 220px 60px rgba(0,0,0,0.55)" }} />
 
       {/* top bar */}
-      <div className="relative z-10 flex items-center justify-between px-5 pt-5">
-        <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium tracking-wide">
-          {lang === "ur" ? "اردو" : "EN"} · Esker voice
+      <div className="relative z-10 flex items-center justify-between px-6 pt-6">
+        <span className="font-display text-sm font-semibold tracking-wide text-white/65">
+          Esker <span className="text-gold">voice</span>
         </span>
-        <button type="button" onClick={end} aria-label="Close voice concierge" className="rounded-full border border-white/15 bg-white/5 p-2 transition hover:bg-white/15">
-          <X size={18} />
-        </button>
-      </div>
-
-      {/* center: orb + captions */}
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 text-center">
-        <button type="button" onClick={onOrb} aria-label="Tap to speak or interrupt" className="outline-none">
-          <VoiceOrb levelRef={levelRef} state={orbState} />
-        </button>
-
-        <div className="mt-8 min-h-[6.5rem] max-w-xl">
-          {userText && <p dir="auto" className="mb-2 text-sm text-white/55">“{userText}”</p>}
-          {reply ? (
-            <p dir="auto" className="font-display text-xl font-medium leading-relaxed tracking-tight text-white sm:text-2xl">
-              {reply}
-            </p>
-          ) : (
-            <p className="text-sm uppercase tracking-[0.18em] text-gold">{status}</p>
-          )}
-          {reply && status && <p className="mt-3 text-xs uppercase tracking-[0.18em] text-white/45">{status}</p>}
+        <div className="flex items-center gap-2">
+          <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-white/55">
+            {lang === "ur" ? "Urdu" : "English"}
+          </span>
+          <button type="button" onClick={end} aria-label="Close" className="rounded-full border border-white/10 bg-white/5 p-2 text-white/80 transition hover:bg-white/15">
+            <X size={18} />
+          </button>
         </div>
       </div>
 
-      {/* result cards */}
+      {/* center: orb + reply */}
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 text-center">
+        <button type="button" onClick={onOrb} aria-label="Tap to speak or interrupt" className="outline-none transition-transform active:scale-95">
+          <VoiceOrb levelRef={levelRef} state={orbState} />
+        </button>
+
+        <div className="mt-10 flex min-h-[5.5rem] max-w-lg items-start justify-center">
+          {reply ? (
+            <p dir="auto" className="rise font-display text-2xl font-medium leading-relaxed tracking-tight text-white/95 sm:text-[1.7rem]">
+              {reply}
+            </p>
+          ) : (
+            <span className="inline-flex items-center gap-2 text-sm font-medium tracking-wide text-white/55">
+              {statusLabel}
+              {showDots && (
+                <span className="inline-flex gap-1">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" />
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold [animation-delay:160ms]" />
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold [animation-delay:320ms]" />
+                </span>
+              )}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* results — a clean gallery row that rises in */}
       {matches.length > 0 && (
-        <div className="relative z-10 mx-auto w-full max-w-4xl px-5">
-          <div className="flex gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {matches.map((l) => (
-              <div key={l.id} className="w-40 shrink-0 sm:w-48" onClick={end}>
-                <StayCard title={l.title} category={l.category ?? "Stay"} area={l.area ?? ""} price={l.price} exclusive={l.esker_exclusive} photo={l.photos?.[0] ?? undefined} href={`/stays/${l.id}`} />
-              </div>
-            ))}
+        <div className="rise relative z-10 mx-auto w-full max-w-3xl px-6">
+          <div className="flex justify-start gap-3 overflow-x-auto pb-1 sm:justify-center [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {matches.slice(0, 4).map((l) => {
+              const { amount, unit } = formatPrice(l.price, unitForCategory(l.category ?? ""));
+              return (
+                <Link
+                  key={l.id}
+                  href={`/stays/${l.id}`}
+                  onClick={end}
+                  className="group w-44 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur transition hover:border-gold/40 sm:w-52"
+                >
+                  <div
+                    className="relative aspect-[4/3] bg-white/5"
+                    style={{ backgroundImage: l.photos?.[0] ? `url(${thumb(l.photos[0], 500, 70)})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }}
+                  >
+                    {l.esker_exclusive && <span className="absolute left-2 top-2 rounded-md bg-gold px-2 py-0.5 text-[10px] font-medium text-ink">Exclusive</span>}
+                  </div>
+                  <div className="p-3">
+                    <div className="truncate text-sm font-medium text-white">{l.title}</div>
+                    <div className="text-xs text-white/50">{l.area ?? ""}</div>
+                    <div className="mt-1.5 text-sm text-gold tnum">
+                      {amount}<span className="text-white/40"> / {unit}</span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* bottom controls */}
-      <div className="relative z-10 mx-auto w-full max-w-xl px-5 pb-6 pt-3">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={toggleMute}
-            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-xs transition hover:bg-white/15"
-            aria-pressed={muted}
-          >
-            {muted ? <VolumeX size={16} /> : <Volume2 size={16} className="text-gold" />}
-            <span className="hidden sm:inline">{muted ? "Voice off" : "Voice on"}</span>
-          </button>
-
-          <form onSubmit={submitTyped} className="flex flex-1 items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-2 py-1.5 focus-within:border-gold/50">
-            <Mic size={15} className="ml-1 shrink-0 text-white/40" />
+      {/* controls — minimal, glassy, voice-first */}
+      <div className="relative z-10 flex flex-col items-center gap-3 px-6 pb-9 pt-5">
+        {showInput && (
+          <form onSubmit={submitTyped} className="flex w-full max-w-md items-center gap-2 rounded-full border border-white/12 bg-white/8 px-3 py-2 backdrop-blur-md focus-within:border-gold/50">
             <input
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
               dir="auto"
-              placeholder={micOkRef.current ? "…or type your question" : "Type your question"}
-              className="min-w-0 flex-1 bg-transparent px-1 py-1 text-sm text-white outline-none placeholder:text-white/40"
+              autoFocus
+              placeholder="Type your question…"
+              className="min-w-0 flex-1 bg-transparent px-1 text-sm text-white outline-none placeholder:text-white/40"
             />
-            <button type="submit" aria-label="Send" className="shrink-0 rounded-lg bg-gold p-2 text-ink transition hover:brightness-105">
+            <button type="submit" aria-label="Send" className="shrink-0 rounded-full bg-gold p-1.5 text-ink transition hover:brightness-105">
               <Send size={15} />
             </button>
           </form>
+        )}
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={toggleMute}
+            aria-pressed={muted}
+            title={muted ? "Voice off" : "Voice on"}
+            className={`grid h-11 w-11 place-items-center rounded-full border backdrop-blur transition ${muted ? "border-white/12 bg-white/5 text-white/50" : "border-gold/40 bg-gold/15 text-gold"}`}
+          >
+            {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowInput((s) => !s)}
+            aria-pressed={showInput}
+            title="Type instead"
+            className={`grid h-11 w-11 place-items-center rounded-full border backdrop-blur transition ${showInput ? "border-gold/40 bg-gold/15 text-gold" : "border-white/12 bg-white/5 text-white/70"}`}
+          >
+            <Keyboard size={18} />
+          </button>
         </div>
+
+        <p className="text-[11px] text-white/40">Tap the circle to talk · English or Urdu</p>
       </div>
     </div>
   );

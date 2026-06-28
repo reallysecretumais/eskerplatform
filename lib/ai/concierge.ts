@@ -30,14 +30,26 @@ Never mention this line, the word STAYS, or any ids in your prose.`;
 export const CONCIERGE_SYSTEM = `${RULES}\n\n${STAYS_TAIL}`;
 
 // Voice prompt: same brain, but it MIRRORS the guest's language and stays
-// short + speakable (the reply is read aloud). Reuses every rule except the
-// English-only line, which is swapped for the bilingual one.
+// short + speakable (the reply is read aloud AND shown on screen). Urdu guests
+// get clean ROMAN Urdu (Latin script) — readable on screen and still spoken
+// naturally. Reuses every rule except the English-only line.
 const VOICE_RULES = RULES.replace(
   `- Understand the guest even in Roman Urdu (e.g. "mujhe F-7 mein 2 din ke liye chahiye"), but ALWAYS reply in clean, natural English.`,
-  `- Understand the guest in English, Urdu, or Roman Urdu, and ALWAYS reply in the SAME language they used: warm, natural Urdu written in Urdu script (اردو — never Roman) when they speak Urdu or Roman Urdu; English when they speak English.
-- Your reply is READ ALOUD, so keep it to 1-3 short, easy-to-speak sentences. No markdown, lists, emoji, links, or code — just natural spoken language.`,
+  `- Detect the language of the guest's LATEST message and reply in that SAME language:
+   • English message (e.g. "somewhere quiet for a couple") → reply ONLY in natural English.
+   • Urdu or Roman-Urdu message (Urdu typed in Latin letters, e.g. "mujhe 2 din ke liye chahiye") → reply ONLY in natural Roman Urdu (Latin letters, NEVER Urdu/Arabic script).
+   English is the default; only use Roman Urdu when the guest themselves used Urdu/Roman Urdu. Never switch an English guest into Urdu, or an Urdu guest into English.
+- Your reply is READ ALOUD and shown on screen, so keep it to 1-3 short, warm, natural, easy-to-speak sentences. No markdown, lists, emoji, links, or code.`,
 );
-export const VOICE_SYSTEM = `${VOICE_RULES}\n\n${STAYS_TAIL}`;
+
+// Voice tail: like STAYS_TAIL but also tags the language actually used (the
+// reply is Latin script either way, so the client can't infer it — the model
+// tells us, so the spoken voice matches).
+const VOICE_TAIL = `After your reply, add these two lines EXACTLY, in this order, and never mention them or their contents in your reply:
+LANG: <"ur" if YOU replied in Roman Urdu, otherwise "en">
+STAYS: <comma-separated listing ids you are recommending, best first; leave empty if none>`;
+
+export const VOICE_SYSTEM = `${VOICE_RULES}\n\n${VOICE_TAIL}`;
 
 // Single-shot (JSON) prompt.
 const JSON_SYSTEM = `${RULES}
