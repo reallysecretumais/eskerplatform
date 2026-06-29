@@ -32,6 +32,8 @@ export async function POST(req: NextRequest) {
     ? `The text is Roman Urdu (the Urdu language written in Latin letters) — read it as natural spoken Urdu, NOT with English pronunciation. ${persona} She is fluent in both Urdu and English, so the English words she mixes in sound natural.`
     : `${persona}`;
 
+  // Only the gpt-4o tts models accept `instructions`; tts-1 / tts-1-hd reject it.
+  const supportsInstructions = TTS_MODEL.startsWith("gpt-4o");
   const call = (withSpeed: boolean) =>
     fetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
@@ -40,7 +42,7 @@ export async function POST(req: NextRequest) {
         model: TTS_MODEL,
         voice: TTS_VOICE,
         input: text,
-        instructions,
+        ...(supportsInstructions ? { instructions } : {}),
         response_format: "mp3",
         ...(withSpeed ? { speed: TTS_SPEED } : {}),
       }),
