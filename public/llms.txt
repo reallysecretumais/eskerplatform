@@ -1,0 +1,23 @@
+# Esker — Premium short stays in Islamabad & Rawalpindi
+
+> Esker is an AI-first booking platform for premium, professionally managed short-stay apartments, penthouses and villas in Islamabad and Rawalpindi, Pakistan. Guests describe what they want — in English or Roman Urdu — to an AI concierge (by text or voice) and book a verified stay in minutes. "Esker Exclusive" listings are inspected and managed to a guaranteed standard.
+
+## Key pages
+- [Home](https://eskerrentals.com/): AI concierge + featured stays.
+- [Browse all stays](https://eskerrentals.com/stays): full live inventory; supports natural-language search at /stays?q=YOUR+REQUEST.
+- [Esker Exclusive](https://eskerrentals.com/stays?tier=exclusive): professionally managed, guaranteed-quality listings.
+
+## How booking works
+- Find a place (browse or ask the concierge), pick dates, and reserve.
+- Pay an advance to secure it — 25% for standard stays, 50% for Esker Exclusive — by Easypaisa, JazzCash, bank transfer, or SadaPay; the balance is paid at check-in.
+- First-time guests verify identity with a CNIC or passport. The team confirms the booking after verifying payment.
+
+## Policies
+- [Cancellation & Refund](https://eskerrentals.com/legal/cancellation)
+- [Terms of Service](https://eskerrentals.com/legal/terms)
+- [Privacy Policy](https://eskerrentals.com/legal/privacy)
+
+## Contact
+- WhatsApp: https://wa.me/923325977626
+- Email: admin@eskerrentals.com
+- Areas served: Islamabad, Rawalpindi (more cities coming soon).

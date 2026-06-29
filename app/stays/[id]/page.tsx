@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Users, BedDouble, ShieldCheck } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
+import { JsonLd } from "@/components/JsonLd";
+import { listingLd, breadcrumbLd, listingOgImage } from "@/lib/seo";
 import { Gallery } from "@/components/Gallery";
 import { BookingWidget } from "@/components/BookingWidget";
 import { AmenityList } from "@/components/AmenityList";
@@ -12,6 +15,26 @@ import { getListing, getListings, getAvailability } from "@/lib/data/listings";
 import { getAccount } from "@/lib/auth";
 import { unitForCategory, formatPrice } from "@/lib/listings";
 import { brand } from "@/lib/brand";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const listing = await getListing(id);
+  if (!listing) return { title: "Stay not found" };
+  const where = listing.area ?? brand.launchCities[0];
+  const title = `${listing.title} — ${where}`;
+  const description =
+    (listing.description?.trim().slice(0, 200)) ||
+    `${listing.category ?? "Premium stay"} in ${where}, ${brand.launchCities[0]}. ${listing.esker_exclusive ? `${brand.exclusiveTier} — professionally managed. ` : ""}Book with ${brand.name}.`;
+  const img = listingOgImage(listing);
+  const url = `/stays/${id}`;
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: { type: "website", title: `${title} · ${brand.name}`, description, url, images: [{ url: img, width: 1200, height: 630, alt: listing.title }] },
+    twitter: { card: "summary_large_image", title, description, images: [img] },
+  };
+}
 
 export default async function StayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -25,6 +48,7 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
 
   return (
     <main className="min-h-full pb-28 lg:pb-16">
+      <JsonLd data={[listingLd(listing), breadcrumbLd([{ name: "Home", path: "/" }, { name: "Stays", path: "/stays" }, { name: listing.title, path: `/stays/${id}` }])]} />
       <SiteNav theme="light" account={account} />
 
       <div className="mx-auto max-w-5xl px-6 py-8">

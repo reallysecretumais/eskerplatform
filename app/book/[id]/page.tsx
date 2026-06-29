@@ -8,6 +8,9 @@ import { getAccount } from "@/lib/auth";
 import { unitForCategory, formatPrice } from "@/lib/listings";
 import { advanceAmount } from "@/lib/payments";
 import { thumb } from "@/lib/img";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Confirm & pay", robots: { index: false, follow: false } };
 
 const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 

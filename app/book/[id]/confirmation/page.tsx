@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { CircleCheck, ShieldCheck } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { getAccount } from "@/lib/auth";
+
+export const metadata: Metadata = { title: "Booking received", robots: { index: false, follow: false } };
 
 export default async function ConfirmationPage() {
   const account = await getAccount();

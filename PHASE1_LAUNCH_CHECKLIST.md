@@ -8,6 +8,7 @@ The "trust & comms wrapper" + polish to take real public bookings safely. Pairs 
 - **Advance payments** — 25% standard / 50% Esker Exclusive; booking carries the real advance + proof (`payment_status='partial'`).
 - **Guest "booking received" email** (Titan SMTP) + **WhatsApp queued** (inbox-native via the CRM) + **in-app team alert**.
 - **Legal pages** — Terms, Cancellation/Refund, Privacy (drafted; founder to review) + linked in footer & checkout consent.
+- **SEO + AI discoverability** — per-page metadata + title template, canonical URLs, OpenGraph/Twitter (branded homepage card + real property photos), dynamic `sitemap.xml`, `robots.txt` (welcomes Google **and** AI crawlers; blocks private/transactional), JSON-LD (`LodgingBusiness`/`WebSite`/`Product`+`Offer`/`BreadcrumbList`), and `llms.txt` for LLM discovery. Search + transactional pages are noindex'd.
 
 ## ⚠️ Founder actions to finish this build
 - Run **`supabase/06_notifications.sql`** (guest_messages outbox).
@@ -22,12 +23,12 @@ The "trust & comms wrapper" + polish to take real public bookings safely. Pairs 
 
 ## Remaining Phase-1 ⬜ (sequenced next)
 1. **Reviews** (basic capture + display; cold-start via Esker Exclusive).
-2. **SEO + OpenGraph** meta per page + sitemap + `LodgingBusiness`/`Offer` structured data (rich WhatsApp/Insta link previews).
-3. **Analytics + Meta Pixel / Conversions API** (view listing, start booking, booking submitted) — for paid acquisition.
-4. **Performance/caching pass** + CRM→site **revalidate webhook** (publish/price changes show instantly).
-5. **Password-reset / forgot-password** flow; phone+OTP when an SMS provider is added.
-6. **Vary AI descriptions** (stop all opening with "Experience…").
-7. **Real-device mobile pass**.
+2. **Analytics + Meta Pixel / Conversions API** (view listing, start booking, booking submitted) — for paid acquisition.
+3. **Performance/caching pass** + CRM→site **revalidate webhook** (publish/price changes show instantly).
+4. **Password-reset / forgot-password** flow; phone+OTP when an SMS provider is added.
+5. **Vary AI descriptions** (stop all opening with "Experience…").
+6. **Real-device mobile pass**.
+7. **`favicon.ico` / app icons** — confirm a real favicon + apple-touch-icon exist in the brand look.
 
 ## Later (Phase 2+)
 Owner host portal · Partner read-only investor view · real payment gateway · ElevenLabs/Realtime voice · NADRA Verisys · content-spaces (hourly) + pools (slot) booking models · multi-city.

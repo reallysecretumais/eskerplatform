@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Search, Sparkles } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
@@ -6,8 +7,24 @@ import { ConciergeStream } from "@/components/ConciergeStream";
 import { getListings } from "@/lib/data/listings";
 import { getAccount } from "@/lib/auth";
 import { normalizeCategory } from "@/lib/listings";
+import { brand } from "@/lib/brand";
 
 type SP = { q?: string; area?: string; category?: string; amenity?: string; tier?: string };
+
+export async function generateMetadata({ searchParams }: { searchParams: Promise<SP> }): Promise<Metadata> {
+  const sp = await searchParams;
+  const cities = brand.launchCities.join(" & ");
+  if (sp.q && sp.q.trim()) {
+    // Don't index the (infinite) AI-search permutations; keep the canonical on /stays.
+    return { title: "Concierge search", description: `Stays matching “${sp.q.trim()}”.`, robots: { index: false, follow: true }, alternates: { canonical: "/stays" } };
+  }
+  const exclusive = sp.tier === "exclusive";
+  return {
+    title: exclusive ? `${brand.exclusiveTier} stays` : `Browse stays in ${cities}`,
+    description: `${exclusive ? `${brand.exclusiveTier}: professionally managed, guaranteed-quality stays` : `All ${brand.name} stays — apartments, penthouses & villas`} in ${cities}. Filter by area, type, or amenities, or ask the AI concierge.`,
+    alternates: { canonical: "/stays" },
+  };
+}
 
 export default async function StaysPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;

@@ -8,6 +8,8 @@ import { StayCard } from "@/components/StayCard";
 import { HeroCollage } from "@/components/HeroCollage";
 import { getListings, pickCollagePhotos } from "@/lib/data/listings";
 import { getAccount } from "@/lib/auth";
+import { JsonLd } from "@/components/JsonLd";
+import { organizationLd, websiteLd } from "@/lib/seo";
 
 // Homepage — now reads LIVE from the database (public_listings). Real photos
 // lead the cross-fading hero; real Esker Exclusive listings sell the inventory.
@@ -40,6 +42,7 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-full">
+      <JsonLd data={[organizationLd(), websiteLd()]} />
       {/* ── Hero: concierge fused with cross-fading real photography ── */}
       <section className="relative isolate flex min-h-[92vh] flex-col overflow-hidden bg-ink text-white">
         {/* Living photo-wall of the property's top photos */}
