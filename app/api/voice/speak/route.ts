@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 
 const TTS_MODEL = process.env.ESKER_TTS_MODEL || "gpt-4o-mini-tts";
 const TTS_VOICE = process.env.ESKER_TTS_VOICE || "nova";
-const TTS_SPEED = Number(process.env.ESKER_TTS_SPEED || "1.15");
+const TTS_SPEED = Number(process.env.ESKER_TTS_SPEED || "1.3");
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.OPENAI_API_KEY;
