@@ -1,6 +1,11 @@
 import "server-only";
-import { getListings, type PublicListing } from "@/lib/data/listings";
+import { getListings, getBusyByProperty, type PublicListing, type BusyRange } from "@/lib/data/listings";
 import { unitForCategory } from "@/lib/listings";
+
+/** Today in Pakistan time (YYYY-MM-DD) so the model can resolve "this weekend". */
+export function todayPK(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Karachi" });
+}
 
 // The Esker Brain (guest surface). Retrieval-first: callers pass ONLY the public
 // listings (+ public-safe facts) to the model, so it can never see or leak
@@ -12,6 +17,7 @@ export const MODEL = process.env.ESKER_AI_MODEL || "gpt-4.1-mini";
 const RULES = `You are the Esker Stays concierge — a warm, concise, premium hospitality assistant for a short-stay booking site in Islamabad and Rawalpindi, Pakistan.
 
 - Recommend ONLY from the listings provided in the conversation. Never invent places, prices, areas, or details.
+- Availability matters: each listing shows its "booked" date ranges (check-in→check-out, Pakistan time). When the guest mentions dates, ONLY recommend places that are FREE for those dates; if a place they ask about is booked then, gently tell them it's not available for those dates and offer the closest free alternative. If they give no dates, recommend normally.
 - Understand the guest even in Roman Urdu (e.g. "mujhe F-7 mein 2 din ke liye chahiye"), but ALWAYS reply in clean, natural English.
 - Use the conversation history for context — handle refinements like "cheaper", "with a pool too", "for 6 guests".
 - Answer property questions (parking, distance to landmarks, family-friendly, check-in, house rules) from each listing's details and "facts". If a detail genuinely isn't in the data, say you'll confirm it rather than guessing.
@@ -40,6 +46,7 @@ const VOICE_RULES = RULES.replace(
    • Urdu or Roman-Urdu message (Urdu typed in Latin letters, e.g. "mujhe 2 din ke liye chahiye") → reply ONLY in Roman Urdu, written ENTIRELY in Latin letters (NEVER Urdu/Arabic script, not even one word).
    English is the default; only use Roman Urdu when the guest themselves used Urdu/Roman Urdu. Never switch an English guest into Urdu, or an Urdu guest into English.
 - In Roman Urdu ALWAYS be respectful — use the polite "aap" register ("aap ke liye", "kar sakte hain", "dekh lijiye", "rahega"), NEVER the casual "tum"/"karo"/"kar sakte ho"/"dekho". Speak warmly and respectfully, the way you'd politely talk to family. If the guest is clearly very casual and friendly, you may relax and lighten your tone a little — but stay polite, never blunt or disrespectful.
+- You are a WOMAN: whenever you refer to yourself in Roman Urdu, ALWAYS use feminine forms ("main karungi", "main bata sakti hun", "main yahan hun aapki help ke liye") — NEVER masculine ("karunga", "sakta hun"). (English needs no change.)
 - Sound personal and genuine — like a friendly host happy to help THIS guest, not a generic bot. Respond to what they actually said, warmly and directly, and loosely match their vibe (their energy, brevity, and how much English they mix in).
 - Talk like a modern, young, urban Pakistani — everyday words, naturally mixing common English words (pool, view, booking, weekend, family, parking). Avoid old-fashioned, heavy, formal, or literary Urdu (don't say "behtareen", "maujood", "rihaish", "tashreef" — say it the easy, normal way).
 - Your reply is read aloud, so keep it SHORT: one natural sentence is best, two at most. Warm, personal, and conversational — no markdown, lists, emoji, links, or code.`,
@@ -60,14 +67,16 @@ const JSON_SYSTEM = `${RULES}
 
 Return ONLY JSON: {"reply": string, "listing_ids": string[]}. listing_ids must be ids from the provided list, best match first; use [] if nothing is a reasonable match.`;
 
-export function catalog(listings: PublicListing[]): string {
+export function catalog(listings: PublicListing[], busy?: Map<string, BusyRange[]>): string {
   return listings
     .map((l) => {
       const unit = unitForCategory(l.category ?? "");
       const amen = (l.amenities ?? []).slice(0, 8).join(", ") || "—";
       const facts = l.public_facts ? ` | facts: ${l.public_facts}` : "";
       const desc = l.description ? ` | ${l.description}` : "";
-      return `id:${l.id} | ${l.title} | ${l.category ?? "stay"} | area:${l.area ?? "?"} | ${l.bedrooms ?? "?"}BR | sleeps:${l.capacity ?? "?"} | PKR ${l.price}/${unit} | ${amen}${desc}${facts}${l.esker_exclusive ? " | Esker Exclusive" : ""}`;
+      const ranges = busy?.get(l.id) ?? [];
+      const booked = ` | booked: ${ranges.length ? ranges.slice(0, 8).map((r) => `${r.start_date}→${r.end_date}`).join(", ") : "none"}`;
+      return `id:${l.id} | ${l.title} | ${l.category ?? "stay"} | area:${l.area ?? "?"} | ${l.bedrooms ?? "?"}BR | sleeps:${l.capacity ?? "?"} | PKR ${l.price}/${unit} | ${amen}${desc}${facts}${booked}${l.esker_exclusive ? " | Esker Exclusive" : ""}`;
     })
     .join("\n");
 }
@@ -77,7 +86,7 @@ export type ConciergeResult = { reply: string; matches: PublicListing[] };
 // Single-shot answer (used by direct /stays?q links). The streaming chat uses
 // the API route with CONCIERGE_SYSTEM instead.
 export async function askConcierge(query: string): Promise<ConciergeResult> {
-  const listings = await getListings();
+  const [listings, busy] = await Promise.all([getListings(), getBusyByProperty()]);
   const apiKey = process.env.OPENAI_API_KEY;
 
   const keyword = (): PublicListing[] => {
@@ -99,8 +108,8 @@ export async function askConcierge(query: string): Promise<ConciergeResult> {
         temperature: 0.4,
         response_format: { type: "json_object" },
         messages: [
-          { role: "system", content: JSON_SYSTEM },
-          { role: "user", content: `Available listings:\n${catalog(listings)}\n\nGuest: ${query}` },
+          { role: "system", content: `${JSON_SYSTEM}\n\nToday is ${todayPK()} (Pakistan time).` },
+          { role: "user", content: `Available listings:\n${catalog(listings, busy)}\n\nGuest: ${query}` },
         ],
       }),
     });

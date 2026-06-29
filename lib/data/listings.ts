@@ -43,6 +43,27 @@ export async function getListing(id: string): Promise<PublicListing | null> {
 
 export type BusyRange = { start_date: string; end_date: string };
 
+/** Booked date ranges for ALL public listings, grouped by property id (one query).
+ *  Feeds the concierge so it only recommends places free for the guest's dates. */
+export async function getBusyByProperty(): Promise<Map<string, BusyRange[]>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("public_availability")
+    .select("property_id,start_date,end_date")
+    .order("start_date");
+  const map = new Map<string, BusyRange[]>();
+  if (error) {
+    console.error("[availability] all read failed:", error.message);
+    return map;
+  }
+  for (const row of (data ?? []) as { property_id: string; start_date: string; end_date: string }[]) {
+    const arr = map.get(row.property_id) ?? [];
+    arr.push({ start_date: row.start_date, end_date: row.end_date });
+    map.set(row.property_id, arr);
+  }
+  return map;
+}
+
 /** Busy date ranges (no PII) for a listing, from the public availability window. */
 export async function getAvailability(id: string): Promise<BusyRange[]> {
   const supabase = await createClient();

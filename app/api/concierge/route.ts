@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
-import { getListings } from "@/lib/data/listings";
-import { catalog, CONCIERGE_SYSTEM, VOICE_SYSTEM, MODEL } from "@/lib/ai/concierge";
+import { getListings, getBusyByProperty } from "@/lib/data/listings";
+import { catalog, CONCIERGE_SYSTEM, VOICE_SYSTEM, MODEL, todayPK } from "@/lib/ai/concierge";
 
 export const runtime = "nodejs";
 
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   }
 
   const apiKey = process.env.OPENAI_API_KEY;
-  const listings = await getListings();
+  const [listings, busy] = await Promise.all([getListings(), getBusyByProperty()]);
 
   if (!apiKey) {
     return new Response("The concierge isn't configured yet.\nSTAYS:", {
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   }
 
   const base = voice ? VOICE_SYSTEM : CONCIERGE_SYSTEM;
-  const system = `${base}\n\nAvailable listings:\n${catalog(listings)}${context ? `\n\nContext: ${context}` : ""}`;
+  const system = `${base}\n\nToday is ${todayPK()} (Pakistan time).\n\nAvailable listings:\n${catalog(listings, busy)}${context ? `\n\nContext: ${context}` : ""}`;
 
   const oa = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
