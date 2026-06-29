@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Copy, Check, Upload, ShieldCheck } from "lucide-react";
@@ -12,13 +13,17 @@ export function CheckoutForm({
   propertyId,
   checkin,
   checkout,
-  totalLabel,
+  advanceLabel,
+  balanceLabel,
+  pctLabel,
   prefill,
 }: {
   propertyId: string;
   checkin: string;
   checkout: string;
-  totalLabel: string;
+  advanceLabel: string;
+  balanceLabel: string;
+  pctLabel: string;
   prefill: Prefill;
 }) {
   const router = useRouter();
@@ -110,7 +115,7 @@ export function CheckoutForm({
       <section>
         <h2 className="font-display text-lg font-semibold tracking-tight text-ink">Payment</h2>
         <p className="mt-1 text-sm text-muted">
-          Send <span className="font-medium text-ink">{totalLabel}</span> to either Esker account below — from {payments.methods.join(", ")} — then upload your screenshot.
+          Pay the <span className="font-medium text-ink">{pctLabel} advance — {advanceLabel}</span> now to secure your booking (balance {balanceLabel} at check-in). Send it to either Esker account below — from {payments.methods.join(", ")} — then upload your screenshot.
         </p>
 
         <div className="mt-3 space-y-2">
@@ -138,13 +143,21 @@ export function CheckoutForm({
 
         <p className="mt-3 inline-flex items-start gap-1.5 text-xs text-muted">
           <ShieldCheck size={14} className="mt-0.5 shrink-0 text-gold" />
-          Your payment is held securely and released to the property only after you check in.
+          Your advance is held securely and goes toward your stay. The balance is paid at check-in.
         </p>
       </section>
 
-      <button type="submit" disabled={busy} className="w-full rounded-xl bg-gold px-5 py-3 text-sm font-medium text-ink transition hover:brightness-105 disabled:opacity-50">
-        {busy ? "Confirming…" : "Confirm booking"}
-      </button>
+      <div>
+        <button type="submit" disabled={busy} className="w-full rounded-xl bg-gold px-5 py-3 text-sm font-medium text-ink transition hover:brightness-105 disabled:opacity-50">
+          {busy ? "Confirming…" : `Pay ${advanceLabel} advance & confirm`}
+        </button>
+        <p className="mt-3 text-center text-xs text-muted">
+          By confirming, you agree to Esker&apos;s{" "}
+          <Link href="/legal/terms" className="text-gold-deep underline hover:no-underline">Terms</Link>,{" "}
+          <Link href="/legal/cancellation" className="text-gold-deep underline hover:no-underline">Cancellation Policy</Link>, and{" "}
+          <Link href="/legal/privacy" className="text-gold-deep underline hover:no-underline">Privacy Policy</Link>.
+        </p>
+      </div>
     </form>
   );
 }

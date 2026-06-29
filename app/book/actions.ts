@@ -3,6 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyId } from "@/lib/ai/idcheck";
+import { advanceAmount } from "@/lib/payments";
+import { notifyBookingReceived } from "@/lib/notifyGuest";
 
 const ACTIVE = ["awaiting_payment", "payment_collected", "handed_over", "awaiting_checkin", "currently_staying", "needs_attention"];
 // Unpaid WEBSITE holds free their dates after this long (matches the
@@ -46,7 +48,7 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
   const admin = createAdminClient();
 
   // 1. Property must exist and be PUBLIC (read the public window).
-  const { data: listing } = await admin.from("public_listings").select("id, title, price").eq("id", propertyId).maybeSingle();
+  const { data: listing } = await admin.from("public_listings").select("id, title, price, area, category, esker_exclusive").eq("id", propertyId).maybeSingle();
   if (!listing) return { ok: false, message: "This place isn't available to book." };
 
   // 2. Dates.
@@ -58,6 +60,9 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
   if (nights < 1) return { ok: false, message: "Your stay must be at least one night." };
   const price = Number(listing.price) || 0;
   const amount = Math.round(price * nights);
+  const exclusive = Boolean((listing as { esker_exclusive?: boolean }).esker_exclusive);
+  const advance = advanceAmount(amount, exclusive);
+  const balance = amount - advance;
 
   // 3. No double-booking. (An unpaid WEBSITE hold older than HOLD_HOURS no
   //    longer blocks — its dates have auto-released.)
@@ -118,7 +123,7 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
   }
 
   // 6. Create the booking (awaiting team verification of the screenshot).
-  const note = `Website booking — guest reports paying ₨${amount.toLocaleString("en-PK")} (verify screenshot before confirming).${email ? ` Email: ${email}.` : ""}${idNote}`;
+  const note = `Website booking — ${exclusive ? "50%" : "25%"} advance ₨${advance.toLocaleString("en-PK")} of ₨${amount.toLocaleString("en-PK")} (balance ₨${balance.toLocaleString("en-PK")} due at check-in). Verify the payment screenshot.${email ? ` Email: ${email}.` : ""}${idNote}`;
   const { data: booking, error: bErr } = await admin
     .from("bookings")
     .insert({
@@ -131,7 +136,7 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
       rate_at_booking: price,
       amount,
       status: "awaiting_payment",
-      payment_status: "unpaid",
+      payment_status: "partial",
       source: "Website",
       notes: note,
     })
@@ -139,17 +144,37 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
     .single();
   if (bErr || !booking) return { ok: false, message: "Could not create your booking. Please try again." };
 
-  // 7. Attach the payment screenshot (amount 0 → not marked paid until verified).
+  // 7. Record the advance + its proof screenshot. The CRM's recompute trigger
+  //    sets advance_paid + payment_status; the team verifies the proof to confirm.
   const proofPath = `payments/${booking.id}/pay-${Date.now()}.${ext(proof)}`;
   const upP = await admin.storage.from(BUCKET).upload(proofPath, proof, { contentType: proof.type, upsert: false });
   if (!upP.error) {
     await admin.from("booking_payments").insert({
       booking_id: booking.id,
-      amount: 0,
+      amount: advance,
       proof_url: proofPath,
-      note: "Website — verify screenshot then set the amount.",
+      note: `Website advance (${exclusive ? "50%" : "25%"}) — verify this screenshot.`,
     });
   }
+
+  // 8. Notify the guest (email now; WhatsApp queued for the inbox) + the team.
+  await notifyBookingReceived({
+    bookingId: booking.id,
+    guestId: guestId!,
+    guestName: name,
+    email: email || undefined,
+    phone,
+    propertyId,
+    propertyTitle: String(listing.title ?? "your stay"),
+    area: (listing as { area?: string | null }).area ?? null,
+    category: (listing as { category?: string | null }).category ?? null,
+    checkin,
+    checkout,
+    nights,
+    total: amount,
+    advance,
+    balance,
+  });
 
   return { ok: true, bookingId: booking.id };
 }

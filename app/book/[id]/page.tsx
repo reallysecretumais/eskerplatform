@@ -6,6 +6,7 @@ import { CheckoutForm } from "@/components/CheckoutForm";
 import { getListing, getAvailability } from "@/lib/data/listings";
 import { getAccount } from "@/lib/auth";
 import { unitForCategory, formatPrice } from "@/lib/listings";
+import { advanceAmount } from "@/lib/payments";
 import { thumb } from "@/lib/img";
 
 const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -55,6 +56,12 @@ export default async function BookPage({
   const total = price * nights;
   const unit = unitForCategory(listing.category ?? "");
   const totalLabel = formatPrice(total, unit).amount;
+  const exclusive = listing.esker_exclusive;
+  const advance = advanceAmount(total, exclusive);
+  const balance = total - advance;
+  const advanceLabel = formatPrice(advance, unit).amount;
+  const balanceLabel = formatPrice(balance, unit).amount;
+  const pctLabel = exclusive ? "50%" : "25%";
   const account = await getAccount();
   const prefill = { name: account?.name ?? "", email: account?.email ?? "", phone: account?.phone ?? "" };
 
@@ -70,7 +77,7 @@ export default async function BookPage({
 
         <div className="mt-6 grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <CheckoutForm propertyId={id} checkin={checkin} checkout={checkout} totalLabel={totalLabel} prefill={prefill} />
+            <CheckoutForm propertyId={id} checkin={checkin} checkout={checkout} advanceLabel={advanceLabel} balanceLabel={balanceLabel} pctLabel={pctLabel} prefill={prefill} />
           </div>
 
           {/* Order summary */}
@@ -88,8 +95,18 @@ export default async function BookPage({
                   <Row label={`${formatPrice(price, unit).amount} × ${nights} ${nights === 1 ? "night" : "nights"}`} value={totalLabel} />
                 </div>
                 <div className="flex items-baseline justify-between border-t border-line pt-3">
-                  <span className="text-sm font-medium text-ink">Total</span>
-                  <span className="font-display text-lg font-semibold text-ink tnum">{totalLabel}</span>
+                  <span className="text-sm text-muted">Total</span>
+                  <span className="text-sm text-ink tnum">{totalLabel}</span>
+                </div>
+                <div className="rounded-xl bg-surface-2/60 p-3">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-sm font-medium text-ink">Advance due now <span className="text-muted">({pctLabel})</span></span>
+                    <span className="font-display text-lg font-semibold text-gold-deep tnum">{advanceLabel}</span>
+                  </div>
+                  <div className="mt-1 flex items-baseline justify-between text-xs text-muted">
+                    <span>Balance at check-in</span>
+                    <span className="tnum">{balanceLabel}</span>
+                  </div>
                 </div>
               </div>
             </div>

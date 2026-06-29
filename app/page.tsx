@@ -137,8 +137,9 @@ export default async function HomePage() {
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             <Link href="/stays" className="hover:text-ink">Browse all stays</Link>
             <Link href="/stays?tier=exclusive" className="hover:text-ink">{brand.exclusiveTier}</Link>
-            <a href="#" className="hover:text-ink">Help</a>
-            <a href="#" className="hover:text-ink">Contact</a>
+            <Link href="/legal/terms" className="hover:text-ink">Terms</Link>
+            <Link href="/legal/cancellation" className="hover:text-ink">Cancellation</Link>
+            <Link href="/legal/privacy" className="hover:text-ink">Privacy</Link>
           </div>
         </div>
       </footer>
