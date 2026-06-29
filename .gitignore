@@ -22,6 +22,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+dev*.log
+*.log
 
 # env files (shared Supabase keys live here — never commit)
 .env*
