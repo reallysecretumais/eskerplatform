@@ -29,7 +29,7 @@ with (security_invoker = false) as
       'awaiting_payment', 'payment_collected', 'handed_over',
       'awaiting_checkin', 'currently_staying', 'needs_attention'
     )
-    -- Website unpaid holds expire after 12h; everything else blocks as before.
+    -- Website unpaid holds expire after 18h; everything else blocks as before.
     and (
       b.status <> 'awaiting_payment'
       or coalesce(b.source, '') <> 'Website'
@@ -37,7 +37,7 @@ with (security_invoker = false) as
     );
 
 comment on view public.public_availability is
-  'Public read window: busy date ranges (no PII/amounts) for public listings. Unpaid website holds (awaiting_payment + source Website) auto-release after 12h.';
+  'Public read window: busy date ranges (no PII/amounts) for public listings. Unpaid website holds (awaiting_payment + source Website) auto-release after 18h.';
 
 grant select on public.public_availability to anon, authenticated;
 
@@ -45,4 +45,4 @@ commit;
 
 -- VERIFY (optional):
 --   select count(*) from public.public_availability;   -- busy ranges now
---   -- A website awaiting_payment booking older than 12h should NOT appear here.
+--   -- A website awaiting_payment booking older than 18h should NOT appear here.
