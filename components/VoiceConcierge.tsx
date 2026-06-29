@@ -37,7 +37,7 @@ function sentenceEnd(text: string, from: number): number {
   return -1;
 }
 
-// The voice concierge — a floating, voice-first scene over a frosted backdrop
+// The voice concierge — a floating, voice-first scene over a cheap static
 // (no boxy panel). Streams speech: the first sentence is spoken while the rest
 // is still being written, so there's almost no wait. The orb is the entity; the
 // matched stays float in. The guest can interrupt, mute, type, or end.
@@ -453,16 +453,19 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
   const showDots = phase === "listening";
 
   const overlay = (
-    <div className="voice-in fixed inset-0 z-[60] flex flex-col overflow-hidden bg-ink/55 text-white backdrop-blur-2xl">
-      {/* gold aura — the only thing behind the orb (no panel/box) */}
+    <div
+      className="voice-in fixed inset-0 z-[60] flex flex-col overflow-hidden text-white"
+      style={{ background: "radial-gradient(120% 85% at 50% 32%, #1a1712 0%, #0c0a07 56%, #060504 100%)" }}
+    >
+      {/* gold aura — radial gradient (no blur filter), the only thing behind the orb */}
       <div
-        className="pointer-events-none absolute left-1/2 top-[34%] h-[480px] w-[480px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[140px]"
-        style={{ background: "radial-gradient(circle, rgba(201,168,76,0.28), transparent 70%)" }}
+        className="pointer-events-none absolute left-1/2 top-[34%] h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{ background: "radial-gradient(circle, rgba(201,168,76,0.22) 0%, rgba(201,168,76,0.06) 38%, rgba(201,168,76,0) 64%)" }}
       />
 
       {/* close only */}
       <div className="relative z-10 flex justify-end px-6 pt-6">
-        <button type="button" onClick={end} aria-label="Close" className="rounded-full bg-white/10 p-2.5 text-white/80 backdrop-blur transition hover:bg-white/20">
+        <button type="button" onClick={end} aria-label="Close" className="rounded-full bg-white/10 p-2.5 text-white/80 transition hover:bg-white/20">
           <X size={18} />
         </button>
       </div>
@@ -509,7 +512,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
                   href={`/stays/${l.id}`}
                   onClick={end}
                   style={{ animationDelay: `${i * 90}ms` }}
-                  className="card-float group w-36 shrink-0 overflow-hidden rounded-2xl border border-white/15 bg-white/10 shadow-[0_16px_36px_-12px_rgba(0,0,0,0.6)] backdrop-blur-md transition hover:border-gold/50 hover:bg-white/15 sm:w-44"
+                  className="card-float group w-36 shrink-0 overflow-hidden rounded-2xl border border-white/15 bg-white/[0.08] shadow-[0_16px_36px_-12px_rgba(0,0,0,0.6)] transition hover:border-gold/50 hover:bg-white/15 sm:w-44"
                 >
                   <div
                     className="relative aspect-[4/3] bg-white/5"
@@ -534,7 +537,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
       {/* controls — minimal */}
       <div className="relative z-10 flex flex-col items-center gap-3 px-6 pb-9 pt-3">
         {showInput && (
-          <form onSubmit={submitTyped} className="flex w-full max-w-md items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-2 backdrop-blur-md focus-within:border-gold/50">
+          <form onSubmit={submitTyped} className="flex w-full max-w-md items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-2 focus-within:border-gold/50">
             <input
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
@@ -555,7 +558,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
             onClick={toggleMute}
             aria-pressed={muted}
             title={muted ? "Voice off" : "Voice on"}
-            className={`grid h-11 w-11 place-items-center rounded-full backdrop-blur transition ${muted ? "bg-white/8 text-white/50" : "bg-gold/20 text-gold"}`}
+            className={`grid h-11 w-11 place-items-center rounded-full transition ${muted ? "bg-white/8 text-white/50" : "bg-gold/20 text-gold"}`}
           >
             {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
           </button>
@@ -564,7 +567,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
             onClick={() => setShowInput((s) => !s)}
             aria-pressed={showInput}
             title="Type instead"
-            className={`grid h-11 w-11 place-items-center rounded-full backdrop-blur transition ${showInput ? "bg-gold/20 text-gold" : "bg-white/8 text-white/70"}`}
+            className={`grid h-11 w-11 place-items-center rounded-full transition ${showInput ? "bg-gold/20 text-gold" : "bg-white/8 text-white/70"}`}
           >
             <Keyboard size={18} />
           </button>
