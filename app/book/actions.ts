@@ -5,6 +5,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyId } from "@/lib/ai/idcheck";
 
 const ACTIVE = ["awaiting_payment", "payment_collected", "handed_over", "awaiting_checkin", "currently_staying", "needs_attention"];
+// Unpaid WEBSITE holds free their dates after this long (matches the
+// public_availability view), so an abandoned checkout never locks a property.
+const HOLD_HOURS = 18;
 const BUCKET = "guest-docs";
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -56,17 +59,23 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
   const price = Number(listing.price) || 0;
   const amount = Math.round(price * nights);
 
-  // 3. No double-booking.
-  const { data: clash } = await admin
+  // 3. No double-booking. (An unpaid WEBSITE hold older than HOLD_HOURS no
+  //    longer blocks — its dates have auto-released.)
+  const { data: clashes } = await admin
     .from("bookings")
-    .select("id")
+    .select("id, status, source, created_at")
     .eq("property_id", propertyId)
     .is("lost_reason", null)
     .in("status", ACTIVE)
     .lt("checkin", checkout)
-    .gt("checkout", checkin)
-    .limit(1);
-  if (clash && clash.length) return { ok: false, message: "Sorry — those dates were just taken. Please pick others." };
+    .gt("checkout", checkin);
+  const holdCutoff = Date.now() - HOLD_HOURS * 3600 * 1000;
+  const realClash = (clashes ?? []).some((c) =>
+    c.status === "awaiting_payment" && c.source === "Website"
+      ? new Date(c.created_at as string).getTime() > holdCutoff
+      : true,
+  );
+  if (realClash) return { ok: false, message: "Sorry — those dates were just taken. Please pick others." };
 
   // 4. Guest details + proof.
   if (!name || !phone) return { ok: false, message: "Please enter your name and phone number." };

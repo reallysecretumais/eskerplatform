@@ -29,7 +29,10 @@ Open http://localhost:3100. The integrated preview tool can't reach this folder 
 5. Later: add **SMS provider** keys in Supabase (turns on phone+OTP, no code change); pursue **NADRA Verisys** agreement (real CNIC verification slots in after the AI extraction).
 
 ## Migrations run in Supabase (founder runs each in SQL Editor)
-`supabase/01_public_listings.sql` ✓ · `02_public_facts.sql` ✓ · `03_accounts.sql` ✓ · **`04_bookings.sql` ✗ NOT YET** (run it).
+`supabase/01_public_listings.sql` ✓ · `02_public_facts.sql` ✓ · `03_accounts.sql` ✓ · `04_bookings.sql` ✓ · **`05_hold_expiry.sql` ← RUN THIS** (auto-release unpaid website holds after 18h).
+
+## Availability (automated, verified)
+`public_availability` is a **live view off the shared `bookings` table** — no manual control, no sync job. A CRM/website booking on a public property with an active status auto-appears as busy; cancel/checkout removes it. Verified live: view rows == active future bookings exactly. The concierge, the booking calendar, and the server overlap check all read it. **Unpaid website holds (`awaiting_payment` + `source=Website`) auto-release after 18h** (in the view + `app/book/actions.ts`); staff-created holds never auto-release. **Payment verification** (set amount + move to `payment_collected`) is done in the CRM on the booking page by **admins/co-founders and the Finance role** (Finance = custom role with `base_role: admin`) — already works, no CRM change needed.
 
 ## Key gotchas
 - **Service‑role key** is in `.env.local` but used **only** by `app/book/actions.ts` / `lib/supabase/admin.ts` (server). Never import it from client code.
