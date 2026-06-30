@@ -61,7 +61,7 @@ export function websiteLd() {
   };
 }
 
-export function listingLd(listing: PublicListing) {
+export function listingLd(listing: PublicListing, rating?: { average: number; count: number } | null) {
   const url = absoluteUrl(`/stays/${listing.id}`);
   return {
     "@context": "https://schema.org",
@@ -72,6 +72,9 @@ export function listingLd(listing: PublicListing) {
     category: listing.category ?? "Short stay",
     brand: { "@type": "Brand", name: brand.name },
     additionalProperty: (listing.amenities ?? []).slice(0, 12).map((a) => ({ "@type": "PropertyValue", name: a })),
+    ...(rating && rating.count > 0
+      ? { aggregateRating: { "@type": "AggregateRating", ratingValue: String(rating.average), reviewCount: String(rating.count), bestRating: "5" } }
+      : {}),
     offers: {
       "@type": "Offer",
       url,

@@ -1,5 +1,14 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
+import { createClient as createAnonClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+
+// Cookieless anon client for cacheable public reads (no per-request cookies, so
+// the result can be cached + shared). Public listing data is the same for
+// everyone and changes rarely (only when an admin edits/publishes in the CRM),
+// so it's cached and busted on demand via the /api/revalidate webhook ("listings"
+// tag). Availability is NOT cached — it must stay correct to the minute.
+const anon = () => createAnonClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
 
 // Live read of the public listing window (anon-safe; only public_listing = true
 // rows, only safe columns). This is the single source the homepage reads from.
@@ -20,25 +29,39 @@ export type PublicListing = {
   public_facts?: string | null; // public-safe facts for the concierge (parking, landmarks, rules…)
 };
 
+const cachedListings = unstable_cache(
+  async (): Promise<PublicListing[]> => {
+    const { data, error } = await anon().from("public_listings").select("*");
+    if (error) {
+      console.error("[home] public_listings read failed:", error.message);
+      return [];
+    }
+    return (data ?? []) as PublicListing[];
+  },
+  ["public-listings"],
+  { tags: ["listings"], revalidate: 600 },
+);
+
 export async function getListings(): Promise<PublicListing[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.from("public_listings").select("*");
-  if (error) {
-    console.error("[home] public_listings read failed:", error.message);
-    return [];
-  }
-  return (data ?? []) as PublicListing[];
+  return cachedListings();
 }
 
 /** A single public listing by id, or null if it isn't public / doesn't exist. */
+const cachedListing = unstable_cache(
+  async (id: string): Promise<PublicListing | null> => {
+    const { data, error } = await anon().from("public_listings").select("*").eq("id", id).maybeSingle();
+    if (error) {
+      console.error("[listing] read failed:", error.message);
+      return null;
+    }
+    return (data as PublicListing) ?? null;
+  },
+  ["public-listing"],
+  { tags: ["listings"], revalidate: 600 },
+);
+
 export async function getListing(id: string): Promise<PublicListing | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.from("public_listings").select("*").eq("id", id).maybeSingle();
-  if (error) {
-    console.error("[listing] read failed:", error.message);
-    return null;
-  }
-  return (data as PublicListing) ?? null;
+  return cachedListing(id);
 }
 
 export type BusyRange = { start_date: string; end_date: string };

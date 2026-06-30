@@ -60,6 +60,25 @@ export function AuthForm({ mode }: { mode: Mode }) {
     }
   };
 
+  const forgot = async () => {
+    if (!email) {
+      setError("Enter your email above first, then tap reset.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}/auth/callback?next=/auth/reset` });
+      if (error) throw error;
+      setInfo("If that email has an account, a password-reset link is on its way.");
+    } catch (err) {
+      setError((err as Error).message || "Couldn't send the reset email. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const submitPhone = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
@@ -110,6 +129,11 @@ export function AuthForm({ mode }: { mode: Mode }) {
           <button type="submit" disabled={busy} className="w-full rounded-xl bg-gold px-5 py-2.5 text-sm font-medium text-ink transition hover:brightness-105 disabled:opacity-50">
             {busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
           </button>
+          {mode === "login" && (
+            <button type="button" onClick={forgot} disabled={busy} className="block w-full text-center text-xs text-muted hover:text-ink">
+              Forgot password?
+            </button>
+          )}
         </form>
       ) : (
         <form onSubmit={submitPhone} className="space-y-3">

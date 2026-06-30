@@ -8,6 +8,7 @@ import { getAccount } from "@/lib/auth";
 import { unitForCategory, formatPrice } from "@/lib/listings";
 import { advanceAmount } from "@/lib/payments";
 import { thumb } from "@/lib/img";
+import { TrackEvent } from "@/components/TrackEvent";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Confirm & pay", robots: { index: false, follow: false } };
@@ -71,6 +72,7 @@ export default async function BookPage({
   return (
     <main className="min-h-full pb-16">
       <SiteNav theme="light" account={account} />
+      <TrackEvent event="InitiateCheckout" params={{ content_ids: [id], value: advance, currency: "PKR" }} />
 
       <div className="mx-auto max-w-5xl px-6 py-8">
         <Link href={`/stays/${id}`} className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink">

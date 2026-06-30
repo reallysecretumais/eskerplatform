@@ -11,7 +11,10 @@ import { AmenityList } from "@/components/AmenityList";
 import { PropertyConcierge } from "@/components/PropertyConcierge";
 import { PakistanDetails } from "@/components/PakistanDetails";
 import { LocationSection } from "@/components/LocationSection";
+import { Reviews } from "@/components/Reviews";
+import { TrackEvent } from "@/components/TrackEvent";
 import { getListing, getListings, getAvailability } from "@/lib/data/listings";
+import { getReviews } from "@/lib/data/reviews";
 import { getAccount } from "@/lib/auth";
 import { unitForCategory, formatPrice } from "@/lib/listings";
 import { brand } from "@/lib/brand";
@@ -44,11 +47,13 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
   const busy = await getAvailability(id);
   const all = await getListings();
   const account = await getAccount();
+  const { reviews, summary } = await getReviews(id);
   const { amount, unit } = formatPrice(listing.price, unitForCategory(listing.category ?? ""));
 
   return (
     <main className="min-h-full pb-28 lg:pb-16">
-      <JsonLd data={[listingLd(listing), breadcrumbLd([{ name: "Home", path: "/" }, { name: "Stays", path: "/stays" }, { name: listing.title, path: `/stays/${id}` }])]} />
+      <JsonLd data={[listingLd(listing, summary), breadcrumbLd([{ name: "Home", path: "/" }, { name: "Stays", path: "/stays" }, { name: listing.title, path: `/stays/${id}` }])]} />
+      <TrackEvent event="ViewContent" params={{ content_ids: [id], content_type: "product", value: listing.price, currency: "PKR" }} />
       <SiteNav theme="light" account={account} />
 
       <div className="mx-auto max-w-5xl px-6 py-8">
@@ -135,6 +140,9 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
 
             {/* Where you'll be (§6) */}
             <LocationSection area={listing.area} />
+
+            {/* Reviews (curated now; post-stay later) */}
+            <Reviews reviews={reviews} summary={summary} exclusive={listing.esker_exclusive} />
           </div>
 
           {/* Booking widget */}

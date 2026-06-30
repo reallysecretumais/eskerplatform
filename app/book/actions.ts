@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyId } from "@/lib/ai/idcheck";
 import { advanceAmount } from "@/lib/payments";
 import { notifyBookingReceived } from "@/lib/notifyGuest";
+import { capiEvent } from "@/lib/analytics";
 
 const ACTIVE = ["awaiting_payment", "payment_collected", "handed_over", "awaiting_checkin", "currently_staying", "needs_attention"];
 // Unpaid WEBSITE holds free their dates after this long (matches the
@@ -175,6 +176,9 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
     advance,
     balance,
   });
+
+  // 9. Meta Conversions API — server-side Purchase (no-op until CAPI is configured).
+  await capiEvent("Purchase", { email: email || null, phone, value: advance, currency: "PKR", contentIds: [propertyId] });
 
   return { ok: true, bookingId: booking.id };
 }

@@ -3,6 +3,7 @@ import { Inter, Sora } from "next/font/google";
 import "./globals.css";
 import { brand } from "@/lib/brand";
 import { SITE_URL, SITE_NAME, DEFAULT_TITLE, DEFAULT_DESC, KEYWORDS } from "@/lib/seo";
+import { MetaPixel } from "@/components/MetaPixel";
 
 // Clean sans for UI (Inter) + a modern, minimal display face (Sora) for the
 // brand wordmark and headings.
@@ -56,7 +57,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} ${display.variable} h-full`}>
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        <MetaPixel />
+        {children}
+      </body>
     </html>
   );
 }
