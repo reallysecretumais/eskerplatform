@@ -12,19 +12,16 @@ Where we are and what's left. Pairs with `SESSION_HANDOFF.md`. (✅ done · 🟡
 - **Property descriptions** auto-generated into `public_description`.
 - **WhatsApp "Request a price"** — BookingWidget links to `wa.me/923325977626` prefilled.
 
-## Immediate ⚠️ (founder actions — see SESSION_HANDOFF)
-- ⚠️ **Run `04_bookings.sql`** (`bookings.account_id`) — booking submit + My bookings need it.
-- ⚠️ Supabase: toggle **"Confirm email"** (instant signup) and add the **prod URL** to Auth redirect URLs at deploy.
-- ⚠️ Fill **`public_facts`** per property (unlocks §6/§8 + concierge facts).
-- ⚠️ **Deploy** to `eskerrentals.com` (`DEPLOYMENT.md`).
+## Phase 1 — COMPLETE ✅ (deployed to eskerrentals.com)
+Foundation + security wall · homepage/search/property pages · **text + voice AI concierge** · accounts + password reset · booking flow + AI ID check · **advance payments (25/50%)** · availability + 18h auto‑release · **guest notifications (email + WhatsApp‑queued) + team alerts** · **reviews** (curated) · **SEO + AI discoverability** · **Meta Pixel/CAPI** · **caching + revalidate webhook** · brand logo/favicon · premium descriptions · legal pages. Full status + remaining founder actions in **`PHASE1_LAUNCH_CHECKLIST.md`**.
 
-## Next builds ⬜ (each sits on the accounts + booking foundation)
-1. **Owner host portal** — a logged-in `owner` manages their listings, sees their bookings/earnings. Needs owner→property link (`owners.account_id`) + owner-scoped RLS. (Reuse the additive-roles model.)
-2. **Partner read-only view** — `partner` (admin-granted) sees their property's performance (recovery/equity/result), read-only, scoped to their property. Strict RLS.
-3. **Reviews (§3)** — post-stay capture + display; **cold-start**: lean on the Esker Exclusive guarantee where there are no reviews (never a bare "No reviews yet").
-4. **Mobile visual pass** — code audit done + fixes applied; a real device/Chrome pass is still pending (preview tool can't reach this folder; connect the "Claude in Chrome" extension or check on a phone).
-5. **Vary AI descriptions** (all currently open with "Experience…").
-6. **Performance/caching pass** — image sizing budget, server-render/SEO, cache listing reads → then add the **CRM revalidate webhook**.
+Small leftovers: real‑device mobile pass · optional PNG app icons · post‑stay review capture.
+
+## Next builds ⬜ — Phase 2 (each sits on the accounts foundation)
+1. **Owner host portal** — a logged-in `owner` manages their listings, sees their bookings/earnings. Needs owner→property link (`owners.account_id`) + owner-scoped RLS.
+2. **Partner read-only view** — `partner` (admin-granted) sees their property's performance, read-only, scoped to their property. Strict RLS.
+3. **Real payment gateway** — behind the existing advance/booking flow (provider interface); keep screenshot‑verify until then.
+4. **Voice quality jump** — ElevenLabs or OpenAI Realtime when ready (OpenAI TTS is at its ceiling).
 
 ## Later phases ⬜
 - **Phone+OTP** for guests — switch on by adding an SMS provider in Supabase (no code change).

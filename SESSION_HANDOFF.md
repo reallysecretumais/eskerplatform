@@ -1,44 +1,53 @@
 # SESSION HANDOFF — Esker Stays
 
-> Read this first to resume work. Pairs with `CLAUDE.md` (rules), `PROJECT_ARCHITECTURE.md` (how it's built), `ROADMAP.md` (what's left), `DEPLOYMENT.md` (going live), and `Esker_Platform_AI_First_Master_Plan.md` (the vision). Last updated: **2026‑06‑28**.
+> Read this first to resume. Pairs with `CLAUDE.md` (rules), `PROJECT_ARCHITECTURE.md` (how it's built), `ROADMAP.md`, `PHASE1_LAUNCH_CHECKLIST.md` (status + founder actions), `DEPLOYMENT.md`, and `Esker_Platform_AI_First_Master_Plan.md` (vision). Last updated: **2026‑06‑30**.
 
 ## What this is (one line)
-The public, AI‑first short‑stay **booking website** for Esker Rentals (Islamabad/Rawalpindi) — the consumer face of the same business the **Esker OS CRM** runs, on the **same Supabase database**. Folder: `C:\Claude Projects\Esker Platform` (sibling of `C:\Claude Projects\Esker OS`).
+The public, AI‑first short‑stay **booking website** for Esker Rentals (Islamabad/Rawalpindi) — the consumer face of the same business the **Esker OS CRM** runs, on the **same Supabase DB**. Folder: `C:\Claude Projects\Esker Platform` (sibling of `C:\Claude Projects\Esker OS`). **Live at https://eskerrentals.com** (Vercel, region hnd1). Repo: `github.com/reallysecretumais/eskerplatform` (push `main` → auto‑deploys). CRM is at `os.eskerrentals.com`.
 
-## Run it locally
+## Run / verify locally
 ```
 cd "C:\Claude Projects\Esker Platform"
-npm run dev -- -p 3100      # port 3100 (the CRM uses 3000)
+npm run dev -- -p 3100      # CRM uses 3000
 ```
-Open http://localhost:3100. The integrated preview tool can't reach this folder — verify with a terminal dev server + curl. If Turbopack crashes (Windows `0xc0000142`): stop the server, `rm -rf .next`, restart.
+The integrated preview tool can't reach this folder — verify with a terminal dev server + curl (use full URLs; Git Bash mangles leading `/paths`). Turbopack on Windows crashes intermittently → restart the dev server (the running one isn't this session's). `npx tsc --noEmit` is the authoritative compile gate; `npm run lint` is broken in this repo (flat‑config quirk) — ignore it, Vercel doesn't gate on it.
 
-## Status — what's DONE (built + verified)
-- **Security wall** (anon → only `public_listings`/`public_availability`; verified adversarially).
-- **Homepage** (Concept B): AI‑concierge hero over a drifting 3D photo‑wall, category showcase, Esker Exclusive row, trust strip, Sora display font.
-- **Search** `/stays` (filters + AI concierge mode) and **property pages** `/stays/[id]` (gallery, "Ask about this place" concierge, grouped amenities, **Built for Pakistan** §8, **Where you'll be** map §6, booking widget).
-- **AI concierge** — retrieval‑first on OpenAI `gpt-4.1-mini`, fed ONLY public data (can't leak), understands Roman Urdu, streams, finds similar. Leak‑tested.
-- **Accounts** — guest/owner/partner, **additive roles** (one account can be all three). Email+password live; phone+OTP built but dormant (needs SMS provider). Login/signup/account pages; account‑aware nav. **Verified** website users can't reach internal data.
-- **Booking flow** — checkout (`/book/[id]`): guest details, **first‑time CNIC/passport + AI vision ID check that rejects expired docs**, real Esker bank accounts, screenshot upload → creates a booking as `awaiting_payment` + `source=Website` with the proof attached for the CRM team. **My bookings** on `/account`.
-- **Property descriptions** auto‑generated and stored (`public_description`).
+## Status — Phase 1 is essentially COMPLETE (built + verified, deployed)
+- **Security wall** (anon → only public views; adversarially verified) · **homepage** (Concept B) · **search** `/stays` · **property pages**.
+- **AI concierge — text + VOICE** (full‑screen orb, OpenAI STT/TTS, Roman‑Urdu in/out as Roman Urdu, female "nova" voice, respectful "aap", availability‑aware, fast). Retrieval‑first on public data only.
+- **Accounts** (guest/owner/partner additive) · email+password · **password reset** (`/auth/reset`) · phone+OTP dormant.
+- **Booking flow** — first‑time AI ID check (rejects expired) · **advance payments (25% / 50% Esker Exclusive)** recorded as the real advance + proof (`payment_status='partial'`) · `awaiting_payment`/`source=Website`.
+- **Availability** — live view off `bookings`; **unpaid website holds auto‑release after 18h**; staff holds never do. Verified.
+- **Guest notifications** — "booking received" **email** (Titan SMTP, sends now) + **WhatsApp queued** in `guest_messages` outbox (CRM delivers when WA live) + **in‑app team alert** (`notifications`, type `booking`).
+- **Reviews** — `reviews` table (staff‑curated) + `public_reviews` view; rating + cards on property pages (Esker‑Exclusive trust fallback when none); `aggregateRating` in JSON‑LD.
+- **SEO + AI discoverability** — metadata/OG (branded homepage card + real property photos), canonical, `sitemap.xml`, `robots.txt` (welcomes AI crawlers), JSON‑LD, `llms.txt`.
+- **Analytics** — Meta Pixel + Conversions API (env‑driven; ViewContent/InitiateCheckout/Purchase).
+- **Performance** — public listing reads cached (cookieless `unstable_cache`, 10‑min TTL) + `/api/revalidate` webhook (secret) for the CRM to bust on publish.
+- **Brand** — ESKER/RENTALS wordmark (theme‑aware) in nav/footer + SVG favicon. **Premium descriptions** regenerated in the DB.
+- **Legal** — `/legal/{terms,cancellation,privacy}` (drafted) linked in footer + checkout consent.
 
-## ⚠️ PENDING FOUNDER ACTIONS (do these)
-1. **Run `supabase/04_bookings.sql`** — adds `bookings.account_id` + the "see only your own bookings" rule. **Booking submission and "My bookings" error until this runs** (as of this writing the column does NOT exist — the migration hasn't applied).
-2. **Supabase Auth → "Confirm email"**: toggle OFF for instant signup (or leave ON; the `/auth/callback` handles the confirm link).
-3. **Fill `public_facts`** per property in the CRM (parking, "12 min from Centaurus", check‑in, family‑friendly) → lights up the §8 details, §6 distances, and concierge answers. (Don't invent distances — must be real.)
-4. **Deploy** to `eskerrentals.com` — see `DEPLOYMENT.md`.
-5. Later: add **SMS provider** keys in Supabase (turns on phone+OTP, no code change); pursue **NADRA Verisys** agreement (real CNIC verification slots in after the AI extraction).
+## ⚠️ PENDING FOUNDER ACTIONS
+1. **Run `supabase/07_reviews.sql`** (reviews table). _(01–06 already run.)_
+2. **Meta ads tracking** (when advertising): add in Vercel → `NEXT_PUBLIC_META_PIXEL_ID=2200445110719489`, `META_PIXEL_ID=2200445110719489`, `META_CAPI_TOKEN=<from Events Manager → Conversions API>`.
+3. **`REVALIDATE_SECRET`** — set the SAME value in BOTH Vercel (website) and Esker OS so the CRM can bust the listings cache on publish.
+4. **Fill `public_facts`** per property (parking, real distances, check‑in, family/prayer/load‑shedding) → powers concierge + §6/§8. **Decide Supabase "Confirm email"** toggle (recommend OFF for launch).
+5. After deploy: submit `sitemap.xml` in **Google Search Console**.
+6. Later: SMS provider (turns on phone+OTP) · NADRA Verisys · real payment gateway.
+- ✅ Already done by founder: SMTP_PASS added (emails send); cancellation windows reviewed; 01–06 migrations run.
 
-## Migrations run in Supabase (founder runs each in SQL Editor)
-`supabase/01_public_listings.sql` ✓ · `02_public_facts.sql` ✓ · `03_accounts.sql` ✓ · `04_bookings.sql` ✓ · **`05_hold_expiry.sql` ← RUN THIS** (auto-release unpaid website holds after 18h).
+## Migrations (founder runs each in Supabase SQL Editor)
+`01_public_listings` ✓ · `02_public_facts` ✓ · `03_accounts` ✓ · `04_bookings` ✓ · `05_hold_expiry` ✓ · `06_notifications` ✓ · **`07_reviews` ← RUN THIS**.
 
-## Availability (automated, verified)
-`public_availability` is a **live view off the shared `bookings` table** — no manual control, no sync job. A CRM/website booking on a public property with an active status auto-appears as busy; cancel/checkout removes it. Verified live: view rows == active future bookings exactly. The concierge, the booking calendar, and the server overlap check all read it. **Unpaid website holds (`awaiting_payment` + `source=Website`) auto-release after 18h** (in the view + `app/book/actions.ts`); staff-created holds never auto-release. **Payment verification** (set amount + move to `payment_collected`) is done in the CRM on the booking page by **admins/co-founders and the Finance role** (Finance = custom role with `base_role: admin`) — already works, no CRM change needed.
+## Cross‑app — Esker OS (CRM) TODOs (specced in shared memory)
+`website-verify-urgent` (4h verify‑urgent dashboard flag) · `guest-notifications` (drain `guest_messages` → WhatsApp via inbox + approved `booking_received` template) · `website-crm-hooks` (reviews curation UI; ping `POST /api/revalidate` with `x-revalidate-secret` on publish/price edits).
+
+## Env (`.env.local`, git‑ignored) — see `.env.example`
+Supabase URL/anon/**service‑role** (service key used ONLY by `app/book/actions.ts` + `lib/supabase/admin.ts`, never client) · OpenAI (concierge/ID/voice/descriptions; `ESKER_*` voice knobs) · SMTP (Titan) · Meta Pixel/CAPI · `NEXT_PUBLIC_SITE_URL` · `REVALIDATE_SECRET`.
 
 ## Key gotchas
-- **Service‑role key** is in `.env.local` but used **only** by `app/book/actions.ts` / `lib/supabase/admin.ts` (server). Never import it from client code.
-- **Don't break the shared DB.** Only ADD columns/tables; the CRM depends on `properties`/`bookings`/`guests`/`users`. The `handle_new_user` change is CRM‑safe (staff branch unchanged).
-- **Website is NOT a git repo yet** — needs one for Vercel (see `DEPLOYMENT.md`).
-- Dev cookie cross‑over on localhost (CRM cookies reach the site) is harmless and won't happen in prod (different domains).
+- **Don't break the shared DB** — only ADD columns/tables; the CRM owns `properties`/`bookings`/`guests`/`users`/inbox. `handle_new_user` reroute is CRM‑safe.
+- All guest comms are **best‑effort** (try/catch) — they never break a booking.
+- Logs (`dev.log`, `*.log`) are gitignored — don't commit them.
 
-## Where things live
-Pages in `app/`; UI in `components/`; data/auth/AI in `lib/`; migrations in `supabase/`; design briefs in `docs/`. Full map in `PROJECT_ARCHITECTURE.md`.
+## Genuinely left in Phase 1
+Real‑device mobile pass (code is responsive; needs a human eye) · optional PNG app icons · post‑stay review capture (the "later" half of reviews). Then **Phase 2**: owner host portal, partner read‑only view, real payment gateway, ElevenLabs/Realtime voice.
