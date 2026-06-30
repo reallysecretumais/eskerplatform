@@ -23,10 +23,10 @@ export function StayCard({ title, category, area, price, exclusive, photo, tone 
   const body = (
     <>
       <div
-        className="relative aspect-[4/3] overflow-hidden"
+        className="relative aspect-[3/2] overflow-hidden"
         style={{
           backgroundColor: tone,
-          backgroundImage: photo ? `url(${thumb(photo, 600, 70)})` : undefined,
+          backgroundImage: photo ? `url(${thumb(photo, 720, 74)})` : undefined,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}

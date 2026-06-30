@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyId } from "@/lib/ai/idcheck";
-import { advanceAmount } from "@/lib/payments";
+import { advanceAmount, advanceLabel } from "@/lib/payments";
 import { notifyBookingReceived } from "@/lib/notifyGuest";
 import { capiEvent } from "@/lib/analytics";
 
@@ -38,6 +38,7 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
   const proof = formData.get("proof") as File | null;
   const cnicFront = formData.get("cnicFront") as File | null;
   const cnicBack = formData.get("cnicBack") as File | null;
+  const docType = String(formData.get("docType") || "cnic") === "passport" ? "passport" : "cnic";
 
   // Who's booking (optional — guest checkout allowed).
   const session = await createClient();
@@ -105,26 +106,41 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
 
   let idNote = "";
   if (!cnicOnFile) {
-    if (!cnicFront || cnicFront.size === 0 || !cnicBack || cnicBack.size === 0) {
-      return { ok: false, message: "Please add your CNIC or passport (front and back) — only needed for your first booking with Esker." };
+    // A passport is a single data page; a CNIC has a front and a back.
+    const needBack = docType === "cnic";
+    if (!cnicFront || cnicFront.size === 0 || (needBack && (!cnicBack || cnicBack.size === 0))) {
+      return {
+        ok: false,
+        message: needBack
+          ? "Please add your CNIC (front and back) — only needed for your first booking with Esker."
+          : "Please add your passport (the photo/data page) — only needed for your first booking with Esker.",
+      };
     }
-    if (cnicFront.size > MAX_BYTES || cnicBack.size > MAX_BYTES) return { ok: false, message: "ID images are too large (max 10 MB each)." };
+    if (cnicFront.size > MAX_BYTES || (needBack && cnicBack && cnicBack.size > MAX_BYTES)) {
+      return { ok: false, message: "ID images are too large (max 10 MB each)." };
+    }
 
     // AI vision: is it a real CNIC/passport, readable, valid format, NOT expired?
     const idCheck = await verifyId(cnicFront);
     if (!idCheck.ok) return { ok: false, message: idCheck.message };
-    idNote = ` ID (AI-checked, NADRA pending): ${idCheck.docType ?? "id"} ${idCheck.number ?? "?"}${idCheck.name ? `, ${idCheck.name}` : ""}${idCheck.expiry ? `, expiry ${idCheck.expiry}` : ""}.`;
+    idNote = ` ID (AI-checked, NADRA pending): ${idCheck.docType ?? docType} ${idCheck.number ?? "?"}${idCheck.name ? `, ${idCheck.name}` : ""}${idCheck.expiry ? `, expiry ${idCheck.expiry}` : ""}.`;
 
-    const frontPath = `${guestId}/cnic-front-${Date.now()}.${ext(cnicFront)}`;
-    const backPath = `${guestId}/cnic-back-${Date.now()}.${ext(cnicBack)}`;
+    const frontPath = `${guestId}/${docType}-front-${Date.now()}.${ext(cnicFront)}`;
     const up1 = await admin.storage.from(BUCKET).upload(frontPath, cnicFront, { contentType: cnicFront.type, upsert: false });
-    const up2 = await admin.storage.from(BUCKET).upload(backPath, cnicBack, { contentType: cnicBack.type, upsert: false });
-    if (up1.error || up2.error) return { ok: false, message: "Couldn't upload your ID. Please try again." };
+    if (up1.error) return { ok: false, message: "Couldn't upload your ID. Please try again." };
+
+    let backPath: string | null = null;
+    if (needBack && cnicBack) {
+      const bp = `${guestId}/${docType}-back-${Date.now()}.${ext(cnicBack)}`;
+      const up2 = await admin.storage.from(BUCKET).upload(bp, cnicBack, { contentType: cnicBack.type, upsert: false });
+      if (up2.error) return { ok: false, message: "Couldn't upload your ID. Please try again." };
+      backPath = bp;
+    }
     await admin.from("guests").update({ cnic_front_url: frontPath, cnic_back_url: backPath }).eq("id", guestId);
   }
 
   // 6. Create the booking (awaiting team verification of the screenshot).
-  const note = `Website booking — ${exclusive ? "50%" : "25%"} advance ₨${advance.toLocaleString("en-PK")} of ₨${amount.toLocaleString("en-PK")} (balance ₨${balance.toLocaleString("en-PK")} due at check-in). Verify the payment screenshot.${email ? ` Email: ${email}.` : ""}${idNote}`;
+  const note = `Website booking — ${advanceLabel(amount, exclusive)} advance ₨${advance.toLocaleString("en-PK")} of ₨${amount.toLocaleString("en-PK")} (balance ₨${balance.toLocaleString("en-PK")} due at check-in). Verify the payment screenshot.${email ? ` Email: ${email}.` : ""}${idNote}`;
   const { data: booking, error: bErr } = await admin
     .from("bookings")
     .insert({
@@ -181,4 +197,19 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
   await capiEvent("Purchase", { email: email || null, phone, value: advance, currency: "PKR", contentIds: [propertyId] });
 
   return { ok: true, bookingId: booking.id };
+}
+
+export type IdCheckResult = { ok: boolean; message?: string };
+
+// Real-time ID check for the checkout form: the guest's front ID (CNIC/passport
+// data page) is validated the moment they pick it, so an unreadable/expired/
+// non-ID image is rejected immediately — they re-upload before finishing, never
+// after. `createBooking` re-runs the same check server-side as the backstop.
+export async function verifyIdUpload(formData: FormData): Promise<IdCheckResult> {
+  const file = formData.get("file") as File | null;
+  if (!file || file.size === 0) return { ok: false, message: "Please choose a clear photo of your ID." };
+  if (file.size > MAX_BYTES) return { ok: false, message: "That image is too large (max 10 MB)." };
+  if (!file.type.startsWith("image/")) return { ok: false, message: "Please upload a photo (JPG or PNG)." };
+  const res = await verifyId(file);
+  return res.ok ? { ok: true } : { ok: false, message: res.message };
 }

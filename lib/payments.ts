@@ -16,11 +16,25 @@ export const support = {
   email: "admin@eskerrentals.com",
 } as const;
 
-// Advance to secure a booking: 50% for Esker Exclusive, 25% otherwise.
-// The balance is paid at/before check-in.
+// Advance to secure a booking: 50% for Esker Exclusive, 25% otherwise — but never
+// less than MIN_ADVANCE, and never more than the stay total (so a cheap day-use
+// slot can't be asked for more than it costs). The balance is paid at/before
+// check-in.
+export const MIN_ADVANCE = 2000;
+
 export function advancePct(eskerExclusive: boolean): number {
   return eskerExclusive ? 0.5 : 0.25;
 }
 export function advanceAmount(total: number, eskerExclusive: boolean): number {
-  return Math.round(total * advancePct(eskerExclusive));
+  const pct = Math.round(total * advancePct(eskerExclusive));
+  return Math.min(Math.max(pct, MIN_ADVANCE), Math.max(total, 0));
+}
+
+// Honest headline for the advance: the policy % normally, but "minimum" when the
+// ₨2,000 floor lifted it above that %, or "full amount" for a sub-2k total.
+export function advanceLabel(total: number, eskerExclusive: boolean): string {
+  const adv = advanceAmount(total, eskerExclusive);
+  if (adv >= total) return "full amount";
+  if (adv > Math.round(total * advancePct(eskerExclusive))) return "minimum";
+  return `${Math.round(advancePct(eskerExclusive) * 100)}%`;
 }

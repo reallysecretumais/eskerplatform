@@ -6,7 +6,7 @@ import { CheckoutForm } from "@/components/CheckoutForm";
 import { getListing, getAvailability } from "@/lib/data/listings";
 import { getAccount } from "@/lib/auth";
 import { unitForCategory, formatPrice } from "@/lib/listings";
-import { advanceAmount } from "@/lib/payments";
+import { advanceAmount, advanceLabel as advancePctLabel } from "@/lib/payments";
 import { thumb } from "@/lib/img";
 import { TrackEvent } from "@/components/TrackEvent";
 import type { Metadata } from "next";
@@ -65,7 +65,7 @@ export default async function BookPage({
   const balance = total - advance;
   const advanceLabel = formatPrice(advance, unit).amount;
   const balanceLabel = formatPrice(balance, unit).amount;
-  const pctLabel = exclusive ? "50%" : "25%";
+  const pctLabel = advancePctLabel(total, exclusive);
   const account = await getAccount();
   const prefill = { name: account?.name ?? "", email: account?.email ?? "", phone: account?.phone ?? "" };
 
