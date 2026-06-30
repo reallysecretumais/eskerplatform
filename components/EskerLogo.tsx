@@ -7,7 +7,7 @@ export function EskerLogo({ className = "" }: { className?: string }) {
       <span className="font-display font-semibold" style={{ fontSize: "1.3rem", letterSpacing: "0.08em" }}>
         ESKER
       </span>
-      <span className="font-medium" style={{ fontSize: "0.66rem", letterSpacing: "0.3em", marginTop: "3px", opacity: 0.72 }}>
+      <span className="font-display font-medium" style={{ fontSize: "0.66rem", letterSpacing: "0.3em", marginTop: "3px", opacity: 0.72 }}>
         RENTALS
       </span>
     </span>
