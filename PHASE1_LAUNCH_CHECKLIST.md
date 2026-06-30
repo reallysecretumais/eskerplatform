@@ -28,7 +28,7 @@ The "trust & comms wrapper" + polish to take real public bookings safely. Pairs 
 4. **Password-reset / forgot-password** flow; phone+OTP when an SMS provider is added.
 5. **Vary AI descriptions** (stop all opening with "Experience…").
 6. **Real-device mobile pass**.
-7. **`favicon.ico` / app icons** — confirm a real favicon + apple-touch-icon exist in the brand look.
+7. **PNG app icons** (optional polish) — a 180×180 `apple-icon.png` + 512×512 maskable for the best home-screen/Android look (the SVG favicon + nav logo are done).
 
 ## Later (Phase 2+)
 Owner host portal · Partner read-only investor view · real payment gateway · ElevenLabs/Realtime voice · NADRA Verisys · content-spaces (hourly) + pools (slot) booking models · multi-city.

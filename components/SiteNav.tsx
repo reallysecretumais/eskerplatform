@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { brand } from "@/lib/brand";
+import { EskerLogo } from "@/components/EskerLogo";
 
 const LINKS = [
   { label: "Browse all stays", href: "/stays" },
@@ -28,8 +29,8 @@ export function SiteNav({
 
   const bar = (
     <nav className={`flex items-center justify-between py-5 ${onPhoto ? "[text-shadow:0_1px_10px_rgba(0,0,0,0.55)]" : ""}`}>
-      <Link href="/" className={`font-display text-2xl font-bold tracking-tight ${onPhoto ? "text-white" : "text-ink"}`}>
-        {brand.name}
+      <Link href="/" aria-label={brand.name} className={onPhoto ? "text-white" : "text-ink"}>
+        <EskerLogo />
       </Link>
 
       <div className="hidden items-center gap-7 text-sm sm:flex">
@@ -71,7 +72,7 @@ export function SiteNav({
           <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} aria-hidden />
           <div className="absolute right-0 top-0 flex h-full w-72 flex-col bg-bg p-6 shadow-2xl">
             <div className="flex items-center justify-between">
-              <span className="font-display text-xl font-bold tracking-tight text-ink">{brand.name}</span>
+              <EskerLogo className="text-ink" />
               <button type="button" onClick={() => setOpen(false)} aria-label="Close menu" className="text-ink">
                 <X size={22} />
               </button>

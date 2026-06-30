@@ -9,6 +9,7 @@ import { HeroCollage } from "@/components/HeroCollage";
 import { getListings, pickCollagePhotos } from "@/lib/data/listings";
 import { getAccount } from "@/lib/auth";
 import { JsonLd } from "@/components/JsonLd";
+import { EskerLogo } from "@/components/EskerLogo";
 import { organizationLd, websiteLd } from "@/lib/seo";
 
 // Homepage — now reads LIVE from the database (public_listings). Real photos
@@ -134,8 +135,8 @@ export default async function HomePage() {
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-10 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <span className="font-display text-lg font-bold tracking-tight text-ink">{brand.name}</span>
-            <p className="mt-1">{brand.tagline}</p>
+            <EskerLogo className="text-ink" />
+            <p className="mt-2">{brand.tagline}</p>
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             <Link href="/stays" className="hover:text-ink">Browse all stays</Link>
