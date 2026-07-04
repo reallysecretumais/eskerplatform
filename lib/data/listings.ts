@@ -1,7 +1,9 @@
 import "server-only";
+import sharp from "sharp";
 import { unstable_cache } from "next/cache";
 import { createClient as createAnonClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { thumb } from "@/lib/img";
 
 // Cookieless anon client for cacheable public reads (no per-request cookies, so
 // the result can be cached + shared). Public listing data is the same for
@@ -27,7 +29,58 @@ export type PublicListing = {
   photos: string[] | null;
   esker_exclusive: boolean;
   public_facts?: string | null; // public-safe facts for the concierge (parking, landmarks, rules…)
+  card_photo?: string | null;   // the most landscape-shaped of the top photos (best in a wide card)
 };
+
+// The photo library is mostly portrait phone shots, and a wide card cover-crops a
+// portrait heavily (it feels "cropped in"). For the CARD THUMBNAIL only, pick the
+// widest (most landscape) of a listing's top photos — a landscape photo barely
+// crops in a wide card. The property page still shows every photo in order.
+//
+// Orientation is read from a tiny 32px thumbnail (a few hundred bytes) so this is
+// cheap; the decision is cached 24h per listing (busted with the "listings" tag),
+// so in steady state it runs ~never. Any failure falls back to the lead photo —
+// exactly today's behaviour, so there's zero regression risk.
+async function photoRatio(url: string): Promise<number | null> {
+  try {
+    const res = await fetch(thumb(url, 32, 40), { signal: AbortSignal.timeout(3000) });
+    if (!res.ok) return null;
+    const meta = await sharp(Buffer.from(await res.arrayBuffer())).metadata();
+    return meta.width && meta.height ? meta.width / meta.height : null;
+  } catch {
+    return null;
+  }
+}
+
+async function bestCardPhoto(photos: string[]): Promise<string | null> {
+  const pool = photos.slice(0, 12); // cap the measurement cost
+  if (pool.length <= 1) return pool[0] ?? null;
+  const ratios = await Promise.all(pool.map(photoRatio));
+  // Keep the chosen lead when it already fits a wide card well (ratio ≥ 1.2).
+  if (ratios[0] != null && ratios[0] >= 1.2) return pool[0];
+  // Otherwise switch to the widest clearly-landscape photo anywhere in the set —
+  // a small, well-composed landscape thumbnail beats a heavily-cropped portrait.
+  let best: string | null = null;
+  let bestRatio = 1.2;
+  for (let i = 0; i < pool.length; i++) {
+    const r = ratios[i];
+    if (r != null && r >= bestRatio) {
+      bestRatio = r;
+      best = pool[i];
+    }
+  }
+  return best ?? pool[0] ?? null;
+}
+
+function cardPhoto(id: string, photos: string[] | null): Promise<string | null> {
+  const list = photos ?? [];
+  return unstable_cache(() => bestCardPhoto(list), ["card-photo", id], { tags: ["listings"], revalidate: 86_400 })();
+}
+
+async function withCardPhotos(listings: PublicListing[]): Promise<PublicListing[]> {
+  await Promise.all(listings.map(async (l) => (l.card_photo = await cardPhoto(l.id, l.photos))));
+  return listings;
+}
 
 // What client components actually need to render a match card — nothing more.
 // The AI catalog is built SERVER-side (/api/concierge), so shipping the full
@@ -51,7 +104,7 @@ export function slimListings(listings: PublicListing[]): SlimListing[] {
     category: l.category,
     price: l.price,
     esker_exclusive: l.esker_exclusive,
-    photo: l.photos?.[0] ?? null,
+    photo: l.card_photo ?? l.photos?.[0] ?? null,
   }));
 }
 
@@ -62,7 +115,7 @@ const cachedListings = unstable_cache(
       console.error("[home] public_listings read failed:", error.message);
       return [];
     }
-    return (data ?? []) as PublicListing[];
+    return withCardPhotos((data ?? []) as PublicListing[]);
   },
   ["public-listings"],
   { tags: ["listings"], revalidate: 600 },
@@ -80,7 +133,10 @@ const cachedListing = unstable_cache(
       console.error("[listing] read failed:", error.message);
       return null;
     }
-    return (data as PublicListing) ?? null;
+    if (!data) return null;
+    const listing = data as PublicListing;
+    listing.card_photo = await cardPhoto(listing.id, listing.photos);
+    return listing;
   },
   ["public-listing"],
   { tags: ["listings"], revalidate: 600 },

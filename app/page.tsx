@@ -113,7 +113,7 @@ export default async function HomePage() {
                 area={l.area ?? ""}
                 price={l.price}
                 exclusive={l.esker_exclusive}
-                photo={l.photos?.[0] ?? undefined}
+                photo={l.card_photo ?? l.photos?.[0] ?? undefined}
                 href={`/stays/${l.id}`}
               />
             ))}
