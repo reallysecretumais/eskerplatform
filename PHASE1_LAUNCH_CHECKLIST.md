@@ -16,8 +16,15 @@ The "trust & comms wrapper" + polish to take real public bookings safely. Pairs 
 - **Performance** — public listing reads cached (cookieless, 10-min TTL) + `/api/revalidate` webhook (secret) for the CRM to bust on publish.
 - **Premium descriptions** — regenerated in the DB (varied, exclusive, enticing).
 
+## Added 2026-07-04 ✅
+- **₨2,000 minimum advance** (never more than the stay total; label says "minimum"/"full amount" when the floor applies).
+- **Real-time ID verification** — front AND back checked the moment they're picked; passport = single page; Confirm blocked until valid.
+- **Pre-launch quality pass** — payload slimming (property −21% / AI search −46%), lazy card images + alt/srcset, hero elevation (stagger, serif-gold word, shimmer, cursor light, mobile CSS sway, scroll cue), AI "why this matches" captions + refine chips, Help→WhatsApp, featured=6, hold reassurance at checkout/confirmation, slot-booking WhatsApp CTA.
+- **Accounts backbone** — every booker gets an account + magic link (portals program Phase 1).
+
 ## ⚠️ Founder actions to switch it all on
-- ✅ SMTP_PASS added (emails send). Run migrations: **`06_notifications.sql`** ✓ and **`07_reviews.sql`** ← run this.
+- ✅ SMTP_PASS added (emails send). Run migrations: **`06_notifications.sql`** ✓, **`07_reviews.sql`** ← run, **`08_accounts_links.sql`** ← run.
+- **Save the real Esker logo** (vector best) to `public/brand/` → unlocks app icons + PWA manifest + the Android/iOS wrap path.
 - **Meta Pixel/CAPI** (for ads): add `NEXT_PUBLIC_META_PIXEL_ID`, `META_PIXEL_ID`, `META_CAPI_TOKEN` in Vercel.
 - **`REVALIDATE_SECRET`**: set the same value in BOTH Vercel (website) and Esker OS, so the CRM can bust the listings cache on publish.
 - ✅ Cancellation windows reviewed. Fill **`public_facts`** per property; decide Supabase **"Confirm email"** toggle.
@@ -32,8 +39,8 @@ The "trust & comms wrapper" + polish to take real public bookings safely. Pairs 
 ## Remaining Phase-1 ⬜
 1. **Vary AI descriptions** ✅ done (regenerated). _(monitor quality / tweak any in CRM.)_
 2. **Real-device mobile pass** — final visual QA on a phone (code is responsive; needs a human eye).
-3. **PNG app icons** (optional) — 180×180 `apple-icon.png` + 512×512 maskable (SVG favicon + nav logo done).
-4. **Post-stay review capture** (the "later" half of reviews) — request flow after checkout.
+3. **App icons + PWA manifest + mobile-app wrap doc** — pipeline built (`scripts/gen-icons.mjs`); ⚠️ blocked on the real logo file.
+4. **Post-stay review capture** (the "later" half of reviews) — request flow after checkout; needs `07_reviews.sql` run.
 
-## Later (Phase 2+)
-Owner host portal · Partner read-only investor view · real payment gateway · ElevenLabs/Realtime voice · NADRA Verisys · content-spaces (hourly) + pools (slot) booking models · multi-city.
+## Later — the approved program (see ROADMAP)
+Phase 2 messaging (guest↔Esker chat on the CRM inbox) → Phase 3 host portal (self-listing + owner↔guest chat; payout decision needed) → Phase 4 partner + managed-owner portals · real payment gateway (seam ready) · ElevenLabs/Realtime voice · NADRA Verisys · content-spaces (hourly) + pools (slot) booking models · multi-city.
