@@ -34,38 +34,57 @@ export function CheckoutForm({
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [docType, setDocType] = useState<"cnic" | "passport">("cnic");
-  const [idStatus, setIdStatus] = useState<IdStatus>("idle");
-  const [idMessage, setIdMessage] = useState<string | null>(null);
+  const [frontStatus, setFrontStatus] = useState<IdStatus>("idle");
+  const [frontMsg, setFrontMsg] = useState<string | null>(null);
+  const [backStatus, setBackStatus] = useState<IdStatus>("idle");
+  const [backMsg, setBackMsg] = useState<string | null>(null);
 
-  // Real-time ID check: validate the front/data page the moment it's picked, so a
-  // bad or expired document is caught here — not after the whole form is filled.
-  const onFrontIdChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    setIdMessage(null);
-    if (!file) {
-      setIdStatus("idle");
-      return;
-    }
-    setIdStatus("checking");
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await verifyIdUpload(fd);
-      if (res.ok) {
-        setIdStatus("ok");
-      } else {
-        setIdStatus("bad");
-        setIdMessage(res.message || "That ID couldn't be verified. Please upload a clear, valid photo.");
+  // Real-time ID check: validate each image (front/data page, or CNIC back) the
+  // moment it's picked, so a bad/expired/wrong-side photo is caught here — not
+  // after the whole form is filled.
+  const checkSide =
+    (side: "front" | "back", setStatus: (s: IdStatus) => void, setMsg: (m: string | null) => void) =>
+    async (e: ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      setMsg(null);
+      if (!file) {
+        setStatus("idle");
+        return;
       }
-    } catch {
-      // Network/transient error — don't hard-block; the server re-checks on submit.
-      setIdStatus("ok");
+      setStatus("checking");
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("side", side);
+        const res = await verifyIdUpload(fd);
+        if (res.ok) {
+          setStatus("ok");
+        } else {
+          setStatus("bad");
+          setMsg(res.message || "That image couldn't be verified. Please upload a clear, valid photo.");
+        }
+      } catch {
+        // Network/transient error — don't hard-block; the server re-checks on submit.
+        setStatus("ok");
+      }
+    };
+  const onFrontIdChange = checkSide("front", setFrontStatus, setFrontMsg);
+  const onBackIdChange = checkSide("back", setBackStatus, setBackMsg);
+
+  const selectDocType = (t: "cnic" | "passport") => {
+    setDocType(t);
+    if (t === "passport") {
+      // A passport has no back — drop any stale back result so it can't block.
+      setBackStatus("idle");
+      setBackMsg(null);
     }
   };
 
   // Block confirming while an ID is being checked or was rejected (an unselected
-  // ID doesn't block — returning guests already verified can skip it).
-  const idBlocking = idStatus === "checking" || idStatus === "bad";
+  // image doesn't block — returning guests already verified can skip it). The
+  // back only matters for a CNIC.
+  const backBlocking = docType === "cnic" && (backStatus === "checking" || backStatus === "bad");
+  const idBlocking = frontStatus === "checking" || frontStatus === "bad" || backBlocking;
 
   const copy = async (value: string) => {
     try {
@@ -142,7 +161,7 @@ export function CheckoutForm({
             <button
               key={t}
               type="button"
-              onClick={() => setDocType(t)}
+              onClick={() => selectDocType(t)}
               className={`rounded-lg px-3.5 py-1.5 font-medium transition ${docType === t ? "bg-ink text-white" : "text-muted hover:text-ink"}`}
             >
               {t === "cnic" ? "CNIC" : "Passport"}
@@ -154,21 +173,13 @@ export function CheckoutForm({
           <div>
             <label className={label}>{docType === "cnic" ? "CNIC front" : "Passport (photo page)"}</label>
             <input name="cnicFront" type="file" accept="image/*" className={file} onChange={onFrontIdChange} />
-            {idStatus !== "idle" && (
-              <p
-                className={`mt-1.5 inline-flex items-start gap-1.5 text-xs ${idStatus === "ok" ? "text-green" : idStatus === "bad" ? "text-red" : "text-muted"}`}
-              >
-                {idStatus === "checking" && <Loader2 size={13} className="mt-0.5 shrink-0 animate-spin" />}
-                {idStatus === "ok" && <CheckCircle2 size={13} className="mt-0.5 shrink-0" />}
-                {idStatus === "bad" && <AlertCircle size={13} className="mt-0.5 shrink-0" />}
-                {idStatus === "checking" ? "Checking your ID…" : idStatus === "ok" ? "Looks good — ID verified." : idMessage}
-              </p>
-            )}
+            <IdStatusLine status={frontStatus} message={frontMsg} okText="Looks good — ID verified." checkingText="Checking your ID…" />
           </div>
           {docType === "cnic" && (
             <div>
               <label className={label}>CNIC back</label>
-              <input name="cnicBack" type="file" accept="image/*" className={file} />
+              <input name="cnicBack" type="file" accept="image/*" className={file} onChange={onBackIdChange} />
+              <IdStatusLine status={backStatus} message={backMsg} okText="Looks good — back verified." checkingText="Checking the back…" />
             </div>
           )}
         </div>
@@ -212,9 +223,11 @@ export function CheckoutForm({
 
       <div>
         <button type="submit" disabled={busy || idBlocking} className="w-full rounded-xl bg-gold px-5 py-3 text-sm font-medium text-ink transition hover:brightness-105 disabled:opacity-50">
-          {busy ? "Confirming…" : idStatus === "checking" ? "Checking your ID…" : `Pay ${advanceLabel} advance & confirm`}
+          {busy ? "Confirming…" : frontStatus === "checking" || backStatus === "checking" ? "Checking your ID…" : `Pay ${advanceLabel} advance & confirm`}
         </button>
-        {idStatus === "bad" && <p className="mt-2 text-center text-xs text-red">Please upload a valid ID above to continue.</p>}
+        {idBlocking && frontStatus !== "checking" && backStatus !== "checking" && (
+          <p className="mt-2 text-center text-xs text-red">Please upload a valid ID above to continue.</p>
+        )}
         <p className="mt-3 text-center text-xs text-muted">
           By confirming, you agree to Esker&apos;s{" "}
           <Link href="/legal/terms" className="text-gold-deep underline hover:no-underline">Terms</Link>,{" "}
@@ -223,5 +236,29 @@ export function CheckoutForm({
         </p>
       </div>
     </form>
+  );
+}
+
+// Inline result line under an ID upload: spinner while checking, green tick when
+// valid, red reason when rejected. Hidden until a file is picked.
+function IdStatusLine({
+  status,
+  message,
+  okText,
+  checkingText,
+}: {
+  status: IdStatus;
+  message: string | null;
+  okText: string;
+  checkingText: string;
+}) {
+  if (status === "idle") return null;
+  return (
+    <p className={`mt-1.5 inline-flex items-start gap-1.5 text-xs ${status === "ok" ? "text-green" : status === "bad" ? "text-red" : "text-muted"}`}>
+      {status === "checking" && <Loader2 size={13} className="mt-0.5 shrink-0 animate-spin" />}
+      {status === "ok" && <CheckCircle2 size={13} className="mt-0.5 shrink-0" />}
+      {status === "bad" && <AlertCircle size={13} className="mt-0.5 shrink-0" />}
+      {status === "checking" ? checkingText : status === "ok" ? okText : message}
+    </p>
   );
 }

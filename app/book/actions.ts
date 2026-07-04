@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { verifyId } from "@/lib/ai/idcheck";
+import { verifyId, type IdSide } from "@/lib/ai/idcheck";
 import { advanceAmount, advanceLabel } from "@/lib/payments";
 import { notifyBookingReceived } from "@/lib/notifyGuest";
 import { capiEvent } from "@/lib/analytics";
@@ -201,15 +201,17 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
 
 export type IdCheckResult = { ok: boolean; message?: string };
 
-// Real-time ID check for the checkout form: the guest's front ID (CNIC/passport
-// data page) is validated the moment they pick it, so an unreadable/expired/
-// non-ID image is rejected immediately — they re-upload before finishing, never
-// after. `createBooking` re-runs the same check server-side as the backstop.
+// Real-time ID check for the checkout form: each ID image (CNIC front/back, or a
+// passport data page) is validated the moment it's picked, so an unreadable/
+// expired/non-ID image is rejected immediately — the guest re-uploads before
+// finishing, never after. `createBooking` re-runs the front check server-side as
+// the backstop.
 export async function verifyIdUpload(formData: FormData): Promise<IdCheckResult> {
   const file = formData.get("file") as File | null;
+  const side: IdSide = String(formData.get("side") || "front") === "back" ? "back" : "front";
   if (!file || file.size === 0) return { ok: false, message: "Please choose a clear photo of your ID." };
   if (file.size > MAX_BYTES) return { ok: false, message: "That image is too large (max 10 MB)." };
   if (!file.type.startsWith("image/")) return { ok: false, message: "Please upload a photo (JPG or PNG)." };
-  const res = await verifyId(file);
+  const res = await verifyId(file, side);
   return res.ok ? { ok: true } : { ok: false, message: res.message };
 }
