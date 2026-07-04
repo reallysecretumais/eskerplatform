@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyId, type IdSide } from "@/lib/ai/idcheck";
 import { advanceAmount, advanceLabel } from "@/lib/payments";
+import { SITE_URL } from "@/lib/seo";
 import { notifyBookingReceived } from "@/lib/notifyGuest";
 import { capiEvent } from "@/lib/analytics";
 
@@ -28,6 +29,41 @@ function nightsBetween(checkin: string, checkout: string): number {
   return Math.round((co.getTime() - ci.getTime()) / 86_400_000);
 }
 
+// Ensure the booker has a website account so they can track the booking + chat.
+// Reuses an existing account (by email) or creates one via the service role (the
+// `handle_new_user` trigger files it under `accounts`, never staff). Returns a
+// time-limited magic link so guest-checkout users get in without a password.
+// Best-effort: an email is required to be reachable; any failure → no account,
+// and the booking proceeds unaffected.
+async function ensureGuestAccount(
+  admin: ReturnType<typeof createAdminClient>,
+  info: { email: string; phone: string; name: string },
+): Promise<{ accountId: string | null; magicLink: string | null }> {
+  const email = info.email.trim();
+  if (!email) return { accountId: null, magicLink: null };
+  try {
+    const { data: existing } = await admin.from("accounts").select("id").ilike("email", email).maybeSingle();
+    let id = existing?.id as string | undefined;
+    if (!id) {
+      const { data: created, error } = await admin.auth.admin.createUser({
+        email,
+        email_confirm: true,
+        user_metadata: { account_type: "guest", name: info.name },
+      });
+      if (error || !created?.user) return { accountId: null, magicLink: null };
+      id = created.user.id;
+    }
+    const { data: link } = await admin.auth.admin.generateLink({
+      type: "magiclink",
+      email,
+      options: { redirectTo: `${SITE_URL}/account` },
+    });
+    return { accountId: id, magicLink: link?.properties?.action_link ?? null };
+  } catch {
+    return { accountId: null, magicLink: null };
+  }
+}
+
 export async function createBooking(formData: FormData): Promise<BookingResult> {
   const propertyId = String(formData.get("propertyId") || "");
   const checkin = String(formData.get("checkin") || "");
@@ -45,7 +81,8 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
   const {
     data: { user },
   } = await session.auth.getUser();
-  const accountId = user?.id ?? null;
+  let accountId = user?.id ?? null;
+  let accountMagicLink: string | null = null;
 
   const admin = createAdminClient();
 
@@ -88,6 +125,15 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
   if (!name || !phone) return { ok: false, message: "Please enter your name and phone number." };
   if (!proof || proof.size === 0) return { ok: false, message: "Please upload your payment screenshot." };
   if (proof.size > MAX_BYTES) return { ok: false, message: "That screenshot is too large (max 10 MB)." };
+
+  // 4b. Give every booker an account (if not already signed in) so they can track
+  //     this booking and message us. Best-effort: needs an email to be reachable;
+  //     never blocks the booking.
+  if (!accountId) {
+    const prov = await ensureGuestAccount(admin, { email, phone, name });
+    accountId = prov.accountId;
+    accountMagicLink = prov.magicLink;
+  }
 
   // 5. Find or create the guest (by phone). CNIC required only on first booking.
   const { data: existing } = await admin.from("guests").select("id, cnic_front_url").eq("phone", phone).limit(1).maybeSingle();
@@ -191,6 +237,7 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
     total: amount,
     advance,
     balance,
+    accountLink: accountMagicLink,
   });
 
   // 9. Meta Conversions API — server-side Purchase (no-op until CAPI is configured).

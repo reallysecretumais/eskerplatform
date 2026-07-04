@@ -14,6 +14,7 @@ export type BookingReceivedData = {
   advanceLabel: string;
   balanceLabel: string;
   totalLabel: string;
+  accountLink?: string | null; // one-tap link to view the booking + message us
 };
 
 const GOLD = "#9c7d2e";
@@ -66,8 +67,10 @@ export function bookingReceivedEmail(d: BookingReceivedData): { subject: string;
         <tr><td style="padding:20px 30px;">
           <p style="color:${MUTED};font-size:13px;line-height:1.6;margin:0;">Your advance is held securely and goes toward your stay. If anything looks off, just reply to this email or message us on WhatsApp — we're happy to help.</p>
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0 4px;"><tr>
+            ${d.accountLink ? `<td style="border-radius:10px;background:${INK};"><a href="${d.accountLink}" style="display:inline-block;padding:11px 20px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;">View your booking</a></td><td style="width:10px;"></td>` : ""}
             <td style="border-radius:10px;background:${GOLD};"><a href="${waHref}" style="display:inline-block;padding:11px 20px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;">Chat with us on WhatsApp</a></td>
           </tr></table>
+          ${d.accountLink ? `<p style="color:#9a958a;font-size:12px;line-height:1.6;margin:10px 0 0;">We've set up your Esker account so you can track this booking and message us anytime.</p>` : ""}
         </td></tr>
         <tr><td style="padding:16px 30px 26px;border-top:1px solid ${LINE};">
           <p style="color:#9a958a;font-size:12px;line-height:1.6;margin:0;">${brand.name} · ${brand.tagline}<br/>Support: <a href="${waHref}" style="color:${GOLD};text-decoration:none;">WhatsApp</a> · <a href="mailto:${support.email}" style="color:${GOLD};text-decoration:none;">${support.email}</a></p>

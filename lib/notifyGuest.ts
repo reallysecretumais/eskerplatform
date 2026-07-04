@@ -24,6 +24,7 @@ type BookingReceived = {
   total: number;
   advance: number;
   balance: number;
+  accountLink?: string | null; // magic link to the guest's account (auto-provisioned)
 };
 
 const pkr = (n: number) => `₨${Math.round(n).toLocaleString("en-PK")}`;
@@ -47,6 +48,7 @@ export async function notifyBookingReceived(b: BookingReceived): Promise<void> {
         advanceLabel: pkr(b.advance),
         balanceLabel: pkr(b.balance),
         totalLabel: pkr(b.total),
+        accountLink: b.accountLink ?? null,
       });
       const r = await sendEmail({ to: b.email, subject: mail.subject, html: mail.html, text: mail.text });
       await admin.from("guest_messages").insert({
