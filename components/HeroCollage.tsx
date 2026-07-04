@@ -109,7 +109,15 @@ export function HeroCollage({ photos }: { photos: string[] }) {
               <div className={`marq flex flex-col gap-3 ${c % 2 === 1 ? "marq-rev" : ""}`} style={{ animationDuration: DURATIONS[c % DURATIONS.length] }}>
                 {[...col, ...col].map((url, i) => (
                   <div key={i} className={`${ASPECTS[i % ASPECTS.length]} relative w-full shrink-0 overflow-hidden rounded-[20px] shadow-xl shadow-black/50`}>
-                    <img src={thumb(url, 640, 70)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                    <img
+                      src={thumb(url, 1000, 72)}
+                      srcSet={`${thumb(url, 640, 70)} 640w, ${thumb(url, 1000, 72)} 1000w, ${thumb(url, 1400, 72)} 1400w`}
+                      sizes="(max-width: 640px) 72vw, 48vw"
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover"
+                    />
                     {/* soft depth gradient so each card sits in the scene */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
                   </div>

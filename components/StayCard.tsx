@@ -24,7 +24,9 @@ export function StayCard({ title, category, area, price, exclusive, photo, tone 
 
   const body = (
     <>
-      <div className="relative aspect-[3/2] overflow-hidden" style={{ backgroundColor: tone }}>
+      {/* Portrait 4:5 — the photo library is portrait phone shots (3:4); a
+          landscape crop was hiding half of every photo. 4:5 shows ~94% of it. */}
+      <div className="relative aspect-[4/5] overflow-hidden" style={{ backgroundColor: tone }}>
         {photo && (
           <img
             src={thumb(photo, 720, 74)}
