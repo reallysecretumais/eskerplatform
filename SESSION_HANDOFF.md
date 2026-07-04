@@ -34,7 +34,7 @@ The integrated preview tool can't reach this folder — verify with a terminal d
 - **Logo still needed**: icon pipeline exists (`scripts/gen-icons.mjs` + generated PNGs, untracked); founder must save the real logo (ideally vector) to `public/brand/` — then icons + PWA manifest + `docs/MOBILE_APP.md` ship in one commit.
 
 ## ⚠️ PENDING FOUNDER ACTIONS
-1. **Run `supabase/07_reviews.sql`** (reviews table) **and `08_accounts_links.sql`** (account/owner links). _(01–06 already run.)_
+1. ✅ **`07_reviews.sql` + `08_accounts_links.sql` RUN** (2026-07-04). All migrations 01–08 applied.
 2. **Meta ads tracking** (when advertising): add in Vercel → `NEXT_PUBLIC_META_PIXEL_ID=2200445110719489`, `META_PIXEL_ID=2200445110719489`, `META_CAPI_TOKEN=<from Events Manager → Conversions API>`.
 3. **`REVALIDATE_SECRET`** — set the SAME value in BOTH Vercel (website) and Esker OS so the CRM can bust the listings cache on publish.
 4. **Fill `public_facts`** per property (parking, real distances, check‑in, family/prayer/load‑shedding) → powers concierge + §6/§8. **Decide Supabase "Confirm email"** toggle (recommend OFF for launch).
@@ -43,7 +43,7 @@ The integrated preview tool can't reach this folder — verify with a terminal d
 - ✅ Already done by founder: SMTP_PASS added (emails send); cancellation windows reviewed; 01–06 migrations run.
 
 ## Migrations (founder runs each in Supabase SQL Editor)
-`01_public_listings` ✓ · `02_public_facts` ✓ · `03_accounts` ✓ · `04_bookings` ✓ · `05_hold_expiry` ✓ · `06_notifications` ✓ · **`07_reviews` ← RUN** · **`08_accounts_links` ← RUN**.
+`01_public_listings` ✓ · `02_public_facts` ✓ · `03_accounts` ✓ · `04_bookings` ✓ · `05_hold_expiry` ✓ · `06_notifications` ✓ · `07_reviews` ✓ · `08_accounts_links` ✓ — **all applied**.
 
 ## Cross‑app — Esker OS (CRM) TODOs (specced in shared memory)
 `website-verify-urgent` (4h verify‑urgent dashboard flag) · `guest-notifications` (drain `guest_messages` → WhatsApp via inbox + approved `booking_received` template) · `website-crm-hooks` (reviews curation UI; ping `POST /api/revalidate` with `x-revalidate-secret` on publish/price edits).

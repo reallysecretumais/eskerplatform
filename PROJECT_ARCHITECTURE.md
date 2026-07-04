@@ -19,8 +19,8 @@ Migrations live in `supabase/` and are run by the founder in the Supabase SQL Ed
 - **`03_accounts.sql`** — `accounts` + `account_roles`; reroutes `handle_new_user`; RLS. ✓
 - **`04_bookings.sql`** — `bookings.account_id` + `bookings_select_own` RLS. ✓
 - **`05_hold_expiry.sql`** — 18h auto-release of unpaid website holds. ✓ · **`06_notifications.sql`** — `guest_messages` outbox. ✓
-- **`07_reviews.sql`** — `reviews` + `public_reviews` view. ⚠️ run
-- **`08_accounts_links.sql`** — `owners.account_id`; `properties.{owner_account_id, owner_relationship (esker|partner|managed|host), comms_owner (esker|owner), listing_status}` — groundwork for the portals + chat routing. ⚠️ run
+- **`07_reviews.sql`** — `reviews` + `public_reviews` view. ✓
+- **`08_accounts_links.sql`** — `owners.account_id`; `properties.{owner_account_id, owner_relationship (esker|partner|managed|host), comms_owner (esker|owner), listing_status}` — groundwork for the portals + chat routing. ✓ (all migrations 01–08 applied)
 
 The website reads **only** the two views + `accounts`/`account_roles` (own) + own `bookings`. The base `properties`/`bookings`/`guests`/`owners`/`users` stay staff-only (their RLS uses `is_staff()`).
 

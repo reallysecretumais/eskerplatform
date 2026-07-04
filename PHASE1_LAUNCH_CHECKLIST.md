@@ -23,7 +23,7 @@ The "trust & comms wrapper" + polish to take real public bookings safely. Pairs 
 - **Accounts backbone** — every booker gets an account + magic link (portals program Phase 1).
 
 ## ⚠️ Founder actions to switch it all on
-- ✅ SMTP_PASS added (emails send). Run migrations: **`06_notifications.sql`** ✓, **`07_reviews.sql`** ← run, **`08_accounts_links.sql`** ← run.
+- ✅ SMTP_PASS added (emails send). Migrations **01–08 all run** (`07_reviews` + `08_accounts_links` applied 2026-07-04).
 - **Save the real Esker logo** (vector best) to `public/brand/` → unlocks app icons + PWA manifest + the Android/iOS wrap path.
 - **Meta Pixel/CAPI** (for ads): add `NEXT_PUBLIC_META_PIXEL_ID`, `META_PIXEL_ID`, `META_CAPI_TOKEN` in Vercel.
 - **`REVALIDATE_SECRET`**: set the same value in BOTH Vercel (website) and Esker OS, so the CRM can bust the listings cache on publish.
