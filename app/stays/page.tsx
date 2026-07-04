@@ -85,7 +85,7 @@ export default async function StaysPage({ searchParams }: { searchParams: Promis
         {results.length > 0 ? (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {results.map((l) => (
-              <StayCard key={l.id} title={l.title} category={l.category ?? "Stay"} area={l.area ?? ""} price={l.price} exclusive={l.esker_exclusive} photo={l.card_photo ?? l.photos?.[0] ?? undefined} href={`/stays/${l.id}`} />
+              <StayCard key={l.id} title={l.title} category={l.category ?? "Stay"} area={l.area ?? ""} price={l.price} exclusive={l.esker_exclusive} photo={l.photos?.[0] ?? undefined} href={`/stays/${l.id}`} />
             ))}
           </div>
         ) : (
