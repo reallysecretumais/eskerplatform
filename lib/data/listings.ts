@@ -53,7 +53,7 @@ async function photoRatio(url: string): Promise<number | null> {
 }
 
 async function bestCardPhoto(photos: string[]): Promise<string | null> {
-  const pool = photos.slice(0, 12); // cap the measurement cost
+  const pool = photos.slice(0, 4); // cap the measurement cost
   if (pool.length <= 1) return pool[0] ?? null;
   const ratios = await Promise.all(pool.map(photoRatio));
   // Keep the chosen lead when it already fits a wide card well (ratio ≥ 1.2).

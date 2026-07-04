@@ -24,11 +24,11 @@ export function StayCard({ title, category, area, price, exclusive, photo, tone 
 
   const body = (
     <>
-      {/* 3:2 card — the crop the founder had before the pre-launch pass and
-          preferred (shows more of the photo than the taller 4:3, which read as
-          zoomed-in). Cover-cropped, centred; the lead-photo choice per listing in
-          the CRM controls exactly what shows. */}
-      <div className="relative aspect-[3/2] overflow-hidden" style={{ backgroundColor: tone }}>
+      {/* 4:3 card — the original ratio that's live on production; it shows more of
+          a portrait photo than a wider 3:2 (which over-cropped). Cover-cropped,
+          centred; the card thumbnail auto-picks the most landscape photo, and the
+          per-listing lead-photo choice in the CRM is the real control. */}
+      <div className="relative aspect-[4/3] overflow-hidden" style={{ backgroundColor: tone }}>
         {photo && (
           <img
             src={thumb(photo, 720, 74)}

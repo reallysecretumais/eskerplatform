@@ -172,7 +172,7 @@ export function ConciergeStream({ query, listings }: { query: string; listings: 
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="overflow-hidden rounded-2xl border border-line bg-surface">
-              <div className="aspect-[3/2] animate-pulse bg-surface-2" />
+              <div className="aspect-[4/3] animate-pulse bg-surface-2" />
               <div className="space-y-2 p-3.5">
                 <div className="h-3.5 w-2/3 animate-pulse rounded bg-surface-2" />
                 <div className="h-3 w-1/2 animate-pulse rounded bg-surface-2" />
