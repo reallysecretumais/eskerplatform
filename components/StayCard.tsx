@@ -24,9 +24,12 @@ export function StayCard({ title, category, area, price, exclusive, photo, tone 
 
   const body = (
     <>
-      {/* Portrait 4:5 — the photo library is portrait phone shots (3:4); a
-          landscape crop was hiding half of every photo. 4:5 shows ~94% of it. */}
-      <div className="relative aspect-[4/5] overflow-hidden" style={{ backgroundColor: tone }}>
+      {/* Original 4:3 card — the ratio the founder preferred. The photo library
+          is portrait phone shots, and a 4:3 card shows more of a tall photo than
+          a wider 3:2 would (a wider card crops MORE of a portrait). Cover-cropped,
+          centred; choose a well-composed lead photo per listing in the CRM to
+          control exactly what shows. */}
+      <div className="relative aspect-[4/3] overflow-hidden" style={{ backgroundColor: tone }}>
         {photo && (
           <img
             src={thumb(photo, 720, 74)}
@@ -35,7 +38,7 @@ export function StayCard({ title, category, area, price, exclusive, photo, tone 
             alt={`${title} — ${category} in ${area}`}
             loading="lazy"
             decoding="async"
-            className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.05]"
+            className="h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-[1.05]"
           />
         )}
         {exclusive && (
