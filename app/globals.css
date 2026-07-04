@@ -96,6 +96,51 @@ body {
 .rise {
   animation: esker-rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+/* Staggered entrance — the hero assembles piece by piece (delay utilities). */
+.rise-1 { animation-delay: 0.05s; }
+.rise-2 { animation-delay: 0.14s; }
+.rise-3 { animation-delay: 0.23s; }
+.rise-4 { animation-delay: 0.32s; }
+.rise-5 { animation-delay: 0.41s; }
+.rise-6 { animation-delay: 0.5s; }
+
+/* Touch-device hero motion: a gentle CSS sway replaces the pointer-tilt rAF
+   loop entirely (GPU-only, zero JS per frame). Keeps the base -5° cant. */
+@keyframes esker-hero-sway {
+  0%   { transform: rotateZ(-5deg) rotateX(1.6deg) rotateY(-4.5deg); }
+  50%  { transform: rotateZ(-5deg) rotateX(-1.6deg) rotateY(4.5deg); }
+  100% { transform: rotateZ(-5deg) rotateX(1.6deg) rotateY(-4.5deg); }
+}
+.hero-sway {
+  animation: esker-hero-sway 16s ease-in-out infinite;
+}
+
+/* One gold glint — a slow shimmer sweep across the primary CTA. Used exactly
+   once per page so it stays precious. */
+@keyframes esker-shimmer {
+  0%, 55% { background-position: 130% 0; }
+  100% { background-position: -30% 0; }
+}
+.shimmer {
+  background-image: linear-gradient(
+    115deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 62%
+  );
+  background-size: 220% 100%;
+  background-repeat: no-repeat;
+  animation: esker-shimmer 5.5s ease-in-out infinite;
+}
+
+/* Scroll cue — a faint drifting chevron at the hero's bottom edge. */
+@keyframes esker-cue {
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(6px); opacity: 0.9; }
+}
+.scroll-cue {
+  animation: esker-cue 2.4s ease-in-out infinite;
+}
 
 /* Hero cross-fade: a base photo is always visible; two overlay layers fade in
    and out over the cycle, so the hero gently moves through real photos
@@ -178,7 +223,10 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .kb,
   .kb2,
-  .rise {
+  .rise,
+  .hero-sway,
+  .shimmer,
+  .scroll-cue {
     animation: none;
   }
   .fade-b,

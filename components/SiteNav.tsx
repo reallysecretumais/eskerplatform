@@ -6,10 +6,11 @@ import { Menu, X } from "lucide-react";
 import { brand } from "@/lib/brand";
 import { EskerLogo } from "@/components/EskerLogo";
 
-const LINKS = [
+const LINKS: { label: string; href: string; gold?: boolean; external?: boolean }[] = [
   { label: "Browse all stays", href: "/stays" },
   { label: brand.exclusiveTier, href: "/stays?tier=exclusive", gold: true },
-  { label: "Help", href: "#" },
+  // Real help in one tap — WhatsApp, where Pakistani guests actually ask.
+  { label: "Help", href: `https://wa.me/${brand.whatsapp}`, external: true },
 ];
 
 // Site navigation. `theme="hero"` sits over the hero photo (white, no bar);
@@ -34,15 +35,18 @@ export function SiteNav({
       </Link>
 
       <div className="hidden items-center gap-7 text-sm sm:flex">
-        {LINKS.map((l) => (
-          <Link
-            key={l.label}
-            href={l.href}
-            className={l.gold ? "text-gold hover:opacity-80" : onPhoto ? "text-white/90 hover:text-white" : "text-muted hover:text-ink"}
-          >
-            {l.label}
-          </Link>
-        ))}
+        {LINKS.map((l) => {
+          const cls = l.gold ? "text-gold hover:opacity-80" : onPhoto ? "text-white/90 hover:text-white" : "text-muted hover:text-ink";
+          return l.external ? (
+            <a key={l.label} href={l.href} target="_blank" rel="noopener noreferrer" className={cls}>
+              {l.label}
+            </a>
+          ) : (
+            <Link key={l.label} href={l.href} className={cls}>
+              {l.label}
+            </Link>
+          );
+        })}
         <Link
           href={authHref}
           className={`rounded-lg border px-4 py-1.5 ${onPhoto ? "border-white/45 text-white hover:bg-white/10" : "border-line text-ink hover:bg-surface-2"}`}
@@ -78,11 +82,17 @@ export function SiteNav({
               </button>
             </div>
             <div className="mt-8 flex flex-col gap-5 text-[15px]">
-              {LINKS.map((l) => (
-                <Link key={l.label} href={l.href} className={l.gold ? "text-gold-deep" : "text-ink"} onClick={() => setOpen(false)}>
-                  {l.label}
-                </Link>
-              ))}
+              {LINKS.map((l) =>
+                l.external ? (
+                  <a key={l.label} href={l.href} target="_blank" rel="noopener noreferrer" className={l.gold ? "text-gold-deep" : "text-ink"} onClick={() => setOpen(false)}>
+                    {l.label}
+                  </a>
+                ) : (
+                  <Link key={l.label} href={l.href} className={l.gold ? "text-gold-deep" : "text-ink"} onClick={() => setOpen(false)}>
+                    {l.label}
+                  </Link>
+                ),
+              )}
               <Link href={authHref} className="mt-2 rounded-lg border border-line px-4 py-2 text-center text-ink" onClick={() => setOpen(false)}>
                 {authLabel}
               </Link>

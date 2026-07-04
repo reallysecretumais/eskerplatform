@@ -4,7 +4,7 @@ import { Search, Sparkles } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { StayCard } from "@/components/StayCard";
 import { ConciergeStream } from "@/components/ConciergeStream";
-import { getListings } from "@/lib/data/listings";
+import { getListings, slimListings } from "@/lib/data/listings";
 import { getAccount } from "@/lib/auth";
 import { normalizeCategory } from "@/lib/listings";
 import { brand } from "@/lib/brand";
@@ -40,7 +40,7 @@ export default async function StaysPage({ searchParams }: { searchParams: Promis
           <div className="mb-5 flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-gold-deep">
             <Sparkles size={14} /> AI concierge
           </div>
-          <ConciergeStream query={sp.q} listings={listings} />
+          <ConciergeStream query={sp.q} listings={slimListings(listings)} />
         </div>
       </main>
     );

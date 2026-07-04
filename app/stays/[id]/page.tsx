@@ -13,7 +13,7 @@ import { PakistanDetails } from "@/components/PakistanDetails";
 import { LocationSection } from "@/components/LocationSection";
 import { Reviews } from "@/components/Reviews";
 import { TrackEvent } from "@/components/TrackEvent";
-import { getListing, getListings, getAvailability } from "@/lib/data/listings";
+import { getListing, getListings, getAvailability, slimListings } from "@/lib/data/listings";
 import { getReviews } from "@/lib/data/reviews";
 import { getAccount } from "@/lib/auth";
 import { unitForCategory, formatPrice } from "@/lib/listings";
@@ -86,9 +86,10 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
           <Gallery photos={listing.photos ?? []} title={listing.title} />
         </div>
 
-        {/* Ask about this place — contextual concierge */}
+        {/* Ask about this place — contextual concierge (slim props — the AI
+            catalog itself is built server-side in /api/concierge) */}
         <div className="mt-6">
-          <PropertyConcierge property={listing} listings={all} />
+          <PropertyConcierge property={slimListings([listing])[0]} listings={slimListings(all)} />
         </div>
 
         {/* Body */}

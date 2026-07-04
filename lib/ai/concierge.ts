@@ -1,5 +1,5 @@
 import "server-only";
-import { getListings, getBusyByProperty, type PublicListing, type BusyRange } from "@/lib/data/listings";
+import type { PublicListing, BusyRange } from "@/lib/data/listings";
 import { unitForCategory } from "@/lib/listings";
 
 /** Today in Pakistan time (YYYY-MM-DD) so the model can resolve "this weekend". */
@@ -26,11 +26,13 @@ const RULES = `You are the Esker Stays concierge — a warm, concise, premium ho
 - You never handle payments, negotiate prices, or take bookings. Guide the guest to view a place and book on the site.
 - You only know the public listings provided. Never discuss or speculate about owners, finances, other guests, staff, or anything internal — you simply don't have that information.`;
 
-// Shared machine-readable tail: the recommended ids ride home on one line the
-// client strips before display.
-const STAYS_TAIL = `At the very END of your reply, on its own new line, output exactly:
+// Shared machine-readable tail: the recommended ids (+ a short per-listing
+// reason) ride home on trailing lines the client strips before display. The WHY
+// reasons become the small gold "why this matches" captions under each card.
+const STAYS_TAIL = `At the very END of your reply, output exactly these lines (each on its own new line):
 STAYS: <comma-separated listing ids you are recommending, best first; leave empty if none>
-Never mention this line, the word STAYS, or any ids in your prose.`;
+WHY: <for each recommended id: "id: reason" joined by "; " — each reason is a SHORT phrase (max 8 words) tying THAT listing to what the guest asked, e.g. "private pool + sleeps 6". Omit this line entirely if you recommend nothing.>
+Never mention these lines, the words STAYS or WHY, or any ids in your prose.`;
 
 // Conversational (streaming) prompt: prose + a machine-readable tail.
 export const CONCIERGE_SYSTEM = `${RULES}\n\n${STAYS_TAIL}`;
@@ -62,11 +64,6 @@ const VOICE_TAIL = `Format your output EXACTLY like this, and never mention thes
 
 export const VOICE_SYSTEM = `${VOICE_RULES}\n\n${VOICE_TAIL}`;
 
-// Single-shot (JSON) prompt.
-const JSON_SYSTEM = `${RULES}
-
-Return ONLY JSON: {"reply": string, "listing_ids": string[]}. listing_ids must be ids from the provided list, best match first; use [] if nothing is a reasonable match.`;
-
 export function catalog(listings: PublicListing[], busy?: Map<string, BusyRange[]>): string {
   return listings
     .map((l) => {
@@ -81,46 +78,5 @@ export function catalog(listings: PublicListing[], busy?: Map<string, BusyRange[
     .join("\n");
 }
 
-export type ConciergeResult = { reply: string; matches: PublicListing[] };
-
-// Single-shot answer (used by direct /stays?q links). The streaming chat uses
-// the API route with CONCIERGE_SYSTEM instead.
-export async function askConcierge(query: string): Promise<ConciergeResult> {
-  const [listings, busy] = await Promise.all([getListings(), getBusyByProperty()]);
-  const apiKey = process.env.OPENAI_API_KEY;
-
-  const keyword = (): PublicListing[] => {
-    const q = query.toLowerCase();
-    const hits = listings.filter((l) =>
-      [l.title, l.area, l.category, l.description, l.public_facts, ...(l.amenities ?? [])].filter(Boolean).join(" ").toLowerCase().includes(q),
-    );
-    return hits.length ? hits : listings.slice(0, 6);
-  };
-
-  if (!apiKey) return { reply: "Here are some stays that might suit you.", matches: keyword() };
-
-  try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: MODEL,
-        temperature: 0.4,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: `${JSON_SYSTEM}\n\nToday is ${todayPK()} (Pakistan time).` },
-          { role: "user", content: `Available listings:\n${catalog(listings, busy)}\n\nGuest: ${query}` },
-        ],
-      }),
-    });
-    if (!res.ok) throw new Error(`OpenAI ${res.status}`);
-    const data = await res.json();
-    const parsed = JSON.parse(data.choices?.[0]?.message?.content ?? "{}") as { reply?: string; listing_ids?: string[] };
-    const valid = new Set(listings.map((l) => l.id));
-    const matches = (parsed.listing_ids ?? []).filter((id) => valid.has(id)).map((id) => listings.find((l) => l.id === id)!).filter(Boolean);
-    return { reply: parsed.reply?.trim() || "Here's what I found for you.", matches: matches.length ? matches : keyword() };
-  } catch (e) {
-    console.error("[concierge] failed:", (e as Error).message);
-    return { reply: "Here are some stays that might suit you.", matches: keyword() };
-  }
-}
+// (The old single-shot askConcierge() path was removed — every surface now uses
+// the streaming /api/concierge route with CONCIERGE_SYSTEM / VOICE_SYSTEM.)

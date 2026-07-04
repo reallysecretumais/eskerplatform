@@ -4,7 +4,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { MessageCircle, Mic } from "lucide-react";
-import type { PublicListing } from "@/lib/data/listings";
+import type { SlimListing } from "@/lib/data/listings";
 import { unlockAudio } from "@/lib/voiceAudio";
 
 // The voice overlay is heavy (mic, audio, animation) and only needed on demand,
@@ -15,7 +15,7 @@ const CHIPS = ["Pool, sleeps 6, this weekend", "Ground floor for my parents", "U
 
 // Concierge input shell: type OR speak. The text box routes to the results page;
 // the mic opens the full-screen voice concierge (English or Urdu, hands-free).
-export function ConciergeSearch({ listings = [] }: { listings?: PublicListing[] }) {
+export function ConciergeSearch({ listings = [] }: { listings?: SlimListing[] }) {
   const [value, setValue] = useState("");
   const [voiceOpen, setVoiceOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -49,7 +49,7 @@ export function ConciergeSearch({ listings = [] }: { listings?: PublicListing[] 
         />
         <button
           type="submit"
-          className="shrink-0 rounded-xl bg-gold px-5 py-2.5 text-sm font-medium text-ink transition hover:brightness-105"
+          className="shimmer shrink-0 rounded-xl bg-gold px-5 py-2.5 text-sm font-medium text-ink transition hover:brightness-105"
         >
           Ask Esker
         </button>

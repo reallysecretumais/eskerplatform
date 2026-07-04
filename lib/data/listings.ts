@@ -29,6 +29,32 @@ export type PublicListing = {
   public_facts?: string | null; // public-safe facts for the concierge (parking, landmarks, rules…)
 };
 
+// What client components actually need to render a match card — nothing more.
+// The AI catalog is built SERVER-side (/api/concierge), so shipping the full
+// listings (descriptions, facts, every photo URL) to the browser was pure
+// payload. Pass this slim projection to any "use client" component instead.
+export type SlimListing = {
+  id: string;
+  title: string;
+  area: string | null;
+  category: string | null;
+  price: number;
+  esker_exclusive: boolean;
+  photo: string | null; // lead photo only
+};
+
+export function slimListings(listings: PublicListing[]): SlimListing[] {
+  return listings.map((l) => ({
+    id: l.id,
+    title: l.title,
+    area: l.area,
+    category: l.category,
+    price: l.price,
+    esker_exclusive: l.esker_exclusive,
+    photo: l.photos?.[0] ?? null,
+  }));
+}
+
 const cachedListings = unstable_cache(
   async (): Promise<PublicListing[]> => {
     const { data, error } = await anon().from("public_listings").select("*");

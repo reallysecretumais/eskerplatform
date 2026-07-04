@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { X, Volume2, VolumeX, Send, Keyboard } from "lucide-react";
 import Link from "next/link";
-import type { PublicListing } from "@/lib/data/listings";
+import type { SlimListing } from "@/lib/data/listings";
 import { unitForCategory, formatPrice } from "@/lib/listings";
 import { thumb } from "@/lib/img";
 import { getAudioCtx } from "@/lib/voiceAudio";
@@ -41,13 +41,13 @@ function sentenceEnd(text: string, from: number): number {
 // (no boxy panel). Streams speech: the first sentence is spoken while the rest
 // is still being written, so there's almost no wait. The orb is the entity; the
 // matched stays float in. The guest can interrupt, mute, type, or end.
-export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[]; onClose: () => void }) {
+export function VoiceConcierge({ listings, onClose }: { listings: SlimListing[]; onClose: () => void }) {
   const byId = new Map(listings.map((l) => [l.id, l]));
 
   const [phase, setPhase] = useState<Phase>("init");
   const [reply, setReply] = useState("");
   const [lang, setLang] = useState<Lang>("en");
-  const [matches, setMatches] = useState<PublicListing[]>([]);
+  const [matches, setMatches] = useState<SlimListing[]>([]);
   const [muted, setMuted] = useState(false);
   const [showInput, setShowInput] = useState(false);
   const [typed, setTyped] = useState("");
@@ -182,7 +182,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
       const finalReply = p.reply || "Here's what I found for you.";
       setReply(finalReply);
       setLang(p.lang);
-      setMatches(p.ids.map((id) => byId.get(id)).filter((l): l is PublicListing => Boolean(l)));
+      setMatches(p.ids.map((id) => byId.get(id)).filter((l): l is SlimListing => Boolean(l)));
       historyRef.current = [...hist, { role: "assistant", content: finalReply }];
       streamDoneRef.current = true;
       if (mutedRef.current) finishTurn();
@@ -516,7 +516,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: PublicListing[
                 >
                   <div
                     className="relative aspect-[4/3] bg-white/5"
-                    style={{ backgroundImage: l.photos?.[0] ? `url(${thumb(l.photos[0], 500, 70)})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }}
+                    style={{ backgroundImage: l.photo ? `url(${thumb(l.photo, 500, 70)})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }}
                   >
                     {l.esker_exclusive && <span className="absolute left-2 top-2 rounded-md bg-gold px-2 py-0.5 text-[10px] font-medium text-ink">Exclusive</span>}
                   </div>

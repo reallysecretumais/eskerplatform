@@ -2,17 +2,18 @@
 
 import { useState, type FormEvent } from "react";
 import { Sparkles } from "lucide-react";
-import type { PublicListing } from "@/lib/data/listings";
+import type { SlimListing } from "@/lib/data/listings";
 import { StayCard } from "@/components/StayCard";
 
 const SUGGEST = ["Is there parking?", "Good for families?", "What's nearby?", "Check-in time?"];
 
-type QA = { q: string; a: string; matches: PublicListing[] };
+type QA = { q: string; a: string; matches: SlimListing[] };
 
 // The property page's "Ask about this place" — answers about THIS listing from
 // its public data + facts (streamed), and surfaces similar live stays for
-// "find me something like this but…". Retrieval-first and public-safe.
-export function PropertyConcierge({ property, listings }: { property: PublicListing; listings: PublicListing[] }) {
+// "find me something like this but…". Retrieval-first and public-safe. Receives
+// only slim listings (for the match cards) — the catalog itself is server-side.
+export function PropertyConcierge({ property, listings }: { property: SlimListing; listings: SlimListing[] }) {
   const byId = new Map(listings.map((l) => [l.id, l]));
   const [thread, setThread] = useState<QA[]>([]);
   const [pendingQ, setPendingQ] = useState("");
@@ -52,10 +53,13 @@ export function PropertyConcierge({ property, listings }: { property: PublicList
       }
       const idx = full.indexOf("STAYS:");
       const a = (idx >= 0 ? full.slice(0, idx) : full).trim();
-      const ids = idx >= 0 ? full.slice(idx + 6).split(/[\s,]+/).map((s) => s.trim()).filter(Boolean) : [];
+      // Ids sit between "STAYS:" and the (optional) "WHY:" reasons line.
+      const after = idx >= 0 ? full.slice(idx + 6) : "";
+      const wIdx = after.indexOf("WHY:");
+      const ids = (wIdx >= 0 ? after.slice(0, wIdx) : after).split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
       const matches = ids
         .map((id) => byId.get(id))
-        .filter((l): l is PublicListing => Boolean(l))
+        .filter((l): l is SlimListing => Boolean(l))
         .filter((l) => l.id !== property.id);
       setThread((t) => [...t, { q, a: a || "Here you go.", matches }]);
     } catch {
@@ -90,7 +94,7 @@ export function PropertyConcierge({ property, listings }: { property: PublicList
               {t.matches.length > 0 && (
                 <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {t.matches.map((l) => (
-                    <StayCard key={l.id} title={l.title} category={l.category ?? "Stay"} area={l.area ?? ""} price={l.price} exclusive={l.esker_exclusive} photo={l.photos?.[0] ?? undefined} href={`/stays/${l.id}`} />
+                    <StayCard key={l.id} title={l.title} category={l.category ?? "Stay"} area={l.area ?? ""} price={l.price} exclusive={l.esker_exclusive} photo={l.photo ?? undefined} href={`/stays/${l.id}`} />
                   ))}
                 </div>
               )}

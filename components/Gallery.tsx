@@ -27,7 +27,7 @@ export function Gallery({ photos, title }: { photos: string[]; title: string }) 
             </button>
             {photos.slice(1, 5).map((p, i) => (
               <button key={i} type="button" onClick={show} className="hidden overflow-hidden sm:block">
-                <img src={thumb(p, 640, 72)} alt="" className="h-full w-full object-cover transition hover:opacity-95" />
+                <img src={thumb(p, 640, 72)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition hover:opacity-95" />
               </button>
             ))}
           </div>
@@ -58,7 +58,7 @@ export function Gallery({ photos, title }: { photos: string[]; title: string }) 
           </div>
           <div className="mx-auto max-w-3xl space-y-3 px-4 pb-12" onClick={(e) => e.stopPropagation()}>
             {photos.map((p, i) => (
-              <img key={i} src={thumb(p, 1400, 82)} alt="" className="w-full rounded-xl" />
+              <img key={i} src={thumb(p, 1400, 82)} alt="" loading={i < 2 ? "eager" : "lazy"} decoding="async" className="w-full rounded-xl" />
             ))}
           </div>
         </div>

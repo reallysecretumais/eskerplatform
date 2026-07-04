@@ -220,7 +220,19 @@ export function BookingWidget({
             <p className="mt-1 text-muted">
               {isNight && ci && co ? `${fmtDay(ci)} – ${fmtDay(co)} · ${nights} ${nights === 1 ? "night" : "nights"} · ${guests} guests` : `${day ? fmtDay(day) : ""} · ${qty} ${unitLabel}${qty === 1 ? "" : "s"}`} · <span className="font-medium text-ink">{totalFmt}</span>
             </p>
-            <p className="mt-2 text-xs text-muted">Secure checkout is the next thing we&apos;re building — your dates are noted.</p>
+            {/* Slot/hourly checkout isn't online yet — the team locks it in on WhatsApp. */}
+            {brand.whatsapp ? (
+              <a
+                href={`https://wa.me/${brand.whatsapp}?text=${encodeURIComponent(`Hi Esker! I'd like to book "${title}"${day ? ` on ${fmtDay(day)}` : ""} — ${qty} ${unitLabel}${qty === 1 ? "" : "s"} (${totalFmt}).`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-ink px-3 py-2 text-xs font-medium text-white transition hover:opacity-90"
+              >
+                <MessageCircle size={13} /> Message us to lock this slot — replies in minutes
+              </a>
+            ) : (
+              <p className="mt-2 text-xs text-muted">Contact us to lock this slot — your selection is noted.</p>
+            )}
           </div>
         )}
 

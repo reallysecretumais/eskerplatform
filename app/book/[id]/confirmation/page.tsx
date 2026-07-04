@@ -21,7 +21,7 @@ export default async function ConfirmationPage() {
         </p>
 
         <div className="mt-8 space-y-3 rounded-2xl border border-line bg-surface p-5 text-left text-sm">
-          <Step n={1} title="We verify your payment" body="The team checks your screenshot against the transfer — usually within a few hours." />
+          <Step n={1} title="We verify your payment" body="Your dates are held for you while the team checks your screenshot against the transfer — usually within a few hours." />
           <Step n={2} title="You're confirmed" body="You'll get a confirmation, then check-in details before your stay." />
           <Step n={3} title="Held safely until check-in" body="Your payment is held securely and only released to the property after you check in." icon />
         </div>

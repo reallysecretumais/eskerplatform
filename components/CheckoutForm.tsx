@@ -228,6 +228,7 @@ export function CheckoutForm({
         {idBlocking && frontStatus !== "checking" && backStatus !== "checking" && (
           <p className="mt-2 text-center text-xs text-red">Please upload a valid ID above to continue.</p>
         )}
+        <p className="mt-2 text-center text-xs text-muted">Your dates are held for you while we verify — usually within a few hours.</p>
         <p className="mt-3 text-center text-xs text-muted">
           By confirming, you agree to Esker&apos;s{" "}
           <Link href="/legal/terms" className="text-gold-deep underline hover:no-underline">Terms</Link>,{" "}

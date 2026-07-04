@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, Hotel, Home, Trees, Camera, Waves } from "lucide-react";
+import { Building2, Hotel, Home, Trees, Camera, Waves, ArrowRight } from "lucide-react";
 
 // Visual category showcase (replaces abstract text-pill filters). Consistent,
 // intentional tiles now; each upgrades to a photo-backed tile as photography
@@ -29,11 +29,14 @@ export function CategoryShowcase() {
         <Link
           key={name}
           href={`/stays?category=${encodeURIComponent(name)}`}
-          className="group relative flex h-40 flex-col justify-end overflow-hidden rounded-2xl border border-line p-4 transition hover:border-gold/40 hover:shadow-sm"
+          className="group relative flex h-40 flex-col justify-end overflow-hidden rounded-2xl border border-line p-4 transition duration-300 hover:-translate-y-0.5 hover:border-gold/50 hover:shadow-md hover:shadow-black/[0.05]"
           style={{ backgroundImage: tone }}
         >
-          <Icon className="absolute right-4 top-4 text-gold transition group-hover:scale-110" size={26} strokeWidth={1.5} />
-          <div className="font-display text-lg font-semibold tracking-tight text-ink">{name}</div>
+          <Icon className="absolute right-4 top-4 text-gold transition duration-300 group-hover:-translate-y-0.5 group-hover:scale-110" size={26} strokeWidth={1.5} />
+          <div className="flex items-center gap-1 font-display text-lg font-semibold tracking-tight text-ink">
+            {name}
+            <ArrowRight size={16} className="-translate-x-1 text-gold opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100" />
+          </div>
           <div className="text-xs text-muted">{meta}</div>
         </Link>
       ))}

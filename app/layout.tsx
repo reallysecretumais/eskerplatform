@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Sora } from "next/font/google";
 import "./globals.css";
 import { brand } from "@/lib/brand";
@@ -6,7 +6,7 @@ import { SITE_URL, SITE_NAME, DEFAULT_TITLE, DEFAULT_DESC, KEYWORDS } from "@/li
 import { MetaPixel } from "@/components/MetaPixel";
 
 // Clean sans for UI (Inter) + a modern, minimal display face (Sora) for the
-// brand wordmark and headings.
+// brand wordmark and headings. (Sora 400 is unused — only 500/600/700 ship.)
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
@@ -17,8 +17,24 @@ const display = Sora({
   subsets: ["latin"],
   variable: "--font-sora",
   display: "swap",
-  weight: ["400", "500", "600", "700"],
+  weight: ["500", "600", "700"],
 });
+
+// Every property photo comes from Supabase storage — warm the connection before
+// the first hero/gallery image request.
+const SUPABASE_ORIGIN = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").origin;
+  } catch {
+    return null;
+  }
+})();
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#0c0a07", // Esker near-black — matches the hero + PWA chrome
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -57,6 +73,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} ${display.variable} h-full`}>
+      <head>{SUPABASE_ORIGIN && <link rel="preconnect" href={SUPABASE_ORIGIN} crossOrigin="anonymous" />}</head>
       <body className="min-h-full">
         <MetaPixel />
         {children}
