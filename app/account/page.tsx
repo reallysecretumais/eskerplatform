@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SiteNav } from "@/components/SiteNav";
+import { ChatEntry } from "@/components/chat/ChatEntry";
 import { requireAccount, getMyBookings, type AccountRole, type MyBooking } from "@/lib/auth";
 import { thumb } from "@/lib/img";
 import { signOut, becomeHost } from "./actions";
@@ -93,6 +94,7 @@ function BookingRow({ b }: { b: MyBooking }) {
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium text-ink">{b.listing?.title ?? "Your stay"}</div>
         <div className="text-xs text-muted">{fmt(b.checkin)} – {fmt(b.checkout)} · ₨{b.amount.toLocaleString("en-PK")}</div>
+        <ChatEntry label="Chat about this booking" bookingId={b.id} className="mt-1 !text-xs" />
       </div>
       <span className="shrink-0 rounded-full bg-gold/10 px-2.5 py-1 text-[11px] font-medium text-gold-deep">{STATUS_LABEL[b.status] ?? b.status}</span>
     </div>

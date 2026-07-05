@@ -9,6 +9,7 @@ import { Gallery } from "@/components/Gallery";
 import { BookingWidget } from "@/components/BookingWidget";
 import { AmenityList } from "@/components/AmenityList";
 import { PropertyConcierge } from "@/components/PropertyConcierge";
+import { ChatEntry } from "@/components/chat/ChatEntry";
 import { PakistanDetails } from "@/components/PakistanDetails";
 import { LocationSection } from "@/components/LocationSection";
 import { Reviews } from "@/components/Reviews";
@@ -90,6 +91,9 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
             catalog itself is built server-side in /api/concierge) */}
         <div className="mt-6">
           <PropertyConcierge property={slimListings([listing])[0]} listings={slimListings(all)} />
+          <div className="mt-2 px-1">
+            <ChatEntry label="Message us about this place" propertyId={listing.id} />
+          </div>
         </div>
 
         {/* Body */}

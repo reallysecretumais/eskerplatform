@@ -4,6 +4,8 @@ import "./globals.css";
 import { brand } from "@/lib/brand";
 import { SITE_URL, SITE_NAME, DEFAULT_TITLE, DEFAULT_DESC, KEYWORDS } from "@/lib/seo";
 import { MetaPixel } from "@/components/MetaPixel";
+import { ChatDock } from "@/components/chat/ChatDock";
+import { Suspense } from "react";
 
 // Clean sans for UI (Inter) + a modern, minimal display face (Sora) for the
 // brand wordmark and headings. (Sora 400 is unused — only 500/600/700 ship.)
@@ -77,6 +79,10 @@ export default function RootLayout({
       <body className="min-h-full">
         <MetaPixel />
         {children}
+        {/* Floating guest chat — streams in after the page so it never blocks paint. */}
+        <Suspense fallback={null}>
+          <ChatDock />
+        </Suspense>
       </body>
     </html>
   );

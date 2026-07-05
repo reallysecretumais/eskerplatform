@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CircleCheck, ShieldCheck } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
+import { ChatEntry } from "@/components/chat/ChatEntry";
 import { getAccount } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Booking received", robots: { index: false, follow: false } };
 
-export default async function ConfirmationPage() {
+export default async function ConfirmationPage({ searchParams }: { searchParams: Promise<{ b?: string }> }) {
   const account = await getAccount();
+  const { b: bookingId } = await searchParams;
 
   return (
     <main className="min-h-full">
@@ -36,6 +38,12 @@ export default async function ConfirmationPage() {
             Browse more stays
           </Link>
         </div>
+
+        {account && (
+          <div className="mt-5">
+            <ChatEntry label="Questions? Chat with us about this booking" bookingId={bookingId} />
+          </div>
+        )}
       </div>
     </main>
   );

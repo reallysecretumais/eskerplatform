@@ -47,6 +47,11 @@ export function SiteNav({
             </Link>
           );
         })}
+        {account && (
+          <Link href="/messages" className={onPhoto ? "text-white/90 hover:text-white" : "text-muted hover:text-ink"}>
+            Messages
+          </Link>
+        )}
         <Link
           href={authHref}
           className={`rounded-lg border px-4 py-1.5 ${onPhoto ? "border-white/45 text-white hover:bg-white/10" : "border-line text-ink hover:bg-surface-2"}`}
@@ -92,6 +97,11 @@ export function SiteNav({
                     {l.label}
                   </Link>
                 ),
+              )}
+              {account && (
+                <Link href="/messages" className="text-ink" onClick={() => setOpen(false)}>
+                  Messages
+                </Link>
               )}
               <Link href={authHref} className="mt-2 rounded-lg border border-line px-4 py-2 text-center text-ink" onClick={() => setOpen(false)}>
                 {authLabel}

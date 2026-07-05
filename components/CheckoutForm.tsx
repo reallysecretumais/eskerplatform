@@ -104,7 +104,7 @@ export function CheckoutForm({
       const fd = new FormData(e.currentTarget);
       const res = await createBooking(fd);
       if (res.ok) {
-        router.push(`/book/${propertyId}/confirmation`);
+        router.push(`/book/${propertyId}/confirmation${res.bookingId ? `?b=${res.bookingId}` : ""}`);
       } else {
         setError(res.message || "Something went wrong.");
         window.scrollTo({ top: 0, behavior: "smooth" });

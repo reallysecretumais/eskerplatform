@@ -24,8 +24,8 @@ Small leftovers: real‑device mobile pass · optional PNG app icons · post‑s
 
 ## Next builds ⬜ — the APPROVED portals + chat program (plan in shared memory `platform-portals-chat-program`)
 Three owner tiers: **partner** (investor, Esker-comms, read-only share/recovery) · **managed** (external owner Esker handles comms for; sees "the business Esker brought you", margin hidden, soft upsell) · **host** (self-lists, owner-comms). Unified inventory: everything public lives in `properties` with `owner_relationship`/`comms_owner` flags.
-1. **Phase 2 — Messaging** ← NEXT: guest↔Esker chat (pre-booking inquiry from the property page + post-confirmation chatbox), realtime, reusing the CRM Unified Inbox (`'website'` channel + account-scoped RLS, CRM migration `phase21.sql`).
-2. **Phase 3 — Host portal**: self-listing (admin-approved) + owner↔guest chat with Esker oversight + WhatsApp notify. ⚠️ Needs the payout/commission decision first.
+1. **Phase 2 — Messaging** ✅ BUILT (2026-07-05): guest inbox at `/messages` (thread list — Esker Support + a thread per host/stay in Phase 3, no numbers shared) + floating support panel everywhere. **HUMAN-only**: messages route to the CRM Unified Inbox's new **`website` channel** for staff (no auto-AI; the concierge stays on property pages). Realtime both ways, RLS-scoped (13/13 security checks pass), staff reply → throttled guest email. Owner-comms (`comms_owner='owner'`) host threads are the marked Phase-3 seam.
+2. **Phase 3 — Host portal**: self-listing (admin-approved) + owner↔guest chat with Esker oversight + WhatsApp notify. ⚠️ Needs the payout/commission decision first. (`conversations.owner_account_id` already reserved for it.)
 3. **Phase 4 — Partner + Managed portals**: read-only, relationship-appropriate views; deal math stays server-side.
 4. **Real payment gateway** — drop Safepay/PayFast behind `lib/payments/provider.ts`; keep screenshot‑verify until then.
 5. **Voice quality jump** — ElevenLabs or OpenAI Realtime when ready (OpenAI TTS is at its ceiling).

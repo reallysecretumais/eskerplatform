@@ -243,6 +243,37 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
   // 9. Meta Conversions API — server-side Purchase (no-op until CAPI is configured).
   await capiEvent("Purchase", { email: email || null, phone, value: advance, currency: "PKR", contentIds: [propertyId] });
 
+  // 10. If the guest has a chat thread, tie this booking to it so the team sees
+  //     exactly what the conversation is about. Best-effort — never blocks.
+  if (accountId) {
+    try {
+      const { data: convo } = await admin
+        .from("conversations")
+        .select("id")
+        .eq("account_id", accountId)
+        .is("owner_account_id", null)
+        .limit(1)
+        .maybeSingle();
+      if (convo) {
+        await admin
+          .from("conversations")
+          .update({ booking_id: booking.id, property_id: propertyId, updated_at: new Date().toISOString() })
+          .eq("id", convo.id);
+        await admin.from("messages").insert({
+          conversation_id: convo.id,
+          direction: "outbound",
+          channel: "website",
+          type: "system",
+          sender_kind: "system",
+          body: `Booked: ${listing.title} · ${checkin} → ${checkout}`,
+          status: "sent",
+        });
+      }
+    } catch {
+      /* best-effort */
+    }
+  }
+
   return { ok: true, bookingId: booking.id };
 }
 
