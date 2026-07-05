@@ -42,6 +42,7 @@ The integrated preview tool can't reach this folder — verify with a terminal d
 - **Logo still needed**: icon pipeline exists (`scripts/gen-icons.mjs` + generated PNGs, untracked); founder must save the real logo (ideally vector) to `public/brand/` — then icons + PWA manifest + `docs/MOBILE_APP.md` ship in one commit.
 
 ## ⚠️ PENDING FOUNDER ACTIONS
+0. **RUN `09_phone_verification.sql` BEFORE the next website deploy** — `getAccount` now selects `accounts.phone_verified_at`; without the column, signed-in account pages degrade. Then set (when the WhatsApp number is live) `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_TOKEN`, `WHATSAPP_OTP_TEMPLATE` (Meta auth template name, **Copy code** button), `WHATSAPP_OTP_LANG` in the website's Vercel. Until then WhatsApp OTP shows "not available yet — verify by email"; in dev the code is logged + shown for testing.
 1. ✅ **`07_reviews.sql` + `08_accounts_links.sql` RUN** (2026-07-04). All migrations 01–08 applied.
 2. **Meta ads tracking** (when advertising): add in Vercel → `NEXT_PUBLIC_META_PIXEL_ID=2200445110719489`, `META_PIXEL_ID=2200445110719489`, `META_CAPI_TOKEN=<from Events Manager → Conversions API>`.
 3. **`REVALIDATE_SECRET`** — set the SAME value in BOTH Vercel (website) and Esker OS so the CRM can bust the listings cache on publish.
@@ -51,7 +52,10 @@ The integrated preview tool can't reach this folder — verify with a terminal d
 - ✅ Already done by founder: SMTP_PASS added (emails send); cancellation windows reviewed; 01–06 migrations run.
 
 ## Migrations (founder runs each in Supabase SQL Editor)
-`01_public_listings` ✓ · `02_public_facts` ✓ · `03_accounts` ✓ · `04_bookings` ✓ · `05_hold_expiry` ✓ · `06_notifications` ✓ · `07_reviews` ✓ · `08_accounts_links` ✓ — **all applied**.
+`01_public_listings` ✓ · `02_public_facts` ✓ · `03_accounts` ✓ · `04_bookings` ✓ · `05_hold_expiry` ✓ · `06_notifications` ✓ · `07_reviews` ✓ · `08_accounts_links` ✓ · **`09_phone_verification` ← RUN before next deploy** (adds `accounts.phone_verified_at` + service-role-only `phone_otps`).
+
+## WhatsApp phone verification (OTP) — BUILT 2026-07-05, ready-to-flip
+Optional "Verify your WhatsApp number" card on `/account` (`components/account/PhoneVerifyCard`). Flow: enter PK number → `sendPhoneOtp` (`app/account/actions.ts`) generates a 6-digit code, hashes it into `phone_otps` (10-min TTL, 60-s resend cooldown, 5 attempts), sends via `lib/otp.ts` `sendWhatsappOtp` (WhatsApp **authentication template, Copy-code button**) → guest pastes code (auto-detected) → `verifyPhoneOtp` stamps `accounts.phone` + `phone_verified_at`. Send is a **seam**: real Cloud API when `WHATSAPP_*` env is set, else dev-logs the code (prod shows "verify by email for now"). **Not yet wired: "some verification required to book"** — the mechanism exists; switch it on once the number's live (or if email is to count as sufficient). Meta template delivery = **Copy code** (zero/one-tap autofill need a native Android app; web only gets copy-code).
 
 ## Cross‑app — Esker OS (CRM) TODOs (specced in shared memory)
 `website-verify-urgent` (4h verify‑urgent dashboard flag) · `guest-notifications` (drain `guest_messages` → WhatsApp via inbox + approved `booking_received` template) · `website-crm-hooks` (reviews curation UI; ping `POST /api/revalidate` with `x-revalidate-secret` on publish/price edits).

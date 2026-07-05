@@ -10,6 +10,7 @@ export type Account = {
   email: string | null;
   name: string | null;
   phone: string | null;
+  phoneVerified: boolean;
   roles: AccountRole[];
 };
 
@@ -23,7 +24,7 @@ export const getAccount = cache(async (): Promise<Account | null> => {
   if (!user) return null;
 
   const [{ data: acct }, { data: roleRows }] = await Promise.all([
-    supabase.from("accounts").select("id,email,name,phone").eq("id", user.id).maybeSingle(),
+    supabase.from("accounts").select("id,email,name,phone,phone_verified_at").eq("id", user.id).maybeSingle(),
     supabase.from("account_roles").select("role").eq("account_id", user.id),
   ]);
 
@@ -33,9 +34,9 @@ export const getAccount = cache(async (): Promise<Account | null> => {
   // site) → treat as a bare account with no website roles. Never exposes
   // internal data (is_staff() still gates that separately).
   if (!acct) {
-    return { id: user.id, email: user.email ?? null, name: null, phone: null, roles };
+    return { id: user.id, email: user.email ?? null, name: null, phone: null, phoneVerified: false, roles };
   }
-  return { id: acct.id, email: acct.email, name: acct.name, phone: acct.phone, roles };
+  return { id: acct.id, email: acct.email, name: acct.name, phone: acct.phone, phoneVerified: Boolean(acct.phone_verified_at), roles };
 });
 
 export async function requireAccount(): Promise<Account> {

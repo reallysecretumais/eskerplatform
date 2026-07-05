@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteNav } from "@/components/SiteNav";
 import { ChatEntry } from "@/components/chat/ChatEntry";
+import { PhoneVerifyCard } from "@/components/account/PhoneVerifyCard";
 import { requireAccount, getMyBookings, type AccountRole, type MyBooking } from "@/lib/auth";
 import { thumb } from "@/lib/img";
 import { signOut, becomeHost } from "./actions";
@@ -46,6 +47,11 @@ export default async function AccountPage() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Verify WhatsApp number */}
+        <div className="mt-4">
+          <PhoneVerifyCard verified={account.phoneVerified} phone={account.phone} />
         </div>
 
         {/* My bookings */}
