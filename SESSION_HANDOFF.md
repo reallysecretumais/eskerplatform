@@ -68,5 +68,11 @@ Supabase URL/anon/**service‑role** (service key used ONLY by `app/book/actions
 - All guest comms are **best‑effort** (try/catch) — they never break a booking.
 - Logs (`dev.log`, `*.log`) are gitignored — don't commit them.
 
+## ▶️ NEXT (2026-07-05): Phase 2.5 — Account/profile page + REAL PAYMENTS
+Founder wants payments ASAP. Full spec in `ROADMAP.md` (Phase 2.5) + memory `payment-integration-plan`. TL;DR: build a proper `/account` hub (profile, upgraded bookings with cancel/receipts/balance, payments, security, prefs, role shortcuts) **and** integrate **Safepay** (cards + Easypaisa + JazzCash) as a "Pay now" option behind the existing `lib/payments/provider.ts` seam, keeping the free bank-transfer + screenshot flow. **Founder action: start Safepay onboarding now** (NTN + business registration + bank account; ~days to approve). Then Phase 3 (host portal — needs payout decision) → Phase 4 (partner/managed portals).
+
+## Live now (2026-07-05)
+Phase 0 + accounts backbone + **Phase 2 guest messaging** + **WhatsApp OTP verification** are all DEPLOYED on eskerrentals.com (migrations 01–09 applied). Phase 2 fully tested (12/12 integration incl. live realtime; 13/13 RLS). Logo still pending (`public/brand/`) → app icons/PWA blocked.
+
 ## Genuinely left in Phase 1
-Real‑device mobile pass (code is responsive; needs a human eye) · PNG app icons + PWA manifest + `docs/MOBILE_APP.md` (**blocked on the real logo file** → `public/brand/`) · post‑stay review capture (needs `07_reviews.sql`). Then the approved program: **Phase 2 messaging → Phase 3 host portal → Phase 4 partner/managed portals** — plus later: real payment gateway (seam ready in `lib/payments/provider.ts`, Safepay/PayFast), ElevenLabs/Realtime voice.
+Real‑device mobile pass (code is responsive; needs a human eye) · PNG app icons + PWA manifest + `docs/MOBILE_APP.md` (**blocked on the real logo file** → `public/brand/`) · post‑stay review capture (needs `07_reviews.sql` ✓ run — build the guest-submit UI). Then: **Phase 2.5 (account + payments) → Phase 3 host portal → Phase 4 partner/managed portals** · later: ElevenLabs/Realtime voice.
