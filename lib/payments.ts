@@ -38,3 +38,62 @@ export function advanceLabel(total: number, eskerExclusive: boolean): string {
   if (adv > Math.round(total * advancePct(eskerExclusive))) return "minimum";
   return `${Math.round(advancePct(eskerExclusive) * 100)}%`;
 }
+
+// ── Cancellation policy (single source of truth) ─────────────────────────────
+// Mirrors the published policy in app/legal/cancellation/page.tsx:
+//   • 7 or more days before check-in  → full advance refunded
+//   • 3 to 7 days before check-in     → 50% of the advance refunded
+//   • less than 72 hours / no-show    → non-refundable
+// Used by BOTH the account UI (preview) and the cancel action (authoritative), so
+// the number a guest is shown is exactly the number they get.
+
+export type CancellationTier = "7d" | "3-7d" | "72h";
+
+export type CancellationQuote = {
+  tier: CancellationTier;
+  daysToCheckin: number; // whole calendar days from today to check-in
+  refundPct: number; // 1 | 0.5 | 0
+  refund: number; // PKR refunded to the guest (rounded down)
+  retained: number; // PKR kept as the cancellation fee
+  label: string; // guest-facing summary line
+};
+
+// Whole calendar days between today and the check-in date (date-only, so a stay
+// exactly 7 dates away counts as 7 — matching "7 or more days before check-in").
+function daysUntil(checkin: string, now: Date): number {
+  const toMidnight = (d: Date) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+  const ci = new Date(`${checkin}T00:00:00`);
+  return Math.round((toMidnight(ci) - toMidnight(now)) / 86_400_000);
+}
+
+export function cancellationQuote(checkin: string, advancePaid: number, now: Date = new Date()): CancellationQuote {
+  const collected = Math.max(0, Math.round(Number(advancePaid) || 0));
+  const days = daysUntil(checkin, now);
+
+  let tier: CancellationTier;
+  let refundPct: number;
+  if (days >= 7) {
+    tier = "7d";
+    refundPct = 1;
+  } else if (days >= 3) {
+    tier = "3-7d";
+    refundPct = 0.5;
+  } else {
+    tier = "72h";
+    refundPct = 0;
+  }
+
+  const refund = Math.floor(collected * refundPct);
+  const retained = collected - refund;
+  const pkr = (n: number) => `₨${n.toLocaleString("en-PK")}`;
+  const label =
+    refundPct === 1
+      ? collected > 0
+        ? `Full advance refunded (${pkr(refund)})`
+        : "Cancel free of charge"
+      : refundPct === 0.5
+        ? `50% of your advance refunded (${pkr(refund)})`
+        : "Non-refundable (within 72 hours of check-in)";
+
+  return { tier, daysToCheckin: days, refundPct, refund, retained, label };
+}

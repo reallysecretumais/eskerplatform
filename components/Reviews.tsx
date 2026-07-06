@@ -1,16 +1,7 @@
-import { Star, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { brand } from "@/lib/brand";
+import { StarsDisplay as Stars } from "@/components/StarsDisplay";
 import type { Review, RatingSummary } from "@/lib/data/reviews";
-
-function Stars({ value, size = 14 }: { value: number; size?: number }) {
-  return (
-    <span className="inline-flex items-center gap-0.5" aria-label={`${value} out of 5`}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Star key={i} size={size} className={i <= Math.round(value) ? "fill-gold text-gold" : "text-line-hi"} strokeWidth={1.5} />
-      ))}
-    </span>
-  );
-}
 
 const fmtStay = (d: string | null) => (d ? `Stayed ${new Date(`${d}T00:00:00`).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}` : "");
 

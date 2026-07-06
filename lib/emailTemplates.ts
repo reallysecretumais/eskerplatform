@@ -98,3 +98,57 @@ export function bookingReceivedEmail(d: BookingReceivedData): { subject: string;
 
   return { subject, html, text };
 }
+
+// ── Post-stay review request ─────────────────────────────────────────────────
+
+export type ReviewRequestData = {
+  guestName: string;
+  propertyTitle: string;
+  locationLabel: string;
+  reviewLink: string; // deep link to the booking's "Rate your stay" card
+};
+
+export function reviewRequestEmail(d: ReviewRequestData): { subject: string; html: string; text: string } {
+  const subject = `How was your stay at ${d.propertyTitle}?`;
+  const first = d.guestName.split(" ")[0] || "there";
+  // A row of gold stars as a warm, on-brand visual cue (inline, email-safe).
+  const stars = Array.from({ length: 5 })
+    .map(() => `<span style="color:${GOLD};font-size:26px;line-height:1;">★</span>`)
+    .join("&nbsp;");
+
+  const html = `<!doctype html><html><body style="margin:0;background:#faf8f4;font-family:Inter,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#faf8f4;padding:28px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid ${LINE};border-radius:16px;overflow:hidden;">
+        <tr><td style="height:4px;background:linear-gradient(90deg,#c9a84c,#9c7d2e);"></td></tr>
+        <tr><td style="padding:30px 30px 0;text-align:center;">
+          <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:700;color:${INK};letter-spacing:-0.01em;">${brand.name}</div>
+          <h1 style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:${INK};margin:18px 0 6px;font-weight:600;">Thanks for staying with us, ${first}.</h1>
+          <p style="color:${MUTED};font-size:15px;line-height:1.6;margin:0 0 16px;">We hope <strong style="color:${INK};">${d.propertyTitle}</strong> in ${d.locationLabel} felt like home. Would you take a moment to rate your stay? It helps other guests — and takes about 20 seconds.</p>
+          <div style="margin:6px 0 18px;">${stars}</div>
+        </td></tr>
+        <tr><td style="padding:0 30px 8px;text-align:center;">
+          <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto;"><tr>
+            <td style="border-radius:10px;background:${INK};"><a href="${d.reviewLink}" style="display:inline-block;padding:12px 26px;color:#fff;font-size:15px;font-weight:600;text-decoration:none;">Rate your stay</a></td>
+          </tr></table>
+        </td></tr>
+        <tr><td style="padding:16px 30px 26px;border-top:1px solid ${LINE};margin-top:16px;">
+          <p style="color:#9a958a;font-size:12px;line-height:1.6;margin:0;text-align:center;">${brand.name} · ${brand.tagline}<br/>Not up to scratch? Reply or <a href="https://wa.me/${support.whatsapp}" style="color:${GOLD};text-decoration:none;">WhatsApp us</a> — we'll make it right.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+  </body></html>`;
+
+  const text = [
+    `${brand.name}`,
+    ``,
+    `Thanks for staying with us, ${first}.`,
+    `We hope ${d.propertyTitle} (${d.locationLabel}) felt like home. Would you rate your stay? It only takes about 20 seconds:`,
+    d.reviewLink,
+    ``,
+    `Not up to scratch? Reply or WhatsApp https://wa.me/${support.whatsapp} — we'll make it right.`,
+  ].join("\n");
+
+  return { subject, html, text };
+}

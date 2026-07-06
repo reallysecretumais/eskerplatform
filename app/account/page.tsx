@@ -1,117 +1,128 @@
 import Link from "next/link";
-import { SiteNav } from "@/components/SiteNav";
-import { ChatEntry } from "@/components/chat/ChatEntry";
-import { PhoneVerifyCard } from "@/components/account/PhoneVerifyCard";
-import { requireAccount, getMyBookings, type AccountRole, type MyBooking } from "@/lib/auth";
+import { ShieldCheck, ArrowRight } from "lucide-react";
+import { requireAccount, getMyBookings, type MyBooking } from "@/lib/auth";
+import { NextTripCard } from "@/components/account/NextTripCard";
+import { StatusBadge } from "@/components/account/StatusBadge";
+import { Avatar } from "@/components/account/Avatar";
 import { thumb } from "@/lib/img";
-import { signOut, becomeHost } from "./actions";
 
-const ROLE_LABEL: Record<AccountRole, string> = { guest: "Guest", owner: "Host", partner: "Partner" };
-
-const STATUS_LABEL: Record<string, string> = {
-  awaiting_payment: "Awaiting verification",
-  payment_collected: "Payment confirmed",
-  handed_over: "Confirmed",
-  awaiting_checkin: "Confirmed",
-  currently_staying: "Staying now",
-  checked_out: "Completed",
-  cancelled: "Cancelled",
-  needs_attention: "Needs attention",
-  in_progress: "Pending",
-};
+export const metadata = { title: "Your account — Esker" };
 
 const fmt = (d: string | null) => (d ? new Date(`${d}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "");
+const pkr = (n: number) => `₨${n.toLocaleString("en-PK")}`;
+const isPast = (b: MyBooking) => b.status === "checked_out" || b.status === "cancelled";
 
-export default async function AccountPage() {
+export default async function AccountOverview() {
   const account = await requireAccount();
   const bookings = await getMyBookings();
-  const isOwner = account.roles.includes("owner");
-  const isPartner = account.roles.includes("partner");
+
+  const upcoming = bookings.filter((b) => !isPast(b)).sort((a, b) => (a.checkin ?? "").localeCompare(b.checkin ?? ""));
+  const past = bookings.filter(isPast);
+  const nights = bookings.filter((b) => b.status === "checked_out").reduce((n, b) => n + (b.nights ?? 0), 0);
+  const next = upcoming[0];
+  const firstName = account.name?.split(" ")[0] || "there";
 
   return (
-    <main className="min-h-full">
-      <SiteNav theme="light" account={account} />
-
-      <div className="mx-auto max-w-3xl px-6 py-10">
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Your account</h1>
-
-        <div className="mt-6 rounded-2xl border border-line bg-surface p-6">
-          <div className="text-xs uppercase tracking-wider text-dim">Signed in as</div>
-          <div className="mt-1 text-lg font-medium text-ink">{account.name || account.email || "Guest"}</div>
-          {account.email && <div className="text-sm text-muted">{account.email}</div>}
-          {account.phone && <div className="text-sm text-muted">{account.phone}</div>}
-          {account.roles.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {account.roles.map((r) => (
-                <span key={r} className="rounded-full bg-gold/10 px-3 py-1 text-xs font-medium text-gold-deep">{ROLE_LABEL[r]}</span>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Verify WhatsApp number */}
-        <div className="mt-4">
-          <PhoneVerifyCard verified={account.phoneVerified} phone={account.phone} />
-        </div>
-
-        {/* My bookings */}
-        <h2 className="mb-3 mt-8 font-display text-lg font-semibold tracking-tight text-ink">Your bookings</h2>
-        {bookings.length === 0 ? (
-          <div className="rounded-2xl border border-line bg-surface p-6 text-center">
-            <p className="text-sm text-muted">No bookings yet.</p>
-            <Link href="/stays" className="mt-2 inline-block text-sm text-gold-deep hover:underline">Browse stays</Link>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {bookings.map((b) => (
-              <BookingRow key={b.id} b={b} />
-            ))}
-          </div>
-        )}
-
-        {/* Role panels */}
-        {(isOwner || isPartner) && (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            {isOwner && <Panel title="Your listings" body="Your host dashboard is coming soon — list and manage your places here." />}
-            {isPartner && <Panel title="Your investment" body="Your read-only performance view is coming soon." />}
-          </div>
-        )}
-
-        <div className="mt-8 flex flex-wrap items-center gap-3">
-          {!isOwner && (
-            <form action={becomeHost}>
-              <button type="submit" className="rounded-xl border border-line px-4 py-2 text-sm text-ink transition hover:bg-surface-2">Become a host</button>
-            </form>
-          )}
-          <form action={signOut}>
-            <button type="submit" className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-ink">Sign out</button>
-          </form>
+    <div>
+      <div className="flex items-center gap-4">
+        <Avatar name={account.name} src={account.avatarUrl} size={52} className="shrink-0" />
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Hi {firstName}</h1>
+          <p className="mt-0.5 text-sm text-muted">Here&apos;s everything about your Esker stays, in one place.</p>
         </div>
       </div>
-    </main>
-  );
-}
 
-function BookingRow({ b }: { b: MyBooking }) {
-  const photo = b.listing?.photos?.[0];
-  return (
-    <div className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-3">
-      <div className="h-16 w-20 shrink-0 overflow-hidden rounded-lg" style={{ backgroundColor: "#e7e1d6", backgroundImage: photo ? `url(${thumb(photo, 240, 65)})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }} />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium text-ink">{b.listing?.title ?? "Your stay"}</div>
-        <div className="text-xs text-muted">{fmt(b.checkin)} – {fmt(b.checkout)} · ₨{b.amount.toLocaleString("en-PK")}</div>
-        <ChatEntry label="Chat about this booking" bookingId={b.id} className="mt-1 !text-xs" />
+      {/* Verify nudge */}
+      {!account.phoneVerified && (
+        <Link href="/account/profile" className="mt-5 flex items-center gap-3 rounded-xl border border-gold/30 bg-gold/5 px-4 py-3 transition hover:bg-gold/10">
+          <ShieldCheck size={18} className="text-gold-deep" />
+          <span className="text-sm text-ink">Verify your WhatsApp number for faster check-in and updates.</span>
+          <ArrowRight size={15} className="ml-auto text-gold-deep" />
+        </Link>
+      )}
+
+      {/* Stats */}
+      <div className="mt-6 grid grid-cols-3 gap-3">
+        <Stat label="Upcoming" value={String(upcoming.length)} />
+        <Stat label="Completed" value={String(past.filter((b) => b.status === "checked_out").length)} />
+        <Stat label="Nights stayed" value={String(nights)} />
       </div>
-      <span className="shrink-0 rounded-full bg-gold/10 px-2.5 py-1 text-[11px] font-medium text-gold-deep">{STATUS_LABEL[b.status] ?? b.status}</span>
+
+      {bookings.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <>
+          {next && (
+            <section className="mt-8">
+              <h2 className="mb-3 font-display text-lg font-semibold tracking-tight text-ink">Your next stay</h2>
+              <NextTripCard booking={next} />
+            </section>
+          )}
+
+          {upcoming.length > 1 && (
+            <section className="mt-8">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="font-display text-lg font-semibold tracking-tight text-ink">More upcoming</h2>
+                <Link href="/account/trips" className="text-sm text-gold-deep hover:underline">All trips</Link>
+              </div>
+              <div className="space-y-3">
+                {upcoming.slice(1, 4).map((b) => (
+                  <CompactRow key={b.id} b={b} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {past.length > 0 && (
+            <section className="mt-8">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="font-display text-lg font-semibold tracking-tight text-ink">Past stays</h2>
+                {past.length > 3 && <Link href="/account/trips" className="text-sm text-gold-deep hover:underline">See all</Link>}
+              </div>
+              <div className="space-y-3">
+                {past.slice(0, 3).map((b) => (
+                  <CompactRow key={b.id} b={b} />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
     </div>
   );
 }
 
-function Panel({ title, body }: { title: string; body: string }) {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5">
-      <div className="font-display text-base font-semibold tracking-tight text-ink">{title}</div>
-      <p className="mt-1 text-sm text-muted">{body}</p>
+    <div className="rounded-2xl border border-line bg-surface p-4">
+      <div className="font-display text-2xl font-semibold text-ink tabular-nums">{value}</div>
+      <div className="mt-0.5 text-xs uppercase tracking-wider text-dim">{label}</div>
+    </div>
+  );
+}
+
+function CompactRow({ b }: { b: MyBooking }) {
+  const photo = b.listing?.photos?.[0];
+  return (
+    <Link href={`/account/bookings/${b.id}`} className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-3 transition hover:border-line-hi">
+      <div className="h-14 shrink-0 overflow-hidden rounded-lg" style={{ width: 72, backgroundColor: "#e7e1d6", backgroundImage: photo ? `url(${thumb(photo, 240, 65)})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }} />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-medium text-ink">{b.listing?.title ?? "Your stay"}</div>
+        <div className="text-xs text-muted">{fmt(b.checkin)} – {fmt(b.checkout)} · {pkr(b.amount)}</div>
+        <div className="mt-1"><StatusBadge status={b.status} /></div>
+      </div>
+      {b.balance > 0 && !isPast(b) && <span className="shrink-0 text-xs font-medium text-gold-deep tabular-nums">{pkr(b.balance)} due</span>}
+    </Link>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="mt-8 rounded-2xl border border-line bg-surface p-8 text-center">
+      <p className="text-sm text-muted">You have no bookings yet.</p>
+      <Link href="/stays" className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-sm font-medium text-bg transition hover:opacity-90">
+        Browse stays <ArrowRight size={15} />
+      </Link>
     </div>
   );
 }

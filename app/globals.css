@@ -21,6 +21,8 @@
   --color-gold-deep: #9c7d2e; /* gold text on light surfaces */
   --color-green: #2f9e6e; /* available / positive */
   --color-red: #d9534f; /* alerts */
+  --color-blue: #4c7bd0; /* info / confirmed status */
+  --color-orange: #c8842f; /* warning / awaiting status */
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, sans-serif;

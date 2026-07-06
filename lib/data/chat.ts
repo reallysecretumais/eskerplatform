@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { currentUser } from "@/lib/auth";
 
 // The guest's chat, read with the SESSION client under the account-scoped RLS
 // from phase24 (conversations.account_id = auth.uid()) — a guest sees ONLY their
@@ -37,10 +38,7 @@ export type ChatThread = {
 };
 
 async function meAndClient() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [supabase, user] = await Promise.all([createClient(), currentUser()]);
   return { supabase, userId: user?.id ?? null };
 }
 
