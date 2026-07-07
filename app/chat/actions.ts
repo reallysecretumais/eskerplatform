@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getMyThread, getThreadMessages, type ChatThread, type ChatMessage } from "@/lib/data/chat";
+import { notifyChatEmail } from "@/lib/notifyChat";
 
 // Guest chat actions. Reads are RLS-scoped (lib/data/chat.ts); ALL writes here go
 // through the service role AFTER verifying the session account owns the thread —
@@ -87,14 +88,39 @@ export async function loadThread(): Promise<ChatThread | null> {
   return getMyThread();
 }
 
+/** Who should answer a chat opened with this context: the Esker team, or the
+ *  listing's host (comms_owner='owner' + a linked host account that isn't the
+ *  guest themself). Resolved from the property, or the booking's property. */
+async function routeFor(
+  admin: Admin,
+  accountId: string,
+  context?: ChatContext,
+): Promise<{ hostAccountId: string | null; propertyId: string | null }> {
+  let propertyId = context?.propertyId ?? null;
+  try {
+    if (!propertyId && context?.bookingId) {
+      const { data: b } = await admin.from("bookings").select("property_id, account_id").eq("id", context.bookingId).maybeSingle();
+      if (b && b.account_id === accountId) propertyId = (b.property_id as string) ?? null;
+    }
+    if (!propertyId) return { hostAccountId: null, propertyId: null };
+    const { data: p } = await admin
+      .from("properties")
+      .select("comms_owner, owner_account_id")
+      .eq("id", propertyId)
+      .maybeSingle();
+    const host = p?.comms_owner === "owner" ? ((p.owner_account_id as string) ?? null) : null;
+    return { hostAccountId: host && host !== accountId ? host : null, propertyId };
+  } catch {
+    return { hostAccountId: null, propertyId };
+  }
+}
+
 /**
- * Find-or-create the guest's Esker thread (one per account; owner_account_id
- * NULL). Attaches property/booking context when the chat is opened from a
- * property page / booking so the team instantly knows what it's about.
- *
- * Phase-3 seam: for a `comms_owner = 'owner'` (self-listed host) property this
- * will route to the guest↔owner thread instead — no host listings exist yet, so
- * every conversation today is the Esker thread.
+ * Find-or-create the right thread for this guest + context. Esker-handled
+ * listings (and no-context chats) → the account's single Esker thread
+ * (owner_account_id NULL). Self-listed host properties (comms_owner='owner') →
+ * the guest↔host thread for that listing (owner_account_id = the host, one per
+ * guest+listing). Attaches property/booking context either way.
  */
 export async function ensureThread(context?: ChatContext): Promise<ChatResult> {
   const accountId = await sessionUserId();
@@ -104,6 +130,9 @@ export async function ensureThread(context?: ChatContext): Promise<ChatResult> {
   // Must be a website account (staff who sign into the site don't get a thread).
   const { data: account } = await admin.from("accounts").select("id, name, email, phone").eq("id", accountId).maybeSingle();
   if (!account) return { ok: false, message: "Chat is available for guest accounts." };
+
+  // Owner-comms routing (host listings) — decided up front so we open the right thread.
+  const route = await routeFor(admin, accountId, context);
 
   // 1. The account's website contact (messaging identity in the shared inbox).
   let { data: contact } = await admin
@@ -134,19 +163,29 @@ export async function ensureThread(context?: ChatContext): Promise<ChatResult> {
     contact = created;
   }
 
-  // 2. The Esker conversation (one per account; owner_account_id NULL).
-  let { data: convo } = await admin
+  // 2. The conversation. Esker thread = one per account (owner_account_id NULL);
+  //    host thread = one per guest+listing (owner_account_id = the host).
+  const convoQuery = admin
     .from("conversations")
     .select("id, property_id, booking_id")
     .eq("account_id", accountId)
-    .is("owner_account_id", null)
     .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
+  let { data: convo } = await (route.hostAccountId
+    ? convoQuery.eq("owner_account_id", route.hostAccountId).eq("property_id", route.propertyId!)
+    : convoQuery.is("owner_account_id", null)
+  ).maybeSingle();
   if (!convo) {
     const { data: created, error } = await admin
       .from("conversations")
-      .insert({ contact_id: contact.id, channel: "website", status: "new", account_id: accountId })
+      .insert({
+        contact_id: contact.id,
+        channel: "website",
+        status: "new",
+        account_id: accountId,
+        owner_account_id: route.hostAccountId,
+        property_id: route.hostAccountId ? route.propertyId : null,
+      })
       .select("id, property_id, booking_id")
       .single();
     if (error || !created) return { ok: false, message: "Could not start the chat. Please try again." };
@@ -220,9 +259,35 @@ export async function sendGuestMessage(conversationId: string, body: string): Pr
     .update({ last_inbound_at: now, last_message_at: now, last_message_preview: text.slice(0, 140), unreplied: true, updated_at: now })
     .eq("id", convo.id);
 
-  // Ring the team once per burst (a chatty guest shouldn't spam the bell). Staff
-  // reply from the CRM inbox; the reply flows back here over realtime.
-  if (!wasUnreplied) await staffBell(admin, "New website message", text.slice(0, 120));
+  // Notify the right responder, once per burst (a chatty guest shouldn't spam).
+  if (!wasUnreplied) {
+    if (convo.owner_account_id) {
+      // Host thread → email the host (their inbox lives at /host/messages).
+      try {
+        const [{ data: host }, { data: listing }] = await Promise.all([
+          admin.from("accounts").select("email, name, notify_email").eq("id", convo.owner_account_id).maybeSingle(),
+          convo.property_id ? admin.from("properties").select("public_title, name").eq("id", convo.property_id).maybeSingle() : Promise.resolve({ data: null }),
+        ]);
+        if (host?.email && host.notify_email !== false) {
+          const title = (listing?.public_title as string) || (listing?.name as string) || "your listing";
+          await notifyChatEmail({
+            to: host.email as string,
+            name: (host.name as string) ?? null,
+            event: "chat_msg_host",
+            conversationId: convo.id,
+            headline: `A guest messaged you about ${title}`,
+            cta: "Reply in your host inbox",
+            link: "/host/messages",
+          });
+        }
+      } catch {
+        /* best-effort */
+      }
+    } else {
+      // Esker thread → staff bell; staff reply from the CRM inbox.
+      await staffBell(admin, "New website message", text.slice(0, 120));
+    }
+  }
 
   revalidatePath("/messages");
   return { ok: true, conversationId: convo.id };

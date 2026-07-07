@@ -17,6 +17,12 @@ const GUEST: Item[] = [
   { href: "/messages", label: "Messages", icon: MessageSquare, match: prefix("/messages") },
 ];
 
+const HOST: Item[] = [
+  { href: "/host", label: "Overview", icon: Home, match: exact("/host") },
+  { href: "/host/listings", label: "Listings", icon: Building2, match: prefix("/host/listings") },
+  { href: "/host/messages", label: "Messages", icon: MessageSquare, match: prefix("/host/messages") },
+];
+
 const SHARED: Item[] = [
   { href: "/account/profile", label: "Profile", icon: User, match: prefix("/account/profile") },
   { href: "/account/security", label: "Security", icon: Shield, match: prefix("/account/security") },
@@ -48,27 +54,25 @@ export function AccountNav({ mode }: { mode: "guest" | "host" }) {
       <div className="lg:hidden">
         <ModeSwitch mode={mode} />
         <div className="mt-3 -mx-6 flex gap-2 overflow-x-auto px-6 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {mode === "guest" ? [...GUEST, ...SHARED].map((it) => link(it, true)) : null}
+          {[...(mode === "guest" ? GUEST : HOST), ...SHARED].map((it) => link(it, true))}
         </div>
       </div>
 
       {/* Desktop: sticky rail */}
       <nav className="hidden lg:block">
         <ModeSwitch mode={mode} />
-        {mode === "guest" && (
-          <div className="mt-5 space-y-1">
-            {GUEST.map((it) => link(it))}
-            <div className="my-3 border-t border-line" />
-            {SHARED.map((it) => link(it))}
-            <div className="my-3 border-t border-line" />
-            <form action={signOut}>
-              <button type="submit" className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-muted transition hover:bg-surface-2 hover:text-ink">
-                <LogOut size={17} className="text-dim" />
-                Sign out
-              </button>
-            </form>
-          </div>
-        )}
+        <div className="mt-5 space-y-1">
+          {(mode === "guest" ? GUEST : HOST).map((it) => link(it))}
+          <div className="my-3 border-t border-line" />
+          {SHARED.map((it) => link(it))}
+          <div className="my-3 border-t border-line" />
+          <form action={signOut}>
+            <button type="submit" className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-muted transition hover:bg-surface-2 hover:text-ink">
+              <LogOut size={17} className="text-dim" />
+              Sign out
+            </button>
+          </form>
+        </div>
       </nav>
     </>
   );

@@ -39,6 +39,16 @@ export function advanceLabel(total: number, eskerExclusive: boolean): string {
   return `${Math.round(advancePct(eskerExclusive) * 100)}%`;
 }
 
+// ── Host commission (single knob) ────────────────────────────────────────────
+// Self-listed host stays are FREE for now — Esker takes 0%. When the business
+// flips to a commission, change this ONE constant; the host earnings view (and
+// later the payout math) read it from here. Fraction of the stay total, 0–1.
+export const HOST_COMMISSION_PCT = 0;
+
+export function hostCommission(total: number): number {
+  return Math.round(Math.max(0, total) * HOST_COMMISSION_PCT);
+}
+
 // ── Cancellation policy (single source of truth) ─────────────────────────────
 // Mirrors the published policy in app/legal/cancellation/page.tsx:
 //   • 7 or more days before check-in  → full advance refunded

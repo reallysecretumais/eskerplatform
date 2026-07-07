@@ -160,6 +160,8 @@ export function ChatThread({
                       <>
                         <Sparkles size={10} /> {brand.name} AI
                       </>
+                    ) : m.sender_kind === "owner" ? (
+                      <>Your host</>
                     ) : (
                       <>{brand.name} team</>
                     )}
