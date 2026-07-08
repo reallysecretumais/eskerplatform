@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { ArrowRight, Building2, Plus, ShieldCheck, CalendarDays } from "lucide-react";
 import { requireAccount } from "@/lib/auth";
-import { getHostStats, getHostIdVerified, getMyListings, type HostStay } from "@/lib/data/host";
+import { getHostStats, getHostIdVerified, getMyListings, getPayoutDetails, type HostStay } from "@/lib/data/host";
 import { HostIdVerify } from "@/components/host/HostIdVerify";
+import { PayoutCard } from "@/components/host/PayoutCard";
 import { ListingStatusBadge } from "@/components/host/ListingStatus";
 import { StatusBadge } from "@/components/account/StatusBadge";
 import { brand } from "@/lib/brand";
@@ -17,7 +18,7 @@ export default async function HostHome() {
   const account = await requireAccount();
   if (!account.roles.includes("owner")) return <BecomeHost />;
 
-  const [stats, idVerified, listings] = await Promise.all([getHostStats(), getHostIdVerified(), getMyListings()]);
+  const [stats, idVerified, listings, payout] = await Promise.all([getHostStats(), getHostIdVerified(), getMyListings(), getPayoutDetails()]);
   const ready = account.phoneVerified && idVerified;
   const firstName = account.name?.split(" ")[0] || "there";
 
@@ -103,6 +104,13 @@ export default async function HostHome() {
           <Link href="/host/listings/new" className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-ink px-5 py-2.5 text-sm font-medium text-bg transition hover:opacity-90">
             Create your listing <ArrowRight size={15} />
           </Link>
+        </div>
+      )}
+
+      {/* Getting paid — optional, collapsed */}
+      {ready && (
+        <div className="mt-8">
+          <PayoutCard initial={payout} />
         </div>
       )}
     </div>

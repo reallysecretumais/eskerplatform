@@ -121,6 +121,18 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
   );
   if (realClash) return { ok: false, message: "Sorry — those dates were just taken. Please pick others." };
 
+  // Host-blocked dates (self-listed places): treated exactly like bookings.
+  const { data: blocked } = await admin
+    .from("property_blocks")
+    .select("id")
+    .eq("property_id", propertyId)
+    .lt("start_date", checkout)
+    .gt("end_date", checkin)
+    .limit(1);
+  if (blocked && blocked.length > 0) {
+    return { ok: false, message: "Sorry — the host has those dates unavailable. Please pick others." };
+  }
+
   // 4. Guest details + proof.
   if (!name || !phone) return { ok: false, message: "Please enter your name and phone number." };
   if (!proof || proof.size === 0) return { ok: false, message: "Please upload your payment screenshot." };

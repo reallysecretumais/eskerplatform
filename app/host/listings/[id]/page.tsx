@@ -2,11 +2,14 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChevronLeft, Eye } from "lucide-react";
 import { requireAccount } from "@/lib/auth";
-import { getMyListing } from "@/lib/data/host";
+import { getMyListing, getCoveredAreas, getListingCalendar, getListingGuestInfo } from "@/lib/data/host";
 import { ListingForm } from "@/components/host/ListingForm";
 import { PhotoManager } from "@/components/host/PhotoManager";
 import { ListingStatusBadge } from "@/components/host/ListingStatus";
 import { PauseResume } from "@/components/host/PauseResume";
+import { SubmitBar } from "@/components/host/SubmitBar";
+import { AvailabilityCalendar } from "@/components/host/AvailabilityCalendar";
+import { GuestInfoForm } from "@/components/host/GuestInfoForm";
 
 export const metadata = { title: "Edit listing — Esker" };
 
@@ -21,8 +24,24 @@ export default async function EditListingPage({
   if (!account.roles.includes("owner")) redirect("/host");
   const { id } = await params;
   const { created } = await searchParams;
-  const listing = await getMyListing(id);
+  const [listing, areas, calendar, guestInfo] = await Promise.all([
+    getMyListing(id),
+    getCoveredAreas(),
+    getListingCalendar(id),
+    getListingGuestInfo(id),
+  ]);
   if (!listing) notFound();
+
+  const isDraft = listing.status === "draft" || listing.status === "rejected";
+  // Mirror of the server-side submit checklist (submitListing re-validates).
+  const checklist = {
+    title: listing.title.trim().length >= 4,
+    description: (listing.description ?? "").trim().length >= 40,
+    price: listing.price >= 1000,
+    photos: listing.photos.length >= 1,
+    ready: false,
+  };
+  checklist.ready = checklist.title && checklist.description && checklist.price && checklist.photos;
 
   return (
     <div className="max-w-2xl">
@@ -49,12 +68,12 @@ export default async function EditListingPage({
 
       {created && (
         <div className="mt-4 rounded-2xl border border-green/30 bg-green/5 p-4 text-sm text-green">
-          Listing submitted — now add your photos below. We&apos;ll review it and put it live, usually within a day.
+          Draft saved — add your photos below, then submit for review when you&apos;re happy with it.
         </div>
       )}
       {listing.status === "rejected" && listing.reviewNote && (
         <div className="mt-4 rounded-2xl border border-red/30 bg-red/5 p-4 text-sm text-red">
-          <span className="font-medium">Not approved:</span> {listing.reviewNote} — update your listing and message us to re-review.
+          <span className="font-medium">Not approved:</span> {listing.reviewNote} — update your listing below and resubmit.
         </div>
       )}
       {listing.status === "paused" && listing.reviewNote && (
@@ -63,15 +82,36 @@ export default async function EditListingPage({
         </div>
       )}
 
-      <div className="mt-6">
+      {/* Draft / resubmit: the submit bar leads */}
+      {isDraft && (
+        <div className="mt-5">
+          <SubmitBar listingId={listing.id} checklist={checklist} />
+        </div>
+      )}
+
+      <div className="mt-5">
         <PhotoManager listingId={listing.id} photos={listing.photos} />
       </div>
 
+      {calendar && (
+        <div className="mt-5">
+          <AvailabilityCalendar listingId={listing.id} bookings={calendar.bookings} blocks={calendar.blocks} />
+        </div>
+      )}
+
+      {guestInfo && (
+        <div className="mt-5">
+          <GuestInfoForm listingId={listing.id} info={guestInfo} />
+        </div>
+      )}
+
       <div className="mt-5">
-        <ListingForm existing={listing} />
+        <ListingForm existing={listing} areas={areas} />
       </div>
 
-      <p className="mt-4 text-xs text-dim">Edits go live immediately. Availability follows your bookings automatically.</p>
+      <p className="mt-4 text-xs text-dim">
+        {isDraft ? "Your draft is private until you submit it and Esker approves it." : "Edits go live immediately."}
+      </p>
     </div>
   );
 }

@@ -42,6 +42,11 @@ export default async function HostListingsPage() {
                   <div className="mt-1.5"><ListingStatusBadge status={l.status} /></div>
                 </div>
               </Link>
+              {l.status === "draft" && (
+                <Link href={`/host/listings/${l.id}`} className="block border-t border-line bg-blue/5 px-4 py-2.5 text-xs font-medium text-blue transition hover:bg-blue/10">
+                  Finish setting up — add photos & submit →
+                </Link>
+              )}
               {l.status === "rejected" && l.reviewNote && (
                 <div className="border-t border-line bg-red/5 px-4 py-2.5 text-xs text-red">Esker: {l.reviewNote}</div>
               )}

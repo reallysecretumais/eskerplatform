@@ -20,6 +20,7 @@ const GUEST: Item[] = [
 const HOST: Item[] = [
   { href: "/host", label: "Overview", icon: Home, match: exact("/host") },
   { href: "/host/listings", label: "Listings", icon: Building2, match: prefix("/host/listings") },
+  { href: "/host/bookings", label: "Bookings", icon: CalendarDays, match: prefix("/host/bookings") },
   { href: "/host/messages", label: "Messages", icon: MessageSquare, match: prefix("/host/messages") },
 ];
 

@@ -9,7 +9,7 @@ import { hostCommission } from "@/lib/payments";
 // by owner_account_id = the signed-in account — exposing only host-safe fields
 // (never internal ops columns, caretakers, or other people's rows).
 
-export type ListingStatus = "pending" | "live" | "paused" | "rejected";
+export type ListingStatus = "draft" | "pending" | "live" | "paused" | "rejected";
 
 export type HostListing = {
   id: string;
@@ -17,6 +17,7 @@ export type HostListing = {
   description: string | null;
   category: string | null;
   area: string | null;
+  locationId: string | null;
   bedrooms: number | null;
   capacity: number | null;
   price: number;
@@ -34,6 +35,7 @@ type ListingRow = {
   public_description: string | null;
   kind: string | null;
   area: string | null;
+  location_id: string | null;
   bedrooms: number | null;
   capacity: number | null;
   nightly_rate: number | null;
@@ -46,7 +48,7 @@ type ListingRow = {
 };
 
 const LISTING_COLS =
-  "id, name, public_title, public_description, kind, area, bedrooms, capacity, nightly_rate, public_price, amenities, photos, listing_status, review_note, created_at";
+  "id, name, public_title, public_description, kind, area, location_id, bedrooms, capacity, nightly_rate, public_price, amenities, photos, listing_status, review_note, created_at";
 
 function toListing(r: ListingRow): HostListing {
   return {
@@ -55,6 +57,7 @@ function toListing(r: ListingRow): HostListing {
     description: r.public_description,
     category: r.kind,
     area: r.area,
+    locationId: r.location_id,
     bedrooms: r.bedrooms,
     capacity: r.capacity,
     price: Number(r.public_price ?? r.nightly_rate ?? 0),
@@ -93,6 +96,119 @@ export async function getMyListing(id: string): Promise<HostListing | null> {
     .eq("owner_relationship", "host")
     .maybeSingle();
   return data ? toListing(data as ListingRow) : null;
+}
+
+// ── Guest info (private stay details + public facts) ────────────────────────
+
+export type ListingGuestInfo = {
+  checkIn: string;
+  houseRules: string;
+  wifiName: string;
+  wifiPassword: string;
+  accessNotes: string;
+  publicFacts: string;
+};
+
+/** The listing's guest info: private details (property_info — shared with
+ *  confirmed guests / staff) + the public facts the concierge answers from.
+ *  Owner-checked service-role read. */
+export async function getListingGuestInfo(listingId: string): Promise<ListingGuestInfo | null> {
+  const user = await currentUser();
+  if (!user) return null;
+  const admin = createAdminClient();
+
+  const { data: own } = await admin
+    .from("properties")
+    .select("id, public_facts")
+    .eq("id", listingId)
+    .eq("owner_account_id", user.id)
+    .eq("owner_relationship", "host")
+    .maybeSingle();
+  if (!own) return null;
+
+  const { data: info } = await admin
+    .from("property_info")
+    .select("check_in_instructions, house_rules, wifi_name, wifi_password, access_notes")
+    .eq("property_id", listingId)
+    .maybeSingle();
+
+  return {
+    checkIn: (info?.check_in_instructions as string) ?? "",
+    houseRules: (info?.house_rules as string) ?? "",
+    wifiName: (info?.wifi_name as string) ?? "",
+    wifiPassword: (info?.wifi_password as string) ?? "",
+    accessNotes: (info?.access_notes as string) ?? "",
+    publicFacts: ((own as { public_facts?: string | null }).public_facts as string) ?? "",
+  };
+}
+
+// ── Listing calendar (bookings + host blocks) ────────────────────────────────
+
+export type CalendarBooking = { start: string; end: string }; // end exclusive
+export type CalendarBlock = { id: string; start: string; end: string; note: string | null };
+
+/** Upcoming busy ranges for one of the host's listings: real bookings (read-only
+ *  to the host) + their own blocks (removable). Owner-checked. */
+export async function getListingCalendar(listingId: string): Promise<{ bookings: CalendarBooking[]; blocks: CalendarBlock[] } | null> {
+  const user = await currentUser();
+  if (!user) return null;
+  const admin = createAdminClient();
+
+  const { data: own } = await admin
+    .from("properties")
+    .select("id")
+    .eq("id", listingId)
+    .eq("owner_account_id", user.id)
+    .eq("owner_relationship", "host")
+    .maybeSingle();
+  if (!own) return null;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const ACTIVE = ["awaiting_payment", "payment_collected", "handed_over", "awaiting_checkin", "currently_staying", "needs_attention"];
+  const [{ data: bk }, { data: blocks }] = await Promise.all([
+    admin
+      .from("bookings")
+      .select("checkin, checkout, status, lost_reason")
+      .eq("property_id", listingId)
+      .gte("checkout", today)
+      .in("status", ACTIVE),
+    admin
+      .from("property_blocks")
+      .select("id, start_date, end_date, note")
+      .eq("property_id", listingId)
+      .gte("end_date", today)
+      .order("start_date"),
+  ]);
+
+  return {
+    bookings: ((bk ?? []) as { checkin: string | null; checkout: string | null; lost_reason: string | null }[])
+      .filter((b) => b.checkin && b.checkout && !b.lost_reason)
+      .map((b) => ({ start: String(b.checkin).slice(0, 10), end: String(b.checkout).slice(0, 10) })),
+    blocks: ((blocks ?? []) as { id: string; start_date: string; end_date: string; note: string | null }[]).map((k) => ({
+      id: k.id,
+      start: k.start_date,
+      end: k.end_date,
+      note: k.note,
+    })),
+  };
+}
+
+// ── Covered areas (listing location picker) ──────────────────────────────────
+
+export type CoveredArea = { id: string; name: string; label: string; city: string };
+
+/** The areas Esker covers, from the shared `locations` table. "Near Airport"
+ *  is relabelled for guests as "Near Islamabad Airport". Service-role read —
+ *  it's a public-safe list of area names. */
+export async function getCoveredAreas(): Promise<CoveredArea[]> {
+  const admin = createAdminClient();
+  const { data } = await admin.from("locations").select("id, name, city").order("name");
+  return ((data ?? []) as { id: string; name: string; city: string | null }[]).map((l) => ({
+    id: l.id,
+    name: l.name,
+    label: l.name === "Near Airport" ? "Near Islamabad Airport" : l.name,
+    city: l.city || "Islamabad",
+  }));
 }
 
 // ── Host inbox ───────────────────────────────────────────────────────────────
@@ -174,6 +290,54 @@ export async function getHostThreadMessages(conversationId: string): Promise<imp
     .order("created_at", { ascending: true })
     .limit(300);
   return (data ?? []) as import("@/lib/data/chat").ChatMessage[];
+}
+
+/** All bookings across the host's listings (newest check-in first) — for the
+ *  host Bookings page. Guest privacy: first name only. */
+export async function getHostBookings(): Promise<HostStay[]> {
+  const user = await currentUser();
+  if (!user) return [];
+  const admin = createAdminClient();
+
+  const { data: props } = await admin
+    .from("properties")
+    .select("id, name, public_title")
+    .eq("owner_account_id", user.id)
+    .eq("owner_relationship", "host");
+  const listings = (props ?? []) as { id: string; name: string; public_title: string | null }[];
+  if (listings.length === 0) return [];
+  const titleById = new Map(listings.map((p) => [p.id, p.public_title || p.name]));
+
+  const { data: bk } = await admin
+    .from("bookings")
+    .select("id, property_id, checkin, checkout, nights, amount, advance_paid, status, guest:guests(name)")
+    .in("property_id", listings.map((p) => p.id))
+    .order("checkin", { ascending: false })
+    .limit(200);
+
+  return ((bk ?? []) as unknown as {
+    id: string; property_id: string; checkin: string | null; checkout: string | null; nights: number | null;
+    amount: number | null; advance_paid: number | null; status: string; guest: { name: string | null } | null;
+  }[]).map((b) => ({
+    id: b.id,
+    listingTitle: titleById.get(b.property_id) ?? "Your listing",
+    guestFirstName: (b.guest?.name ?? "Guest").trim().split(/\s+/)[0],
+    checkin: b.checkin,
+    checkout: b.checkout,
+    nights: b.nights,
+    amount: Math.max(0, Math.round(Number(b.amount) || 0)),
+    advancePaid: Math.max(0, Math.round(Number(b.advance_paid) || 0)),
+    status: b.status,
+  }));
+}
+
+/** The host's optional payout preference (accounts.payout_details). */
+export async function getPayoutDetails(): Promise<string> {
+  const user = await currentUser();
+  if (!user) return "";
+  const admin = createAdminClient();
+  const { data } = await admin.from("accounts").select("payout_details").eq("id", user.id).maybeSingle();
+  return (data?.payout_details as string) ?? "";
 }
 
 /** Whether the signed-in account has passed CNIC verification (hosting gate). */

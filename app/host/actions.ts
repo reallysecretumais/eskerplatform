@@ -5,6 +5,15 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyId } from "@/lib/ai/idcheck";
 import { notifyChatEmail } from "@/lib/notifyChat";
+import {
+  runInterviewTurn,
+  sanitiseFields,
+  getInterviewStyle,
+  getPriceBands,
+  type InterviewFields,
+  type ChatMsg,
+} from "@/lib/ai/hostInterview";
+import { getCoveredAreas } from "@/lib/data/host";
 
 export type ActionResult = { ok: boolean; message: string; id?: string };
 
@@ -62,7 +71,7 @@ async function notifyStaff(admin: Admin, n: { title: string; body: string; link:
 type ListingInput = {
   title: string;
   category: string;
-  area: string;
+  areaId: string;
   bedrooms: number | null;
   capacity: number | null;
   price: number;
@@ -73,7 +82,7 @@ type ListingInput = {
 function parseListing(formData: FormData): { ok: true; v: ListingInput } | { ok: false; message: string } {
   const title = String(formData.get("title") || "").trim().slice(0, 90);
   const category = String(formData.get("category") || "").trim().slice(0, 40);
-  const area = String(formData.get("area") || "").trim().slice(0, 60);
+  const areaId = String(formData.get("areaId") || "").trim();
   const description = String(formData.get("description") || "").trim().slice(0, 2500);
   const price = Math.round(Number(formData.get("price")) || 0);
   const bedroomsRaw = String(formData.get("bedrooms") || "").trim();
@@ -86,7 +95,7 @@ function parseListing(formData: FormData): { ok: true; v: ListingInput } | { ok:
 
   if (title.length < 4) return { ok: false, message: "Give your place a name (at least 4 characters)." };
   if (!category) return { ok: false, message: "Pick a category." };
-  if (!area) return { ok: false, message: "Enter the area (e.g. E-11, Bahria Phase 7)." };
+  if (!areaId) return { ok: false, message: "Pick the area your place is in." };
   if (price < 1000) return { ok: false, message: "Enter a nightly price of at least ₨1,000." };
   if (description.length < 40) return { ok: false, message: "Describe your place in a few sentences (at least 40 characters)." };
 
@@ -95,7 +104,7 @@ function parseListing(formData: FormData): { ok: true; v: ListingInput } | { ok:
     v: {
       title,
       category,
-      area,
+      areaId,
       bedrooms: bedroomsRaw ? Math.max(0, Math.round(Number(bedroomsRaw) || 0)) : null,
       capacity: capacityRaw ? Math.max(1, Math.round(Number(capacityRaw) || 0)) : null,
       price,
@@ -105,15 +114,18 @@ function parseListing(formData: FormData): { ok: true; v: ListingInput } | { ok:
   };
 }
 
-// ── Create / update ──────────────────────────────────────────────────────────
+/** Resolve a picked covered-area id → { id, guest-facing label }. */
+async function resolveArea(admin: Admin, areaId: string): Promise<{ id: string; label: string } | null> {
+  const { data } = await admin.from("locations").select("id, name").eq("id", areaId).maybeSingle();
+  if (!data) return null;
+  const name = data.name as string;
+  return { id: data.id as string, label: name === "Near Airport" ? "Near Islamabad Airport" : name };
+}
 
-export async function createListing(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
-  const accountId = await sessionUserId();
-  if (!accountId) return { ok: false, message: "Please sign in first." };
+// ── Create (draft) / submit / update ─────────────────────────────────────────
 
-  const admin = createAdminClient();
-
-  // Gate: host role + WhatsApp verified + CNIC verified.
+/** Both verification gates + host role, or a message explaining what's missing. */
+async function hostGate(admin: Admin, accountId: string): Promise<{ ok: true; name: string | null } | { ok: false; message: string }> {
   const [{ data: acct }, { data: roles }] = await Promise.all([
     admin.from("accounts").select("name, phone_verified_at, id_verified_at").eq("id", accountId).maybeSingle(),
     admin.from("account_roles").select("role").eq("account_id", accountId).eq("role", "owner"),
@@ -121,11 +133,16 @@ export async function createListing(_prev: ActionResult | null, formData: FormDa
   if (!roles || roles.length === 0) return { ok: false, message: "Unlock your host space first." };
   if (!acct?.phone_verified_at) return { ok: false, message: "Verify your WhatsApp number before listing (Profile → Verify)." };
   if (!acct?.id_verified_at) return { ok: false, message: "Verify your CNIC before listing." };
+  return { ok: true, name: (acct?.name as string) ?? null };
+}
 
-  const parsed = parseListing(formData);
-  if (!parsed.ok) return { ok: false, message: parsed.message };
-  const v = parsed.v;
-
+/** Shared draft insert (form path + AI-interview path). Drafts are private: not
+ *  public (view needs 'live') and not in the CRM queue (needs 'pending'). */
+async function insertDraft(
+  admin: Admin,
+  accountId: string,
+  v: { title: string; category: string; area: string; locationId: string | null; bedrooms: number | null; capacity: number | null; price: number; description: string; amenities: string[] },
+): Promise<string | null> {
   // properties.name is UNIQUE — host titles can collide, so the internal name
   // carries a short suffix; the guest-facing title lives in public_title.
   const suffix = crypto.randomUUID().slice(0, 6);
@@ -137,30 +154,95 @@ export async function createListing(_prev: ActionResult | null, formData: FormDa
       public_description: v.description,
       kind: v.category,
       area: v.area,
+      location_id: v.locationId,
       bedrooms: v.bedrooms,
       capacity: v.capacity,
       nightly_rate: v.price,
       amenities: v.amenities,
       photos: [],
       public_listing: false, // flips true only on admin approval
-      listing_status: "pending",
+      listing_status: "draft",
       owner_relationship: "host",
       comms_owner: "owner",
       owner_account_id: accountId,
     })
     .select("id")
     .single();
-  if (error || !row) return { ok: false, message: "Could not create your listing. Please try again." };
+  return error || !row ? null : (row.id as string);
+}
 
+/** Start a listing from the manual form → a private draft; next step is photos. */
+export async function createDraft(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  const accountId = await sessionUserId();
+  if (!accountId) return { ok: false, message: "Please sign in first." };
+  const admin = createAdminClient();
+
+  const gate = await hostGate(admin, accountId);
+  if (!gate.ok) return { ok: false, message: gate.message };
+
+  const parsed = parseListing(formData);
+  if (!parsed.ok) return { ok: false, message: parsed.message };
+  const v = parsed.v;
+  const area = await resolveArea(admin, v.areaId);
+  if (!area) return { ok: false, message: "Pick the area your place is in." };
+
+  const id = await insertDraft(admin, accountId, { ...v, area: area.label, locationId: area.id });
+  if (!id) return { ok: false, message: "Could not create your listing. Please try again." };
+
+  revalidatePath("/host");
+  revalidatePath("/host/listings");
+  return { ok: true, message: "Draft saved — now add your photos.", id };
+}
+
+/** The draft's readiness checklist (shared by the submit bar + submitListing). */
+export type SubmitChecklist = { title: boolean; description: boolean; price: boolean; photos: boolean; ready: boolean };
+
+function checklistFor(l: { public_title: string | null; public_description?: string | null; nightly_rate?: number | null; photos: string[] | null }): SubmitChecklist {
+  const title = Boolean(l.public_title && l.public_title.trim().length >= 4);
+  const description = Boolean((l as { public_description?: string | null }).public_description && ((l as { public_description?: string | null }).public_description as string).trim().length >= 40);
+  const price = Number((l as { nightly_rate?: number | null }).nightly_rate) >= 1000;
+  const photos = (l.photos ?? []).length >= 1;
+  return { title, description, price, photos, ready: title && description && price && photos };
+}
+
+/** Submit a finished draft for Esker review (draft → pending + staff bell). */
+export async function submitListing(listingId: string): Promise<ActionResult> {
+  const accountId = await sessionUserId();
+  if (!accountId) return { ok: false, message: "Please sign in first." };
+  const admin = createAdminClient();
+
+  const { data: l } = await admin
+    .from("properties")
+    .select("id, public_title, public_description, kind, area, nightly_rate, photos, listing_status")
+    .eq("id", listingId)
+    .eq("owner_account_id", accountId)
+    .eq("owner_relationship", "host")
+    .maybeSingle();
+  if (!l) return { ok: false, message: "Listing not found." };
+  if (l.listing_status !== "draft" && l.listing_status !== "rejected") {
+    return { ok: false, message: "This listing is already submitted." };
+  }
+
+  const c = checklistFor(l as { public_title: string | null; public_description: string | null; nightly_rate: number | null; photos: string[] | null });
+  if (!c.ready) {
+    const missing = [!c.title && "a title", !c.description && "a fuller description", !c.price && "a nightly price", !c.photos && "at least one photo"].filter(Boolean).join(", ");
+    return { ok: false, message: `Almost there — add ${missing} first.` };
+  }
+
+  const { error } = await admin.from("properties").update({ listing_status: "pending", review_note: null }).eq("id", listingId);
+  if (error) return { ok: false, message: "Could not submit. Please try again." };
+
+  const { data: acct } = await admin.from("accounts").select("name").eq("id", accountId).maybeSingle();
   await notifyStaff(admin, {
-    title: `New host listing to review — ${v.title}`,
-    body: `${acct?.name || "A host"} · ${v.category} in ${v.area} · ₨${v.price.toLocaleString("en-PK")}/night`,
-    link: `/properties/${row.id}`,
+    title: `New host listing to review — ${l.public_title}`,
+    body: `${acct?.name || "A host"} · ${l.kind ?? "Listing"} in ${l.area ?? "?"} · ₨${Number(l.nightly_rate || 0).toLocaleString("en-PK")}/night`,
+    link: `/properties/${listingId}`,
   });
 
   revalidatePath("/host");
   revalidatePath("/host/listings");
-  return { ok: true, message: "Listing submitted — we'll review it shortly.", id: row.id };
+  revalidatePath(`/host/listings/${listingId}`);
+  return { ok: true, message: "Submitted — we'll review it shortly (usually within a day)." };
 }
 
 export async function updateListing(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
@@ -175,6 +257,8 @@ export async function updateListing(_prev: ActionResult | null, formData: FormDa
   const parsed = parseListing(formData);
   if (!parsed.ok) return { ok: false, message: parsed.message };
   const v = parsed.v;
+  const area = await resolveArea(admin, v.areaId);
+  if (!area) return { ok: false, message: "Pick the area your place is in." };
 
   // Edits go live instantly (founder decision) — status/publish flags untouched.
   const { error } = await admin
@@ -183,7 +267,8 @@ export async function updateListing(_prev: ActionResult | null, formData: FormDa
       public_title: v.title,
       public_description: v.description,
       kind: v.category,
-      area: v.area,
+      area: area.label,
+      location_id: area.id,
       bedrooms: v.bedrooms,
       capacity: v.capacity,
       nightly_rate: v.price,
@@ -196,6 +281,67 @@ export async function updateListing(_prev: ActionResult | null, formData: FormDa
   revalidatePath(`/host/listings/${listingId}`);
   revalidatePath(`/stays/${listingId}`);
   return { ok: true, message: "Changes saved — they're live." };
+}
+
+// ── AI listing interview ─────────────────────────────────────────────────────
+
+const INTERVIEW_CATEGORIES = ["Apartment", "Penthouse", "Studio", "Villa", "Farmhouse", "House"];
+
+export type InterviewTurnResponse = {
+  ok: boolean;
+  reply?: string;
+  known?: InterviewFields; // server-merged + sanitised state (drives the live preview)
+  done?: boolean;
+  draftId?: string; // set when the finished interview created the draft
+  message?: string; // error / fallback text
+};
+
+/** One conversational turn of the AI listing interview. The server owns the
+ *  merged field state (sanitised every turn), and on completion creates the
+ *  draft itself — the client only ever renders what the server verified. */
+export async function interviewTurn(transcript: ChatMsg[], knownIn: InterviewFields): Promise<InterviewTurnResponse> {
+  const accountId = await sessionUserId();
+  if (!accountId) return { ok: false, message: "Please sign in first." };
+  const admin = createAdminClient();
+  const gate = await hostGate(admin, accountId);
+  if (!gate.ok) return { ok: false, message: gate.message };
+
+  const [areas, style, priceBands] = await Promise.all([getCoveredAreas(), getInterviewStyle(), getPriceBands()]);
+  const areaLabels = areas.map((a) => a.label);
+  const known = sanitiseFields(knownIn ?? {}, areaLabels);
+
+  const turn = await runInterviewTurn(
+    (transcript ?? []).slice(-24),
+    known,
+    { areas: areaLabels, categories: INTERVIEW_CATEGORIES, priceBands, style },
+  );
+  if (!turn.ok) return { ok: false, message: turn.message };
+
+  const merged: InterviewFields = { ...known, ...sanitiseFields(turn.fields, areaLabels) };
+
+  // Done only counts when the essentials actually survived sanitisation —
+  // otherwise keep the conversation going (the engine sees what's missing).
+  const complete = Boolean(merged.title && merged.category && merged.area && merged.price && merged.description);
+  if (turn.done && complete) {
+    const areaRow = areas.find((a) => a.label === merged.area);
+    const id = await insertDraft(admin, accountId, {
+      title: merged.title!,
+      category: merged.category!,
+      area: merged.area!,
+      locationId: areaRow?.id ?? null,
+      bedrooms: merged.bedrooms ?? null,
+      capacity: merged.capacity ?? null,
+      price: merged.price!,
+      description: merged.description!,
+      amenities: merged.amenities ?? [],
+    });
+    if (!id) return { ok: false, message: "Could not save your draft — please try again." };
+    revalidatePath("/host");
+    revalidatePath("/host/listings");
+    return { ok: true, reply: turn.reply, known: merged, done: true, draftId: id };
+  }
+
+  return { ok: true, reply: turn.reply, known: merged, done: false };
 }
 
 // ── Photos ───────────────────────────────────────────────────────────────────
@@ -271,6 +417,88 @@ export async function setListingCover(listingId: string, url: string): Promise<A
   revalidatePath(`/host/listings/${listingId}`);
   revalidatePath(`/stays/${listingId}`);
   return { ok: true, message: "Cover photo set." };
+}
+
+// ── Guest info (private stay details + public facts) ────────────────────────
+
+/** Save the listing's guest info: private details into property_info (staff +
+ *  confirmed guests) and public facts onto the property (feeds the concierge
+ *  and the listing page). Owner-checked. */
+export async function saveGuestInfo(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  const accountId = await sessionUserId();
+  if (!accountId) return { ok: false, message: "Please sign in first." };
+  const listingId = String(formData.get("listingId") || "");
+
+  const admin = createAdminClient();
+  const own = await ownListing(admin, accountId, listingId);
+  if (!own) return { ok: false, message: "Listing not found." };
+
+  const t = (k: string, max: number) => String(formData.get(k) || "").trim().slice(0, max) || null;
+
+  const { error: e1 } = await admin.from("property_info").upsert(
+    {
+      property_id: listingId,
+      check_in_instructions: t("checkIn", 2000),
+      house_rules: t("houseRules", 2000),
+      wifi_name: t("wifiName", 120),
+      wifi_password: t("wifiPassword", 120),
+      access_notes: t("accessNotes", 2000),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "property_id" },
+  );
+  const { error: e2 } = await admin.from("properties").update({ public_facts: t("publicFacts", 2000) }).eq("id", listingId);
+  if (e1 || e2) return { ok: false, message: "Could not save guest info. Please try again." };
+
+  revalidatePath(`/host/listings/${listingId}`);
+  revalidatePath(`/stays/${listingId}`);
+  return { ok: true, message: "Guest info saved." };
+}
+
+// ── Availability blocks (host calendar) ──────────────────────────────────────
+
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Block a date range on the host's own listing (end exclusive, like checkout).
+ *  Blocked dates grey out on the website and reject bookings. */
+export async function blockDates(listingId: string, start: string, end: string, note?: string): Promise<ActionResult> {
+  const accountId = await sessionUserId();
+  if (!accountId) return { ok: false, message: "Please sign in first." };
+  if (!DAY_RE.test(start) || !DAY_RE.test(end) || end <= start) {
+    return { ok: false, message: "Pick a valid date range." };
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  if (end <= today) return { ok: false, message: "That range is in the past." };
+
+  const admin = createAdminClient();
+  const own = await ownListing(admin, accountId, listingId);
+  if (!own) return { ok: false, message: "Listing not found." };
+
+  const { error } = await admin.from("property_blocks").insert({
+    property_id: listingId,
+    start_date: start,
+    end_date: end,
+    note: (note ?? "").trim().slice(0, 200) || null,
+  });
+  if (error) return { ok: false, message: "Could not block those dates. Please try again." };
+
+  revalidatePath(`/host/listings/${listingId}`);
+  return { ok: true, message: "Dates blocked — guests can't book them." };
+}
+
+/** Remove one of the host's own blocks. */
+export async function unblockDates(listingId: string, blockId: string): Promise<ActionResult> {
+  const accountId = await sessionUserId();
+  if (!accountId) return { ok: false, message: "Please sign in first." };
+  const admin = createAdminClient();
+  const own = await ownListing(admin, accountId, listingId);
+  if (!own) return { ok: false, message: "Listing not found." };
+
+  const { error } = await admin.from("property_blocks").delete().eq("id", blockId).eq("property_id", listingId);
+  if (error) return { ok: false, message: "Could not remove the block. Please try again." };
+
+  revalidatePath(`/host/listings/${listingId}`);
+  return { ok: true, message: "Dates opened up again." };
 }
 
 // ── Pause / resume ───────────────────────────────────────────────────────────
@@ -383,6 +611,23 @@ export async function markHostThreadRead(conversationId: string): Promise<Action
   if (!convo) return { ok: false, message: "Conversation not found." };
   await admin.from("conversations").update({ owner_last_read_at: new Date().toISOString() }).eq("id", conversationId);
   return { ok: true, message: "ok" };
+}
+
+// ── Payout preference (optional) ─────────────────────────────────────────────
+
+/** Save the host's optional "how should we pay you" note (Easypaisa / bank).
+ *  Payouts are settled directly by Esker for now; this just gets us ready. */
+export async function savePayout(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  const accountId = await sessionUserId();
+  if (!accountId) return { ok: false, message: "Please sign in first." };
+  const text = String(formData.get("payout") || "").trim().slice(0, 300);
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("accounts").update({ payout_details: text || null }).eq("id", accountId);
+  if (error) return { ok: false, message: "Could not save. Please try again." };
+
+  revalidatePath("/host");
+  return { ok: true, message: text ? "Payout details saved." : "Payout details cleared." };
 }
 
 // ── Host CNIC verification ───────────────────────────────────────────────────

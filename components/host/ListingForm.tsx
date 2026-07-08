@@ -1,10 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Plus } from "lucide-react";
-import { createListing, updateListing, type ActionResult } from "@/app/host/actions";
-import type { HostListing } from "@/lib/data/host";
+import { createDraft, updateListing, type ActionResult } from "@/app/host/actions";
+import type { HostListing, CoveredArea } from "@/lib/data/host";
 
 const CATEGORIES = ["Apartment", "Penthouse", "Studio", "Villa", "Farmhouse", "House"];
 const PRESET_AMENITIES = [
@@ -12,22 +12,26 @@ const PRESET_AMENITIES = [
   "Jacuzzi", "Pool", "Terrace", "Projector", "Gaming console", "BBQ",
 ];
 
-// One form for create + edit. Server does the authoritative validation; this
-// keeps the inputs pleasant (amenity chips, live counters).
-export function ListingForm({ existing }: { existing?: HostListing }) {
+// One form for create + edit. Area is a dropdown of the areas Esker covers
+// (city autofills from the pick — Islamabad for now); creating saves a private
+// DRAFT and moves on to photos. Server does the authoritative validation.
+export function ListingForm({ existing, areas }: { existing?: HostListing; areas: CoveredArea[] }) {
   const isEdit = Boolean(existing);
   const [state, action, pending] = useActionState<ActionResult | null, FormData>(
-    isEdit ? updateListing : createListing,
+    isEdit ? updateListing : createDraft,
     null,
   );
   const [amenities, setAmenities] = useState<string[]>(existing?.amenities ?? []);
   const [custom, setCustom] = useState("");
+  const [areaId, setAreaId] = useState(existing?.locationId ?? "");
   const router = useRouter();
 
-  // After a successful CREATE, go to the new listing's edit page to add photos.
-  if (!isEdit && state?.ok && state.id) {
-    router.replace(`/host/listings/${state.id}?created=1`);
-  }
+  // After a successful CREATE, go straight to the draft editor to add photos.
+  useEffect(() => {
+    if (!isEdit && state?.ok && state.id) router.replace(`/host/listings/${state.id}?created=1`);
+  }, [isEdit, state, router]);
+
+  const city = areas.find((a) => a.id === areaId)?.city ?? "Islamabad";
 
   const toggle = (a: string) =>
     setAmenities((prev) => (prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]));
@@ -57,9 +61,17 @@ export function ListingForm({ existing }: { existing?: HostListing }) {
             </select>
           </Field>
           <Field label="Area">
-            <input name="area" defaultValue={existing?.area ?? ""} required maxLength={60} placeholder="e.g. E-11, Bahria Phase 7" className={input} />
+            <select name="areaId" value={areaId} onChange={(e) => setAreaId(e.target.value)} required className={input}>
+              <option value="" disabled>Choose the area…</option>
+              {areas.map((a) => (
+                <option key={a.id} value={a.id}>{a.label}</option>
+              ))}
+            </select>
           </Field>
         </div>
+        <Field label="City">
+          <input value={city} readOnly aria-readonly className={`${input} cursor-default bg-surface-2/60 text-muted`} />
+        </Field>
         <div className="grid grid-cols-3 gap-4">
           <Field label="Bedrooms">
             <input name="bedrooms" type="number" min={0} max={20} defaultValue={existing?.bedrooms ?? ""} placeholder="2" className={input} />
@@ -119,7 +131,7 @@ export function ListingForm({ existing }: { existing?: HostListing }) {
 
       <div className="flex items-center gap-3">
         <button type="submit" disabled={pending} className="rounded-xl bg-ink px-6 py-2.5 text-sm font-medium text-bg transition hover:opacity-90 disabled:opacity-60">
-          {pending ? "Saving…" : isEdit ? "Save changes" : "Submit for review"}
+          {pending ? "Saving…" : isEdit ? "Save changes" : "Save & continue to photos"}
         </button>
         {state?.ok && isEdit && (
           <span className="inline-flex items-center gap-1 text-sm text-green">
@@ -128,7 +140,7 @@ export function ListingForm({ existing }: { existing?: HostListing }) {
         )}
         {state && !state.ok && <span className="text-sm text-red">{state.message}</span>}
       </div>
-      {!isEdit && <p className="text-xs text-dim">You&apos;ll add photos right after this step. We review every new listing before it goes live.</p>}
+      {!isEdit && <p className="text-xs text-dim">Next you&apos;ll add photos, availability and guest info — then submit for review.</p>}
     </form>
   );
 }
