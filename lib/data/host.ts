@@ -331,6 +331,71 @@ export async function getHostBookings(): Promise<HostStay[]> {
   }));
 }
 
+// ── Reviews (host reads reviews of their own listings) ───────────────────────
+
+export type HostReview = {
+  id: string;
+  listingId: string;
+  listingTitle: string;
+  authorName: string;
+  authorLocation: string | null;
+  rating: number;
+  body: string;
+  stayedOn: string | null;
+  status: string;
+  hostReply: string | null;
+  createdAt: string | null;
+};
+
+export type HostReviewsResult = { reviews: HostReview[]; average: number; count: number };
+
+/** Every review across the host's listings (newest first) + a rating summary.
+ *  Service-role read, owner-checked by property ownership. First-name-only
+ *  authors are already how reviews store them. */
+export async function getHostReviews(): Promise<HostReviewsResult> {
+  const user = await currentUser();
+  if (!user) return { reviews: [], average: 0, count: 0 };
+  const admin = createAdminClient();
+
+  const { data: props } = await admin
+    .from("properties")
+    .select("id, name, public_title")
+    .eq("owner_account_id", user.id)
+    .eq("owner_relationship", "host");
+  const listings = (props ?? []) as { id: string; name: string; public_title: string | null }[];
+  if (listings.length === 0) return { reviews: [], average: 0, count: 0 };
+  const titleById = new Map(listings.map((p) => [p.id, p.public_title || p.name]));
+
+  const { data } = await admin
+    .from("reviews")
+    .select("id, property_id, author_name, author_location, rating, body, stayed_on, status, host_reply, created_at")
+    .in("property_id", listings.map((p) => p.id))
+    .neq("status", "hidden")
+    .order("created_at", { ascending: false });
+
+  const reviews = ((data ?? []) as {
+    id: string; property_id: string; author_name: string; author_location: string | null;
+    rating: number | string; body: string; stayed_on: string | null; status: string; host_reply: string | null; created_at: string | null;
+  }[]).map((r) => ({
+    id: r.id,
+    listingId: r.property_id,
+    listingTitle: titleById.get(r.property_id) ?? "Your listing",
+    authorName: r.author_name,
+    authorLocation: r.author_location,
+    rating: Number(r.rating),
+    body: r.body,
+    stayedOn: r.stayed_on,
+    status: r.status,
+    hostReply: r.host_reply,
+    createdAt: r.created_at,
+  }));
+
+  const published = reviews.filter((r) => r.status === "published");
+  const count = published.length;
+  const average = count ? Math.round((published.reduce((s, r) => s + r.rating, 0) / count) * 10) / 10 : 0;
+  return { reviews, average, count };
+}
+
 /** The host's optional payout preference (accounts.payout_details). */
 export async function getPayoutDetails(): Promise<string> {
   const user = await currentUser();
@@ -338,6 +403,73 @@ export async function getPayoutDetails(): Promise<string> {
   const admin = createAdminClient();
   const { data } = await admin.from("accounts").select("payout_details").eq("id", user.id).maybeSingle();
   return (data?.payout_details as string) ?? "";
+}
+
+// ── Listing analytics (views / inquiries / bookings) ─────────────────────────
+
+export type ListingAnalytics = {
+  listingId: string;
+  title: string;
+  status: ListingStatus;
+  views: number;
+  views30: number;
+  inquiries: number;
+  bookings: number;
+};
+
+/** Per-listing performance for the host dashboard: total + 30-day views (from
+ *  listing_views), inquiries (chats about the listing) and bookings. One batched
+ *  read per table (not N queries). */
+export async function getHostAnalytics(): Promise<ListingAnalytics[]> {
+  const user = await currentUser();
+  if (!user) return [];
+  const admin = createAdminClient();
+
+  const { data: props } = await admin
+    .from("properties")
+    .select("id, name, public_title, listing_status")
+    .eq("owner_account_id", user.id)
+    .eq("owner_relationship", "host");
+  const listings = (props ?? []) as { id: string; name: string; public_title: string | null; listing_status: string | null }[];
+  if (listings.length === 0) return [];
+  const ids = listings.map((p) => p.id);
+  const since = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+
+  const [{ data: views }, { data: convos }, { data: bookings }] = await Promise.all([
+    admin.from("listing_views").select("property_id, day, views").in("property_id", ids),
+    admin.from("conversations").select("property_id").in("property_id", ids),
+    admin.from("bookings").select("property_id").in("property_id", ids),
+  ]);
+
+  const viewsTotal = new Map<string, number>();
+  const views30 = new Map<string, number>();
+  for (const v of (views ?? []) as { property_id: string; day: string; views: number }[]) {
+    viewsTotal.set(v.property_id, (viewsTotal.get(v.property_id) ?? 0) + (v.views || 0));
+    if (String(v.day).slice(0, 10) >= since) views30.set(v.property_id, (views30.get(v.property_id) ?? 0) + (v.views || 0));
+  }
+  const inquiries = new Map<string, number>();
+  for (const c of (convos ?? []) as { property_id: string | null }[]) if (c.property_id) inquiries.set(c.property_id, (inquiries.get(c.property_id) ?? 0) + 1);
+  const bookingCount = new Map<string, number>();
+  for (const b of (bookings ?? []) as { property_id: string | null }[]) if (b.property_id) bookingCount.set(b.property_id, (bookingCount.get(b.property_id) ?? 0) + 1);
+
+  return listings.map((l) => ({
+    listingId: l.id,
+    title: l.public_title || l.name,
+    status: (l.listing_status as ListingStatus) ?? "draft",
+    views: viewsTotal.get(l.id) ?? 0,
+    views30: views30.get(l.id) ?? 0,
+    inquiries: inquiries.get(l.id) ?? 0,
+    bookings: bookingCount.get(l.id) ?? 0,
+  }));
+}
+
+/** The host's public bio (accounts.host_bio). */
+export async function getHostBio(): Promise<string> {
+  const user = await currentUser();
+  if (!user) return "";
+  const admin = createAdminClient();
+  const { data } = await admin.from("accounts").select("host_bio").eq("id", user.id).maybeSingle();
+  return (data?.host_bio as string) ?? "";
 }
 
 /** Whether the signed-in account has passed CNIC verification (hosting gate). */

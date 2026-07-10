@@ -2,6 +2,7 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { createClient as createAnonClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // Cookieless anon client for cacheable public reads (no per-request cookies, so
 // the result can be cached + shared). Public listing data is the same for
@@ -28,6 +29,36 @@ export type PublicListing = {
   esker_exclusive: boolean;
   public_facts?: string | null; // public-safe facts for the concierge (parking, landmarks, rules…)
 };
+
+export type ListingHost = { firstName: string; avatarUrl: string | null; since: number | null; bio: string | null };
+
+/** The public "Hosted by …" identity for a listing — ONLY for self-listed (host)
+ *  places, and only ever safe fields (first name, avatar, join-year, bio). Never
+ *  for Esker/managed/partner listings. Service-role read of columns the public
+ *  view doesn't expose; returns null when there's no host to show. */
+export async function getListingHost(propertyId: string): Promise<ListingHost | null> {
+  const admin = createAdminClient();
+  const { data: prop } = await admin
+    .from("properties")
+    .select("owner_relationship, owner_account_id")
+    .eq("id", propertyId)
+    .maybeSingle();
+  if (!prop || prop.owner_relationship !== "host" || !prop.owner_account_id) return null;
+
+  const { data: acc } = await admin
+    .from("accounts")
+    .select("name, avatar_url, created_at, host_bio")
+    .eq("id", prop.owner_account_id as string)
+    .maybeSingle();
+  if (!acc) return null;
+
+  return {
+    firstName: (acc.name as string | null)?.trim().split(/\s+/)[0] || "Your host",
+    avatarUrl: (acc.avatar_url as string | null) ?? null,
+    since: acc.created_at ? new Date(acc.created_at as string).getFullYear() : null,
+    bio: (acc.host_bio as string | null) ?? null,
+  };
+}
 
 // What client components actually need to render a match card — nothing more.
 // The AI catalog is built SERVER-side (/api/concierge), so shipping the full

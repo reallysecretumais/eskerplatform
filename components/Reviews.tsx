@@ -43,6 +43,12 @@ export function Reviews({ reviews, summary, exclusive }: { reviews: Review[]; su
               {r.author_location ? ` · ${r.author_location}` : ""}
               {fmtStay(r.stayed_on) ? ` · ${fmtStay(r.stayed_on)}` : ""}
             </figcaption>
+            {r.host_reply && (
+              <div className="mt-3 rounded-xl border-l-2 border-gold/50 bg-surface-2/50 px-3 py-2">
+                <div className="text-[11px] font-medium uppercase tracking-wider text-gold-deep">Response from the host</div>
+                <p className="mt-1 text-sm leading-relaxed text-muted">{r.host_reply}</p>
+              </div>
+            )}
           </figure>
         ))}
       </div>

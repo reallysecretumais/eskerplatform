@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, CalendarDays, MessageSquare, User, Shield, SlidersHorizontal, LogOut, Building2 } from "lucide-react";
+import { Home, CalendarDays, MessageSquare, User, Shield, SlidersHorizontal, LogOut, Building2, Star } from "lucide-react";
 import type { ComponentType } from "react";
 import { signOut } from "@/app/account/actions";
 
@@ -21,6 +21,7 @@ const HOST: Item[] = [
   { href: "/host", label: "Overview", icon: Home, match: exact("/host") },
   { href: "/host/listings", label: "Listings", icon: Building2, match: prefix("/host/listings") },
   { href: "/host/bookings", label: "Bookings", icon: CalendarDays, match: prefix("/host/bookings") },
+  { href: "/host/reviews", label: "Reviews", icon: Star, match: prefix("/host/reviews") },
   { href: "/host/messages", label: "Messages", icon: MessageSquare, match: prefix("/host/messages") },
 ];
 

@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { ArrowRight, Building2, Plus, ShieldCheck, CalendarDays } from "lucide-react";
 import { requireAccount } from "@/lib/auth";
-import { getHostStats, getHostIdVerified, getMyListings, getPayoutDetails, type HostStay } from "@/lib/data/host";
+import { getHostStats, getHostIdVerified, getMyListings, getPayoutDetails, getHostBio, getHostAnalytics, type HostStay } from "@/lib/data/host";
 import { HostIdVerify } from "@/components/host/HostIdVerify";
+import { HostProfileCard } from "@/components/host/HostProfileCard";
+import { HostAnalytics } from "@/components/host/HostAnalytics";
 import { PayoutCard } from "@/components/host/PayoutCard";
 import { ListingStatusBadge } from "@/components/host/ListingStatus";
 import { StatusBadge } from "@/components/account/StatusBadge";
@@ -18,7 +20,9 @@ export default async function HostHome() {
   const account = await requireAccount();
   if (!account.roles.includes("owner")) return <BecomeHost />;
 
-  const [stats, idVerified, listings, payout] = await Promise.all([getHostStats(), getHostIdVerified(), getMyListings(), getPayoutDetails()]);
+  const [stats, idVerified, listings, payout, bio, analytics] = await Promise.all([
+    getHostStats(), getHostIdVerified(), getMyListings(), getPayoutDetails(), getHostBio(), getHostAnalytics(),
+  ]);
   const ready = account.phoneVerified && idVerified;
   const firstName = account.name?.split(" ")[0] || "there";
 
@@ -81,6 +85,14 @@ export default async function HostHome() {
         </section>
       )}
 
+      {/* How your listings are doing */}
+      {analytics.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-3 font-display text-lg font-semibold tracking-tight text-ink">How your listings are doing</h2>
+          <HostAnalytics rows={analytics} />
+        </section>
+      )}
+
       {/* Upcoming stays */}
       <section className="mt-8">
         <h2 className="mb-3 font-display text-lg font-semibold tracking-tight text-ink">Upcoming stays</h2>
@@ -104,6 +116,13 @@ export default async function HostHome() {
           <Link href="/host/listings/new" className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-ink px-5 py-2.5 text-sm font-medium text-bg transition hover:opacity-90">
             Create your listing <ArrowRight size={15} />
           </Link>
+        </div>
+      )}
+
+      {/* Your host profile (shown to guests) */}
+      {ready && (
+        <div className="mt-8">
+          <HostProfileCard name={account.name} avatarUrl={account.avatarUrl} bio={bio} />
         </div>
       )}
 

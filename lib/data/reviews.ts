@@ -9,6 +9,7 @@ export type Review = {
   author_location: string | null;
   rating: number;
   body: string;
+  host_reply: string | null;
   stayed_on: string | null;
   created_at: string;
 };

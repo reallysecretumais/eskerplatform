@@ -635,6 +635,32 @@ export async function markHostThreadRead(conversationId: string): Promise<Action
   return { ok: true, message: "ok" };
 }
 
+// ── Reviews (host reply) ─────────────────────────────────────────────────────
+
+/** Reply to (or edit/clear) a review on one of the host's own listings. The reply
+ *  shows publicly under the review. Owner-checked via the review's property. */
+export async function replyToReview(reviewId: string, text: string): Promise<ActionResult> {
+  const accountId = await sessionUserId();
+  if (!accountId) return { ok: false, message: "Please sign in first." };
+
+  const admin = createAdminClient();
+  const { data: rev } = await admin.from("reviews").select("id, property_id").eq("id", reviewId).maybeSingle();
+  if (!rev) return { ok: false, message: "Review not found." };
+  const own = await ownListing(admin, accountId, rev.property_id as string);
+  if (!own) return { ok: false, message: "That review isn't on your listing." };
+
+  const reply = String(text || "").trim().slice(0, 1000);
+  const { error } = await admin
+    .from("reviews")
+    .update({ host_reply: reply || null, host_reply_at: reply ? new Date().toISOString() : null })
+    .eq("id", reviewId);
+  if (error) return { ok: false, message: "Could not save your reply. Please try again." };
+
+  revalidatePath("/host/reviews");
+  revalidatePath(`/stays/${rev.property_id}`);
+  return { ok: true, message: reply ? "Reply posted." : "Reply removed." };
+}
+
 // ── Payout preference (optional) ─────────────────────────────────────────────
 
 /** Save the host's optional payout method + number (stored as JSON in
@@ -667,6 +693,22 @@ export async function savePayout(_prev: ActionResult | null, formData: FormData)
 
   revalidatePath("/host");
   return { ok: true, message: "Payout details saved." };
+}
+
+// ── Host public bio ──────────────────────────────────────────────────────────
+
+/** Save the host's short public bio (shown in the "Hosted by …" card). */
+export async function saveHostBio(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  const accountId = await sessionUserId();
+  if (!accountId) return { ok: false, message: "Please sign in first." };
+  const bio = String(formData.get("bio") || "").trim().slice(0, 300);
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("accounts").update({ host_bio: bio || null }).eq("id", accountId);
+  if (error) return { ok: false, message: "Could not save. Please try again." };
+
+  revalidatePath("/host");
+  return { ok: true, message: bio ? "Host bio saved." : "Host bio cleared." };
 }
 
 // ── Host CNIC verification ───────────────────────────────────────────────────

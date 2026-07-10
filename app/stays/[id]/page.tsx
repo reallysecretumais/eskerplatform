@@ -14,7 +14,9 @@ import { PakistanDetails } from "@/components/PakistanDetails";
 import { LocationSection } from "@/components/LocationSection";
 import { Reviews } from "@/components/Reviews";
 import { TrackEvent } from "@/components/TrackEvent";
-import { getListing, getListings, getAvailability, slimListings } from "@/lib/data/listings";
+import { TrackListingView } from "@/components/TrackListingView";
+import { getListing, getListings, getAvailability, slimListings, getListingHost } from "@/lib/data/listings";
+import { HostCard } from "@/components/HostCard";
 import { getReviews } from "@/lib/data/reviews";
 import { getAccount } from "@/lib/auth";
 import { unitForCategory, formatPrice } from "@/lib/listings";
@@ -49,12 +51,14 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
   const all = await getListings();
   const account = await getAccount();
   const { reviews, summary } = await getReviews(id);
+  const host = await getListingHost(id);
   const { amount, unit } = formatPrice(listing.price, unitForCategory(listing.category ?? ""));
 
   return (
     <main className="min-h-full pb-28 lg:pb-16">
       <JsonLd data={[listingLd(listing, summary), breadcrumbLd([{ name: "Home", path: "/" }, { name: "Stays", path: "/stays" }, { name: listing.title, path: `/stays/${id}` }])]} />
       <TrackEvent event="ViewContent" params={{ content_ids: [id], content_type: "product", value: listing.price, currency: "PKR" }} />
+      <TrackListingView id={id} />
       <SiteNav theme="light" account={account} />
 
       <div className="mx-auto max-w-5xl px-6 py-8">
@@ -145,6 +149,9 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
 
             {/* Where you'll be (§6) */}
             <LocationSection area={listing.area} />
+
+            {/* Hosted by … (self-listed places only) */}
+            {host && <HostCard host={host} />}
 
             {/* Reviews (curated now; post-stay later) */}
             <Reviews reviews={reviews} summary={summary} exclusive={listing.esker_exclusive} />
