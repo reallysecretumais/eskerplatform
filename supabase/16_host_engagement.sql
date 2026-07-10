@@ -30,10 +30,12 @@ create policy reviews_select_host on public.reviews
     )
   );
 
--- 1c. Public read window now includes the host's reply.
+-- 1c. Public read window now includes the host's reply. NOTE: `create or replace
+--     view` maps columns by POSITION and can only APPEND — so host_reply goes at
+--     the END (the app selects *, order doesn't matter).
 create or replace view public.public_reviews
 with (security_invoker = false) as
-  select id, property_id, author_name, author_location, rating, body, host_reply, stayed_on, created_at
+  select id, property_id, author_name, author_location, rating, body, stayed_on, created_at, host_reply
   from public.reviews
   where status = 'published';
 
