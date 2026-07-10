@@ -15,7 +15,15 @@ const PRESET_AMENITIES = [
 // One form for create + edit. Area is a dropdown of the areas Esker covers
 // (city autofills from the pick — Islamabad for now); creating saves a private
 // DRAFT and moves on to photos. Server does the authoritative validation.
-export function ListingForm({ existing, areas }: { existing?: HostListing; areas: CoveredArea[] }) {
+export function ListingForm({
+  existing,
+  areas,
+  onCreated,
+}: {
+  existing?: HostListing;
+  areas: CoveredArea[];
+  onCreated?: (id: string) => void; // create mode: hand back the draft id instead of navigating
+}) {
   const isEdit = Boolean(existing);
   const [state, action, pending] = useActionState<ActionResult | null, FormData>(
     isEdit ? updateListing : createDraft,
@@ -26,10 +34,13 @@ export function ListingForm({ existing, areas }: { existing?: HostListing; areas
   const [areaId, setAreaId] = useState(existing?.locationId ?? "");
   const router = useRouter();
 
-  // After a successful CREATE, go straight to the draft editor to add photos.
+  // After a successful CREATE: hand the id back to the wizard (to reveal photos
+  // inline), or fall back to navigating straight to the draft editor.
   useEffect(() => {
-    if (!isEdit && state?.ok && state.id) router.replace(`/host/listings/${state.id}?created=1`);
-  }, [isEdit, state, router]);
+    if (isEdit || !state?.ok || !state.id) return;
+    if (onCreated) onCreated(state.id);
+    else router.replace(`/host/listings/${state.id}?created=1`);
+  }, [isEdit, state, onCreated, router]);
 
   const city = areas.find((a) => a.id === areaId)?.city ?? "Islamabad";
 

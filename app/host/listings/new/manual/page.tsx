@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { requireAccount } from "@/lib/auth";
 import { getHostIdVerified, getCoveredAreas } from "@/lib/data/host";
-import { ListingForm } from "@/components/host/ListingForm";
+import { ManualListing } from "@/components/host/ManualListing";
 
 export const metadata = { title: "New listing — Esker" };
 
@@ -19,10 +19,10 @@ export default async function NewListingManualPage() {
         <ChevronLeft size={16} /> Back
       </Link>
       <h1 className="mt-3 font-display text-2xl font-semibold tracking-tight text-ink">List your place</h1>
-      <p className="mt-1 text-sm text-muted">The basics first — photos, availability and guest info come next.</p>
+      <p className="mt-1 text-sm text-muted">The basics first — then photos (they matter most), availability and guest info.</p>
 
       <div className="mt-6">
-        <ListingForm areas={areas} />
+        <ManualListing areas={areas} />
       </div>
     </div>
   );

@@ -1,16 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, SendHorizonal, MapPin, BedDouble, Users, Banknote } from "lucide-react";
 import { interviewTurn } from "@/app/host/actions";
+import { PhotoStep } from "@/components/host/PhotoStep";
 import { INTERVIEW_OPENER, type InterviewFields, type ChatMsg } from "@/lib/ai/hostInterviewShared";
 
 // The AI listing interview: a chat on the left, and the listing literally
 // writing itself on the right (gold pulse as each detail lands). On completion
-// the server has already created the draft — we play a short "assembling"
-// beat and drop the host into the editor to add photos.
+// the server has already created the draft — we play a short "assembling" beat
+// and reveal the photo step right here (photos are the approval gate).
 
 const pkr = (n: number) => `₨${n.toLocaleString("en-PK")}`;
 
@@ -22,8 +22,8 @@ export function ListingInterview() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [assembling, setAssembling] = useState(false);
+  const [photoStepId, setPhotoStepId] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -64,9 +64,22 @@ export function ListingInterview() {
 
     if (res.done && res.draftId) {
       setAssembling(true);
-      setTimeout(() => router.replace(`/host/listings/${res.draftId}?created=1`), 1600);
+      const id = res.draftId;
+      setTimeout(() => setPhotoStepId(id), 1600);
     }
   };
+
+  // Interview done → reveal the emphatic photo step right here.
+  if (photoStepId) {
+    return (
+      <div>
+        <div className="mb-4 rounded-2xl border border-green/30 bg-green/5 p-4 text-sm text-green">
+          Your listing is drafted ✨ — now let&apos;s make it shine with photos.
+        </div>
+        <PhotoStep draftId={photoStepId} />
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_320px]">

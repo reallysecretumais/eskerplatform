@@ -14,6 +14,7 @@ import {
   type ChatMsg,
 } from "@/lib/ai/hostInterview";
 import { getCoveredAreas } from "@/lib/data/host";
+import { PAYOUT_METHODS } from "@/lib/hostConstants";
 
 export type ActionResult = { ok: boolean; message: string; id?: string };
 
@@ -615,19 +616,36 @@ export async function markHostThreadRead(conversationId: string): Promise<Action
 
 // ── Payout preference (optional) ─────────────────────────────────────────────
 
-/** Save the host's optional "how should we pay you" note (Easypaisa / bank).
- *  Payouts are settled directly by Esker for now; this just gets us ready. */
+/** Save the host's optional payout method + number (stored as JSON in
+ *  accounts.payout_details). Payouts are settled directly by Esker for now;
+ *  this just gets us ready. */
 export async function savePayout(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
   const accountId = await sessionUserId();
   if (!accountId) return { ok: false, message: "Please sign in first." };
-  const text = String(formData.get("payout") || "").trim().slice(0, 300);
+
+  const method = String(formData.get("method") || "").trim().slice(0, 30);
+  const number = String(formData.get("number") || "").trim().slice(0, 40);
+  const title = String(formData.get("title") || "").trim().slice(0, 80);
 
   const admin = createAdminClient();
-  const { error } = await admin.from("accounts").update({ payout_details: text || null }).eq("id", accountId);
+
+  // Empty number → clear the whole thing.
+  if (!number) {
+    const { error } = await admin.from("accounts").update({ payout_details: null }).eq("id", accountId);
+    if (error) return { ok: false, message: "Could not save. Please try again." };
+    revalidatePath("/host");
+    return { ok: true, message: "Payout details cleared." };
+  }
+  if (!method || !(PAYOUT_METHODS as readonly string[]).includes(method)) {
+    return { ok: false, message: "Pick a payment method." };
+  }
+
+  const value = JSON.stringify({ method, number, title });
+  const { error } = await admin.from("accounts").update({ payout_details: value }).eq("id", accountId);
   if (error) return { ok: false, message: "Could not save. Please try again." };
 
   revalidatePath("/host");
-  return { ok: true, message: text ? "Payout details saved." : "Payout details cleared." };
+  return { ok: true, message: "Payout details saved." };
 }
 
 // ── Host CNIC verification ───────────────────────────────────────────────────
