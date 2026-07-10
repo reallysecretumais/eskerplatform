@@ -14,7 +14,7 @@ import {
   type ChatMsg,
 } from "@/lib/ai/hostInterview";
 import { getCoveredAreas } from "@/lib/data/host";
-import { PAYOUT_METHODS } from "@/lib/hostConstants";
+import { PAYOUT_METHODS, MIN_LISTING_PHOTOS, MAX_LISTING_PHOTOS } from "@/lib/hostConstants";
 
 export type ActionResult = { ok: boolean; message: string; id?: string };
 
@@ -202,7 +202,7 @@ function checklistFor(l: { public_title: string | null; public_description?: str
   const title = Boolean(l.public_title && l.public_title.trim().length >= 4);
   const description = Boolean((l as { public_description?: string | null }).public_description && ((l as { public_description?: string | null }).public_description as string).trim().length >= 40);
   const price = Number((l as { nightly_rate?: number | null }).nightly_rate) >= 1000;
-  const photos = (l.photos ?? []).length >= 1;
+  const photos = (l.photos ?? []).length >= MIN_LISTING_PHOTOS;
   return { title, description, price, photos, ready: title && description && price && photos };
 }
 
@@ -226,7 +226,7 @@ export async function submitListing(listingId: string): Promise<ActionResult> {
 
   const c = checklistFor(l as { public_title: string | null; public_description: string | null; nightly_rate: number | null; photos: string[] | null });
   if (!c.ready) {
-    const missing = [!c.title && "a title", !c.description && "a fuller description", !c.price && "a nightly price", !c.photos && "at least one photo"].filter(Boolean).join(", ");
+    const missing = [!c.title && "a title", !c.description && "a fuller description", !c.price && "a nightly price", !c.photos && `at least ${MIN_LISTING_PHOTOS} photos`].filter(Boolean).join(", ");
     return { ok: false, message: `Almost there — add ${missing} first.` };
   }
 
@@ -418,6 +418,27 @@ export async function setListingCover(listingId: string, url: string): Promise<A
   revalidatePath(`/host/listings/${listingId}`);
   revalidatePath(`/stays/${listingId}`);
   return { ok: true, message: "Cover photo set." };
+}
+
+/** Persist a new photo order (first = cover). `ordered` must be a permutation of
+ *  the listing's current photos — anything else is rejected. */
+export async function reorderListingPhotos(listingId: string, ordered: string[]): Promise<ActionResult> {
+  const accountId = await sessionUserId();
+  if (!accountId) return { ok: false, message: "Please sign in first." };
+
+  const admin = createAdminClient();
+  const own = await ownListing(admin, accountId, listingId);
+  if (!own) return { ok: false, message: "Listing not found." };
+
+  const current = own.photos ?? [];
+  // Same set, same length — a true reorder, no adds/drops.
+  const same = ordered.length === current.length && [...ordered].sort().join("|") === [...current].sort().join("|");
+  if (!same) return { ok: false, message: "Photo list changed — refresh and try again." };
+
+  await admin.from("properties").update({ photos: ordered }).eq("id", listingId);
+  revalidatePath(`/host/listings/${listingId}`);
+  revalidatePath(`/stays/${listingId}`);
+  return { ok: true, message: "Order saved." };
 }
 
 // ── Guest info (private stay details + public facts) ────────────────────────

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChevronLeft, Eye } from "lucide-react";
+import { MIN_LISTING_PHOTOS } from "@/lib/hostConstants";
 import { requireAccount } from "@/lib/auth";
 import { getMyListing, getCoveredAreas, getListingCalendar, getListingGuestInfo } from "@/lib/data/host";
 import { ListingForm } from "@/components/host/ListingForm";
@@ -38,7 +39,7 @@ export default async function EditListingPage({
     title: listing.title.trim().length >= 4,
     description: (listing.description ?? "").trim().length >= 40,
     price: listing.price >= 1000,
-    photos: listing.photos.length >= 1,
+    photos: listing.photos.length >= MIN_LISTING_PHOTOS,
     ready: false,
   };
   checklist.ready = checklist.title && checklist.description && checklist.price && checklist.photos;
@@ -52,11 +53,14 @@ export default async function EditListingPage({
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">{listing.title}</h1>
-          <div className="mt-1.5 flex items-center gap-3">
+          <div className="mt-1.5 flex flex-wrap items-center gap-3">
             <ListingStatusBadge status={listing.status} />
+            <Link href={`/host/listings/${listing.id}/preview`} className="inline-flex items-center gap-1 text-xs text-gold-deep hover:underline">
+              <Eye size={12} /> Preview as a guest
+            </Link>
             {listing.status === "live" && (
-              <Link href={`/stays/${listing.id}`} className="inline-flex items-center gap-1 text-xs text-gold-deep hover:underline">
-                <Eye size={12} /> View on the website
+              <Link href={`/stays/${listing.id}`} className="inline-flex items-center gap-1 text-xs text-muted hover:text-ink hover:underline">
+                View live listing
               </Link>
             )}
           </div>

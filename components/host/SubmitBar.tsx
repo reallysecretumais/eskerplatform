@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, Send } from "lucide-react";
 import { submitListing } from "@/app/host/actions";
 import type { SubmitChecklist } from "@/app/host/actions";
+import { MIN_LISTING_PHOTOS } from "@/lib/hostConstants";
 
 // The draft's "Submit for review" bar: a live checklist + the submit button
 // (enabled only when everything's in place). Server re-validates on submit.
@@ -25,7 +26,7 @@ export function SubmitBar({ listingId, checklist }: { listingId: string; checkli
     { done: checklist.title, label: "Title" },
     { done: checklist.description, label: "Description" },
     { done: checklist.price, label: "Nightly price" },
-    { done: checklist.photos, label: "At least one photo" },
+    { done: checklist.photos, label: `${MIN_LISTING_PHOTOS}+ photos` },
   ];
 
   return (
