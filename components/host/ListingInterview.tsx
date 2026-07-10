@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, SendHorizonal, MapPin, BedDouble, Users, Banknote } from "lucide-react";
 import { interviewTurn } from "@/app/host/actions";
-import { INTERVIEW_OPENER, type InterviewFields, type ChatMsg } from "@/lib/ai/hostInterview";
+import { INTERVIEW_OPENER, type InterviewFields, type ChatMsg } from "@/lib/ai/hostInterviewShared";
 
 // The AI listing interview: a chat on the left, and the listing literally
 // writing itself on the right (gold pulse as each detail lands). On completion

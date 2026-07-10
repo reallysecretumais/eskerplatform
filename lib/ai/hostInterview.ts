@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { INTERVIEW_OPENER, type InterviewFields, type ChatMsg } from "./hostInterviewShared";
 
 // ── The host-listing interview engine ────────────────────────────────────────
 // A conversational interviewer that turns a 2-minute chat into a draft listing.
@@ -14,27 +15,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const MODEL = process.env.ESKER_AI_MODEL || "gpt-4.1-mini";
 
-export type InterviewFields = {
-  title?: string;
-  category?: string;
-  area?: string; // must match a covered-area label
-  bedrooms?: number;
-  capacity?: number;
-  price?: number;
-  amenities?: string[];
-  description?: string;
-};
+// Re-export the client-safe pieces so existing server imports of this module
+// keep working. The definitions live in hostInterviewShared (no server-only).
+export { INTERVIEW_OPENER };
+export type { InterviewFields, ChatMsg };
 
 export type InterviewTurnResult =
   | { ok: true; reply: string; fields: InterviewFields; done: boolean }
   | { ok: false; message: string };
-
-export type ChatMsg = { role: "user" | "assistant"; content: string };
-
-// The greeting the client shows instantly (no round-trip). The engine knows it
-// was said (it's injected into the transcript), so the model never repeats it.
-export const INTERVIEW_OPENER =
-  "Salam! I'm Esker's listing assistant — tell me about your place and I'll write the listing for you as we chat. So: what is it, and where is it? (Urdu bhi chalega!)";
 
 // Founder-editable persona. Kept separate from the machine contract so edits
 // can never break extraction. This is the DEFAULT when no app_settings override.
