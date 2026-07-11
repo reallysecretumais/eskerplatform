@@ -1,6 +1,8 @@
 # SESSION HANDOFF — Esker Stays
 
-> Read this first to resume. Pairs with `CLAUDE.md` (rules), `PROJECT_ARCHITECTURE.md` (how it's built), `ROADMAP.md`, `PHASE1_LAUNCH_CHECKLIST.md` (status + founder actions), `DEPLOYMENT.md`, and `Esker_Platform_AI_First_Master_Plan.md` (vision). Last updated: **2026‑07‑04**.
+> Read this first to resume. Pairs with `CLAUDE.md` (rules), `PROJECT_ARCHITECTURE.md` (how it's built), `ROADMAP.md`, `PHASE1_LAUNCH_CHECKLIST.md` (status + founder actions), `DEPLOYMENT.md`, and `Esker_Platform_AI_First_Master_Plan.md` (vision). Last updated: **2026‑07‑11**.
+>
+> **TL;DR (2026‑07‑11):** Account hub + **full host portal (Phase 3 / 3.5 / 3.6)** are BUILT, verified, DEPLOYED. Migrations **01–16 all applied**. Newest section is "Phase 3.6" below. **Next = Safepay payments (2.5b)** or **host pricing extras**. See "▶️ NEXT" + "Host portal map" near the bottom. ⚠️ `[HOST-DEMO]` data on `umais@esker.com` to remove.
 
 ## What this is (one line)
 The public, AI‑first short‑stay **booking website** for Esker Rentals (Islamabad/Rawalpindi) — the consumer face of the same business the **Esker OS CRM** runs, on the **same Supabase DB**. Folder: `C:\Claude Projects\Esker Platform` (sibling of `C:\Claude Projects\Esker OS`). **Live at https://eskerrentals.com** (Vercel, region hnd1). Repo: `github.com/reallysecretumais/eskerplatform` (push `main` → auto‑deploys). CRM is at `os.eskerrentals.com`.
@@ -90,7 +92,15 @@ Adds the depth the founder asked for: AI listing **interview**, availability **c
 - **APPROVED program (multi-phase, in shared memory `platform-portals-chat-program`)**: three-tier owners (partner / managed / host) · unified inventory in `properties` · messaging reuses the CRM Unified Inbox (`'website'` channel + account-scoped RLS). **Next: Phase 2 — guest↔Esker chat** (pre-booking inquiry + post-booking chatbox, realtime, CRM `phase21.sql`). Phase 3 (host portal) needs the payout/commission decision; Phase 4 = partner+managed portals.
 - **Logo still needed**: icon pipeline exists (`scripts/gen-icons.mjs` + generated PNGs, untracked); founder must save the real logo (ideally vector) to `public/brand/` — then icons + PWA manifest + `docs/MOBILE_APP.md` ship in one commit.
 
-## ⚠️ PENDING FOUNDER ACTIONS
+## ⚠️ PENDING FOUNDER ACTIONS (current — 2026-07-11)
+**All migrations 01–16 are RUN. Everything below the account hub through the host portal is DEPLOYED.** The genuinely outstanding items:
+- **Safepay onboarding** (NTN + business registration + bank) — the long pole for real online payments (Phase 2.5b). Not started as far as this session knows. The seam (`lib/payments/provider.ts`) + a stubbed "Pay now by card" button already exist; I build behind it once onboarding clears.
+- **WhatsApp number go-live**: set `WHATSAPP_PHONE_NUMBER_ID` + `WHATSAPP_ACCESS_TOKEN` in the CRM Vercel → the CRM outbox drainer (BUILT, commit `b7d40c1`) starts sending booking-confirmation + review-nudge WhatsApps. Both Meta templates (`booking_received`, `review_request`) are **approved**. Also OTP + host-message WhatsApp light up.
+- **`CRON_SECRET`** in the website Vercel → daily post-stay review-nudge cron (founder said likely already set).
+- **⚠️ REMOVE DEMO DATA when done exploring**: `umais@esker.com` was granted `owner` + phone/id-verified + a pending `[HOST-DEMO]` "Skyline 2-Bed" listing. Cleanup: delete `properties` where name like `%[HOST-DEMO]%`; optionally revoke Umais's `owner` role + null `id_verified_at`/`host_bio`.
+- **Real logo** → `public/brand/` unblocks app icons + PWA (`app/apple-icon.png` + `public/icons/` are intentionally untracked until then).
+
+--- historical (kept for reference) ---
 0d. ✅ **`13_avatars.sql` RUN** (2026-07-06) — `accounts.avatar_url` + public `avatars` bucket. Avatar shows on the profile page + account overview (deliberately NOT in the header nav). Upload now has a **circular crop/zoom** step (`components/account/AvatarCropper`, canvas → 512² JPEG, no dependency; HEIC falls back to uploading the original).
 0c. **RUN `12_review_requests.sql`** (adds `bookings.review_requested_at`) **+ set `CRON_SECRET`** (any random string) in the website's Vercel → enables the daily **post-stay review nudge** cron (`/api/reviews/dispatch`, `vercel.json`). Optional: set `REVALIDATE_SECRET` too (also authorises manual POSTs to the dispatcher). WhatsApp nudge needs a new Meta **`review_request`** template approved once WA is live (email works now via Titan). Note: Vercel **Hobby** runs cron ~once/day.
 0b. ✅ **`11_guest_reviews.sql` RUN** (2026-07-05). — post-stay guest reviews: changes `reviews.rating` int→numeric(3,2) (allows 4.5/4.75) + adds `booking_id` + one-review-per-stay index. Until run, the "Rate your stay" form on completed bookings will error on submit. Additive + CRM-safe; guest reviews **publish instantly** (staff can hide in the CRM).
@@ -105,7 +115,7 @@ Adds the depth the founder asked for: AI listing **interview**, availability **c
 - ✅ Already done by founder: SMTP_PASS added (emails send); cancellation windows reviewed; 01–06 migrations run.
 
 ## Migrations (founder runs each in Supabase SQL Editor)
-`01_public_listings` ✓ · `02_public_facts` ✓ · `03_accounts` ✓ · `04_bookings` ✓ · `05_hold_expiry` ✓ · `06_notifications` ✓ · `07_reviews` ✓ · `08_accounts_links` ✓ · **`09_phone_verification` ← RUN before next deploy** (adds `accounts.phone_verified_at` + service-role-only `phone_otps`) · `10_account_prefs` ✓ (adds `accounts.notify_email/notify_whatsapp/language`) · `11_guest_reviews` ✓ (rating→numeric(3,2) + `reviews.booking_id`) · **`12_review_requests` ← RUN before next deploy** (adds `bookings.review_requested_at` for the post-stay nudge) · `13_avatars` ✓ (adds `accounts.avatar_url` + public `avatars` bucket). **All migrations 01–13 applied.**
+**✅ ALL migrations `01`–`16` APPLIED (2026-07-11).** In order: `01_public_listings` · `02_public_facts` · `03_accounts` · `04_bookings` · `05_hold_expiry` · `06_notifications` · `07_reviews` · `08_accounts_links` · `09_phone_verification` · `10_account_prefs` · `11_guest_reviews` · `12_review_requests` · `13_avatars` · `14_host_portal` · `15_host_portal_2` · `16_host_engagement`. Nothing pending.
 
 ## WhatsApp phone verification (OTP) — BUILT 2026-07-05, ready-to-flip
 Optional "Verify your WhatsApp number" card on `/account` (`components/account/PhoneVerifyCard`). Flow: enter PK number → `sendPhoneOtp` (`app/account/actions.ts`) generates a 6-digit code, hashes it into `phone_otps` (10-min TTL, 60-s resend cooldown, 5 attempts), sends via `lib/otp.ts` `sendWhatsappOtp` (WhatsApp **authentication template, Copy-code button**) → guest pastes code (auto-detected) → `verifyPhoneOtp` stamps `accounts.phone` + `phone_verified_at`. Send is a **seam**: real Cloud API when `WHATSAPP_*` env is set, else dev-logs the code (prod shows "verify by email for now"). **Not yet wired: "some verification required to book"** — the mechanism exists; switch it on once the number's live (or if email is to count as sufficient). Meta template delivery = **Copy code** (zero/one-tap autofill need a native Android app; web only gets copy-code).
@@ -121,11 +131,18 @@ Supabase URL/anon/**service‑role** (service key used ONLY by `app/book/actions
 - All guest comms are **best‑effort** (try/catch) — they never break a booking.
 - Logs (`dev.log`, `*.log`) are gitignored — don't commit them.
 
-## ▶️ NEXT (2026-07-05): Phase 2.5 — Account/profile page + REAL PAYMENTS
-Founder wants payments ASAP. Full spec in `ROADMAP.md` (Phase 2.5) + memory `payment-integration-plan`. TL;DR: build a proper `/account` hub (profile, upgraded bookings with cancel/receipts/balance, payments, security, prefs, role shortcuts) **and** integrate **Safepay** (cards + Easypaisa + JazzCash) as a "Pay now" option behind the existing `lib/payments/provider.ts` seam, keeping the free bank-transfer + screenshot flow. **Founder action: start Safepay onboarding now** (NTN + business registration + bank account; ~days to approve). Then Phase 3 (host portal — needs payout decision) → Phase 4 (partner/managed portals).
+## ▶️ NEXT (2026-07-11)
+The **account hub (2.5a)** and the **full host portal (Phase 3 + 3.5 + 3.6)** are BUILT, verified, and DEPLOYED. Recommended next, in order:
+1. **Safepay real payments (Phase 2.5b)** — the founder's ASAP ask. Build the "Pay now by card" path behind `lib/payments/provider.ts` (stubbed already); founder does the Safepay onboarding in parallel. Memory: `payment-integration-plan`.
+2. **Host pricing extras** — weekend rate, minimum nights, cleaning fee, weekly/monthly discounts (every listing is a flat nightly rate today). The most-requested real-world host gap.
+3. **Turn on WhatsApp** (CRM env creds) → confirmations + review nudges + host messages flow (drainer + templates ready).
+4. Later: payouts settlement ledger · host review analytics per-listing strip · Phase 4 partner/managed portals · ElevenLabs/Realtime voice · app icons/PWA (needs the logo).
 
-## Live now (2026-07-05)
-Phase 0 + accounts backbone + **Phase 2 guest messaging** + **WhatsApp OTP verification** are all DEPLOYED on eskerrentals.com (migrations 01–09 applied). Phase 2 fully tested (12/12 integration incl. live realtime; 13/13 RLS). Logo still pending (`public/brand/`) → app icons/PWA blocked.
+## Live now (2026-07-11)
+Account hub + guest reviews + review nudge + avatars + **the entire host portal** (self-listing incl. AI interview, photos/calendar/guest-info, bookings, reviews+reply, "Hosted by…" profile, analytics, payouts) are DEPLOYED on eskerrentals.com. Migrations 01–16 applied. Latest Platform commit `31e2c68`; CRM host-review + drainer commits pushed. **⚠️ [HOST-DEMO] data on `umais@esker.com` still present — remove when done.**
 
-## Genuinely left in Phase 1
-Real‑device mobile pass (code is responsive; needs a human eye) · PNG app icons + PWA manifest + `docs/MOBILE_APP.md` (**blocked on the real logo file** → `public/brand/`) · post‑stay review capture (needs `07_reviews.sql` ✓ run — build the guest-submit UI). Then: **Phase 2.5 (account + payments) → Phase 3 host portal → Phase 4 partner/managed portals** · later: ElevenLabs/Realtime voice.
+## Host portal map (for a fresh session)
+Reads `lib/data/host.ts` · writes (server actions) `app/host/actions.ts` · pages under `app/host/*` (Overview/Listings/Bookings/**Reviews**/Messages + listings/new{,/ai,/manual}, listings/[id]{,/preview}) · components `components/host/*` + public `components/HostCard.tsx`, `components/Reviews.tsx`, `components/TrackListingView.tsx` · AI interview engine `lib/ai/hostInterview.ts` (+ client-safe `hostInterviewShared.ts`) with editable persona in **CRM Settings → "Host listing interviewer"** (`app_settings.ai_host_interview_prompt`). CRM side (Esker OS): approval queue in `app/properties` + `reviewHostListing`, `getProperties` excludes host rows, outbox drainer `lib/data/guestOutbox.ts`. Full detail in memory `host-portal-built` + `account-hub-built`.
+
+## ⚠️ Build rule (cost a bad deploy once)
+Always run **`npm run build`** (not just `tsc`) before claiming a Platform deploy — a client component importing a `server-only` module passes `tsc` but fails `next build`, and Vercel silently keeps the OLD deploy live. Split client-safe consts/types into non-`server-only` modules (see `lib/ai/hostInterviewShared.ts`, `lib/hostConstants.ts`).

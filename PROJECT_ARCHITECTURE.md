@@ -20,9 +20,18 @@ Migrations live in `supabase/` and are run by the founder in the Supabase SQL Ed
 - **`04_bookings.sql`** — `bookings.account_id` + `bookings_select_own` RLS. ✓
 - **`05_hold_expiry.sql`** — 18h auto-release of unpaid website holds. ✓ · **`06_notifications.sql`** — `guest_messages` outbox. ✓
 - **`07_reviews.sql`** — `reviews` + `public_reviews` view. ✓
-- **`08_accounts_links.sql`** — `owners.account_id`; `properties.{owner_account_id, owner_relationship (esker|partner|managed|host), comms_owner (esker|owner), listing_status}` — groundwork for the portals + chat routing. ✓ (all migrations 01–08 applied)
+- **`08_accounts_links.sql`** — `owners.account_id`; `properties.{owner_account_id, owner_relationship (esker|partner|managed|host), comms_owner (esker|owner), listing_status}` — groundwork for the portals + chat routing. ✓
+- **`09_phone_verification.sql`** — `accounts.phone_verified_at` + service-role `phone_otps`. ✓
+- **`10_account_prefs.sql`** — `accounts.notify_email/notify_whatsapp/language`. ✓
+- **`11_guest_reviews.sql`** — `reviews.rating`→numeric(3,2) + `reviews.booking_id` (guest self-submit + fractional stars). ✓
+- **`12_review_requests.sql`** — `bookings.review_requested_at` (post-stay nudge dedup). ✓
+- **`13_avatars.sql`** — `accounts.avatar_url` + public `avatars` bucket. ✓
+- **`14_host_portal.sql`** — `public_listings` gated by `listing_status`; host chat RLS `conversations_select_owner`/`messages_select_owner`; `conversations.owner_last_read_at`; `accounts.id_front_url/id_back_url/id_verified_at`; `properties.review_note`. ✓
+- **`15_host_portal_2.sql`** — `listing_status` allows `draft`; **`property_blocks`** (host date-blocks) UNION into `public_availability`; `accounts.payout_details`. ✓
+- **`16_host_engagement.sql`** — `reviews.host_reply/host_reply_at` (+ in `public_reviews` view) + RLS `reviews_select_host`; `accounts.host_bio`; **`listing_views`** daily counter + `bump_listing_view()` SECURITY DEFINER beacon. ✓
+- **All migrations 01–16 applied (2026-07-11).**
 
-The website reads **only** the two views + `accounts`/`account_roles` (own) + own `bookings`. The base `properties`/`bookings`/`guests`/`owners`/`users` stay staff-only (their RLS uses `is_staff()`).
+The website reads **only** the public views (`public_listings`, `public_availability`, `public_reviews`) + `accounts`/`account_roles` (own) + own `bookings`, **plus host-scoped rows** (a host reads their own listings' reviews via RLS; host portal reads/writes go through owner-checked service-role code in `lib/data/host.ts` + `app/host/actions.ts`). The base `properties`/`bookings`/`guests`/`owners`/`users` stay staff-only (RLS uses `is_staff()`).
 
 ## Security model (the wall — sacred)
 - **anon** → `public_listings` + `public_availability` only.
