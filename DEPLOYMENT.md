@@ -2,6 +2,8 @@
 
 Goal: deploy this website to **`eskerrentals.com`** (apex) on **Vercel (Hobby/free)**. The CRM stays on `os.eskerrentals.com` as a **separate** Vercel project. Both share the **same Supabase project** — do NOT create a new Supabase.
 
+> **⚠️ PRE-DEPLOY RULE (learned the hard way):** always run **`npm run build`** locally before pushing — NOT just `npx tsc --noEmit`. A client component (`"use client"`) importing a `server-only` module (e.g. one that pulls in the service-role Supabase client) **passes `tsc` but fails `next build`**, and Vercel then **silently keeps the old deploy live** — looking like "my changes didn't go through". Fix by moving client-safe consts/types into non-`server-only` modules (see `lib/ai/hostInterviewShared.ts`, `lib/hostConstants.ts`). It's live once you push `main`; run migrations in Supabase first if the code reads new columns/tables (though reads are written to degrade gracefully so a missing migration never crashes signed-in pages).
+
 ## 0. Prerequisites
 - The website is **not a git repo yet**. `.gitignore` already excludes `.env.local`, `node_modules`, `.next` (secrets won't be pushed).
 - Run any pending migrations first (esp. **`supabase/04_bookings.sql`**) — see `SESSION_HANDOFF.md`.
