@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, CalendarDays, MessageSquare, User, Shield, SlidersHorizontal, LogOut, Building2, Star } from "lucide-react";
+import { Home, CalendarDays, MessageSquare, User, Shield, SlidersHorizontal, LogOut, Building2, Star, LineChart } from "lucide-react";
 import type { ComponentType } from "react";
 import { signOut } from "@/app/account/actions";
 
@@ -25,15 +25,23 @@ const HOST: Item[] = [
   { href: "/host/messages", label: "Messages", icon: MessageSquare, match: prefix("/host/messages") },
 ];
 
+const PARTNER: Item[] = [
+  { href: "/partner", label: "Overview", icon: Home, match: exact("/partner") },
+  { href: "/partner/properties", label: "Properties", icon: Building2, match: prefix("/partner/properties") },
+];
+
 const SHARED: Item[] = [
   { href: "/account/profile", label: "Profile", icon: User, match: prefix("/account/profile") },
   { href: "/account/security", label: "Security", icon: Shield, match: prefix("/account/security") },
   { href: "/account/preferences", label: "Preferences", icon: SlidersHorizontal, match: prefix("/account/preferences") },
 ];
 
-// The account/host shell navigation: a Guest⇄Hosting mode switch + section links
-// with active states. Desktop = sticky left rail; mobile = horizontal pill strip.
-export function AccountNav({ mode }: { mode: "guest" | "host" }) {
+type Mode = "guest" | "host" | "partner";
+const primaryFor = (mode: Mode): Item[] => (mode === "host" ? HOST : mode === "partner" ? PARTNER : GUEST);
+
+// The account/host/partner shell navigation: a Guest⇄Hosting⇄Partner mode switch +
+// section links with active states. Desktop = sticky left rail; mobile = pill strip.
+export function AccountNav({ mode, showPartner = false }: { mode: Mode; showPartner?: boolean }) {
   const pathname = usePathname() || "/account";
 
   const link = (it: Item, compact = false) => {
@@ -54,17 +62,17 @@ export function AccountNav({ mode }: { mode: "guest" | "host" }) {
     <>
       {/* Mobile: pill strip */}
       <div className="lg:hidden">
-        <ModeSwitch mode={mode} />
+        <ModeSwitch mode={mode} showPartner={showPartner} />
         <div className="mt-3 -mx-6 flex gap-2 overflow-x-auto px-6 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {[...(mode === "guest" ? GUEST : HOST), ...SHARED].map((it) => link(it, true))}
+          {[...primaryFor(mode), ...SHARED].map((it) => link(it, true))}
         </div>
       </div>
 
       {/* Desktop: sticky rail */}
       <nav className="hidden lg:block">
-        <ModeSwitch mode={mode} />
+        <ModeSwitch mode={mode} showPartner={showPartner} />
         <div className="mt-5 space-y-1">
-          {(mode === "guest" ? GUEST : HOST).map((it) => link(it))}
+          {primaryFor(mode).map((it) => link(it))}
           <div className="my-3 border-t border-line" />
           {SHARED.map((it) => link(it))}
           <div className="my-3 border-t border-line" />
@@ -80,10 +88,12 @@ export function AccountNav({ mode }: { mode: "guest" | "host" }) {
   );
 }
 
-// Segmented Guest / Hosting control. Guest → /account, Hosting → /host (which
-// invites you to become a host if you aren't one yet). This is the whole
-// "shared shell, two workspaces" idea in one control.
-function ModeSwitch({ mode }: { mode: "guest" | "host" }) {
+// Segmented Guest / Hosting / Partner control. Guest → /account, Hosting → /host
+// (which invites you to become a host if you aren't one yet), Partner → /partner.
+// The Partner segment only appears for accounts that hold the (admin-granted)
+// partner role. This is the whole "shared shell, multiple workspaces" idea in one
+// control — one login can book stays, self-list, AND view its investor property.
+function ModeSwitch({ mode, showPartner = false }: { mode: Mode; showPartner?: boolean }) {
   const item = (active: boolean, href: string, icon: React.ReactNode, label: string) => (
     <Link
       href={href}
@@ -99,6 +109,7 @@ function ModeSwitch({ mode }: { mode: "guest" | "host" }) {
     <div className="flex gap-1 rounded-xl border border-line bg-surface-2 p-1">
       {item(mode === "guest", "/account", <Home size={16} />, "Guest")}
       {item(mode === "host", "/host", <Building2 size={16} />, "Hosting")}
+      {showPartner && item(mode === "partner", "/partner", <LineChart size={16} />, "Partner")}
     </div>
   );
 }
