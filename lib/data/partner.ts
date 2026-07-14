@@ -299,15 +299,20 @@ export async function getPartnerBookings(propertyId: string, month: string): Pro
 
 /** Occupancy % for the month = occupied nights ÷ days in month (capped 100). */
 export function occupancyPct(bookings: PartnerBooking[], month: string): number {
-  const nights = bookings.reduce((s, b) => s + b.nightsInMonth, 0);
-  return Math.min(100, Math.round((nights / daysInMonth(month)) * 100));
+  const nights = bookings.reduce((s, b) => s + (Number.isFinite(b.nightsInMonth) ? b.nightsInMonth : 0), 0);
+  const days = daysInMonth(month);
+  return days > 0 ? Math.min(100, Math.round((nights / days) * 100)) : 0;
 }
 
+// checkin/checkout are timestamptz ("2026-07-10T07:29:00+00:00"); monthStart/End
+// are "YYYY-MM-01". Compare on the date part so nights are whole calendar days.
 function overlapNights(checkin: string, checkout: string, monthStart: string, monthEnd: string): number {
-  const start = checkin < monthStart ? monthStart : checkin;
-  const end = checkout < monthEnd ? checkout : monthEnd;
+  const ci = checkin.slice(0, 10);
+  const co = checkout.slice(0, 10);
+  const start = ci < monthStart ? monthStart : ci;
+  const end = co < monthEnd ? co : monthEnd;
   const ms = Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`);
-  return Math.max(0, Math.round(ms / 86_400_000));
+  return Number.isFinite(ms) ? Math.max(0, Math.round(ms / 86_400_000)) : 0;
 }
 
 // ── Payouts (their property's withdrawals) ──────────────────────────────────

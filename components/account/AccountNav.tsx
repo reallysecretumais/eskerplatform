@@ -94,22 +94,24 @@ export function AccountNav({ mode, showPartner = false }: { mode: Mode; showPart
 // partner role. This is the whole "shared shell, multiple workspaces" idea in one
 // control — one login can book stays, self-list, AND view its investor property.
 function ModeSwitch({ mode, showPartner = false }: { mode: Mode; showPartner?: boolean }) {
-  const item = (active: boolean, href: string, icon: React.ReactNode, label: string) => (
+  const item = (active: boolean, href: string, Icon: ComponentType<{ size?: number; className?: string }>, label: string) => (
     <Link
+      key={href}
       href={href}
-      className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
-        active ? "bg-bg text-ink shadow-sm" : "text-muted hover:text-ink"
+      aria-current={active ? "page" : undefined}
+      className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[13px] font-medium whitespace-nowrap transition ${
+        active ? "bg-bg text-ink shadow-sm ring-1 ring-line" : "text-muted hover:text-ink"
       }`}
     >
-      {icon}
-      {label}
+      <Icon size={14} className={active ? "text-gold-deep" : "text-dim"} />
+      <span className="truncate">{label}</span>
     </Link>
   );
   return (
-    <div className="flex gap-1 rounded-xl border border-line bg-surface-2 p-1">
-      {item(mode === "guest", "/account", <Home size={16} />, "Guest")}
-      {item(mode === "host", "/host", <Building2 size={16} />, "Hosting")}
-      {showPartner && item(mode === "partner", "/partner", <LineChart size={16} />, "Partner")}
+    <div className="flex items-stretch gap-1 rounded-xl border border-line bg-surface-2 p-1">
+      {item(mode === "guest", "/account", Home, "Guest")}
+      {item(mode === "host", "/host", Building2, "Hosting")}
+      {showPartner && item(mode === "partner", "/partner", LineChart, "Partner")}
     </div>
   );
 }

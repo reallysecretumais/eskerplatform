@@ -1,9 +1,10 @@
 import { CalendarDays } from "lucide-react";
 import { StatusBadge } from "@/components/account/StatusBadge";
 import type { PartnerBooking } from "@/lib/data/partner";
+import { pktDate } from "@/lib/partnerFormat";
 
 const pkr = (n: number) => `₨${n.toLocaleString("en-PK")}`;
-const fmt = (d: string | null) => (d ? new Date(`${d}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—");
+const fmt = (d: string | null) => pktDate(d);
 
 // The month's bookings — dates, nights, amount, status. Guest identity is never
 // shown (privacy): no names, CNIC, or payment proofs.

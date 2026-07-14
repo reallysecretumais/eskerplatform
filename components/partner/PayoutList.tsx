@@ -1,8 +1,9 @@
 import { Receipt } from "lucide-react";
 import type { PartnerPayout } from "@/lib/data/partner";
+import { pktDate } from "@/lib/partnerFormat";
 
 const pkr = (n: number) => `₨${n.toLocaleString("en-PK")}`;
-const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+const fmt = (d: string) => pktDate(d, { day: "numeric", month: "short", year: "numeric" });
 
 // Payouts Esker has made to the partner for this property (newest first).
 export function PayoutList({ payouts }: { payouts: PartnerPayout[] }) {

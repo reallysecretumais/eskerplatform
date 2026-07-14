@@ -1,6 +1,7 @@
 import { EskerLogo } from "@/components/EskerLogo";
 import { support } from "@/lib/payments";
 import type { PartnerStatement } from "@/lib/data/partner";
+import { pktDate } from "@/lib/partnerFormat";
 
 const pkr = (n: number) => `₨${n.toLocaleString("en-PK")}`;
 const monthLabel = (m: string) => new Date(`${m}-01T00:00:00`).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
@@ -73,7 +74,7 @@ export function StatementView({ s }: { s: PartnerStatement }) {
                 {s.payouts.map((w) => (
                   <div key={w.id} className="flex items-center justify-between py-1">
                     <span className="text-muted print:text-black/60">
-                      {new Date(`${w.withdrawnOn}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} · {w.receiptNo}
+                      {pktDate(w.withdrawnOn)} · {w.receiptNo}
                     </span>
                     <span className="tabular-nums">{pkr(w.amount)}</span>
                   </div>
