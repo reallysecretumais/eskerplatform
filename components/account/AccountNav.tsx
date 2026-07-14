@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, CalendarDays, MessageSquare, User, Shield, SlidersHorizontal, LogOut, Building2, Star, LineChart } from "lucide-react";
+import { Home, CalendarDays, MessageSquare, User, Shield, SlidersHorizontal, LogOut, Building2, Star } from "lucide-react";
 import type { ComponentType } from "react";
 import { signOut } from "@/app/account/actions";
 
@@ -94,24 +94,27 @@ export function AccountNav({ mode, showPartner = false }: { mode: Mode; showPart
 // partner role. This is the whole "shared shell, multiple workspaces" idea in one
 // control — one login can book stays, self-list, AND view its investor property.
 function ModeSwitch({ mode, showPartner = false }: { mode: Mode; showPartner?: boolean }) {
-  const item = (active: boolean, href: string, Icon: ComponentType<{ size?: number; className?: string }>, label: string) => (
+  // Text-only segmented control — in the 15rem rail, icons force the labels to
+  // clip ("Hos…"), so the words carry it. Equal widths, one clean active pill.
+  const item = (active: boolean, href: string, label: string) => (
     <Link
       key={href}
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[13px] font-medium whitespace-nowrap transition ${
-        active ? "bg-bg text-ink shadow-sm ring-1 ring-line" : "text-muted hover:text-ink"
+      className={`flex flex-1 items-center justify-center rounded-lg px-1.5 py-1.5 text-[13px] leading-none whitespace-nowrap transition-colors ${
+        active
+          ? "bg-bg font-semibold text-ink shadow-sm ring-1 ring-line/70"
+          : "font-medium text-muted hover:text-ink"
       }`}
     >
-      <Icon size={14} className={active ? "text-gold-deep" : "text-dim"} />
-      <span className="truncate">{label}</span>
+      {label}
     </Link>
   );
   return (
     <div className="flex items-stretch gap-1 rounded-xl border border-line bg-surface-2 p-1">
-      {item(mode === "guest", "/account", Home, "Guest")}
-      {item(mode === "host", "/host", Building2, "Hosting")}
-      {showPartner && item(mode === "partner", "/partner", LineChart, "Partner")}
+      {item(mode === "guest", "/account", "Guest")}
+      {item(mode === "host", "/host", "Hosting")}
+      {showPartner && item(mode === "partner", "/partner", "Partner")}
     </div>
   );
 }
