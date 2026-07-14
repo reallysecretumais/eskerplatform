@@ -18,7 +18,11 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
     if (!error) return NextResponse.redirect(`${origin}${next}`);
+    // Surface the real reason (temporarily) so a failing invite is diagnosable
+    // from the URL without server-log access, and log it for Vercel.
+    console.error("[auth/confirm] verifyOtp failed", { type, status: error.status, message: error.message });
+    return NextResponse.redirect(`${origin}/login?error=auth&reason=${encodeURIComponent(error.message)}`);
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth`);
+  return NextResponse.redirect(`${origin}/login?error=auth&reason=missing_token`);
 }
