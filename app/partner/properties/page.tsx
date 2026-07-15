@@ -11,6 +11,8 @@ export default async function PartnerProperties() {
   if (!account.roles.includes("partner")) redirect("/partner");
 
   const properties = await getMyPartnerProperties();
+  // One (or zero) property → the dashboard lives at /partner; no list needed.
+  if (properties.length <= 1) redirect("/partner");
 
   return (
     <div>

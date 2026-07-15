@@ -103,6 +103,12 @@ export type PartnerPayout = {
   note: string | null;
 };
 
+export type PartnerTrendPoint = { month: string; net: number; yourShare: number };
+
+/** Withdrawable balance = completed-month share − payouts already made. `amount`
+ *  is 0 when nothing is available yet. `throughMonth` is the last settled month. */
+export type PartnerAvailable = { amount: number; throughMonth: string };
+
 // ── Ownership guard (every read goes through this) ──────────────────────────
 
 /** The partner property for the signed-in account, or null. Confirms the row
@@ -143,106 +149,150 @@ export async function getMyPartnerProperties(): Promise<PartnerProperty[]> {
   }));
 }
 
-// ── Performance / split (mirrors Esker OS lib/data/deals.ts getPropertySplit) ──
+// ── Finance core (mirrors Esker OS lib/data/deals.ts getPropertySplit) ─────────
+//
+// One batched read of a property's whole cash history (payments, expenses, deal
+// timeline, withdrawals), then pure in-memory derivation of: the viewed month's
+// performance, a trailing monthly series (trend), and the withdrawable balance.
+// Reusing a single load keeps the dashboard to one round of queries.
 
-/** The viewed month's cash-basis performance + the partner's share, for a property
- *  the caller partners on. null when it isn't theirs, or there's no deal on file.
- *  Omits Esker's share and the mgmt-fee amount by construction. */
-export async function getPartnerPerformance(propertyId: string, month: string): Promise<PartnerPerformance | null> {
-  const own = await assertPartnerProperty(propertyId);
-  if (!own) return null;
+type DealRow = {
+  dealType: PartnerDealType;
+  ownerPct: number;
+  mgmtFeePct: number;
+  investment: number;
+  ownerLabel: string | null;
+  validFrom: string;
+};
+type Finance = {
+  payments: { amount: number; month: string }[]; // month = PKT "YYYY-MM" of paid_at
+  expenses: { amount: number; category: string; label: string; month: string }[];
+  deals: DealRow[]; // newest first
+  withdrawnTotal: number;
+};
+
+async function loadFinance(propertyId: string): Promise<Finance> {
   const admin = createAdminClient();
-
-  // Latest effective-dated deal whose valid_from is on/before the selected month.
-  const { data: deals } = await admin
-    .from("property_deals")
-    .select("deal_type, owner_pct, esker_pct, mgmt_fee_pct, investment, owner_label, valid_from")
-    .eq("property_id", propertyId)
-    .lt("valid_from", `${addMonth(month, 1)}-01`)
-    .order("valid_from", { ascending: false })
-    .limit(1);
-  const d = deals?.[0] as
-    | { deal_type: string; owner_pct: number | null; esker_pct: number | null; mgmt_fee_pct: number | null; investment: number | null; owner_label: string | null }
-    | undefined;
-  if (!d) return null;
-
-  const dealType = d.deal_type as PartnerDealType;
-  const ownerPct = d.owner_pct == null ? 0 : Number(d.owner_pct);
-  const eskerPct = d.esker_pct == null ? 0 : Number(d.esker_pct);
-  const mgmtFeePct = d.mgmt_fee_pct == null ? 0 : Number(d.mgmt_fee_pct);
-  const investment = d.investment == null ? 0 : Number(d.investment);
-
-  // Cash basis. Revenue = payments collected in the month (by paid_at, PKT), for
-  // this property's bookings. Costs = this property's expenses paid in the month
-  // (company-wide rows have a null property_id and are excluded by the equality
-  // filter). Itemised by category. Two-step read (booking ids → payments) so the
-  // scoping is deterministic and index-backed.
   const { data: bkRows } = await admin.from("bookings").select("id").eq("property_id", propertyId);
   const bookingIds = ((bkRows ?? []) as { id: string }[]).map((b) => b.id);
 
-  const [payRes, expRes] = await Promise.all([
+  const [payRes, expRes, dealRes, wRes] = await Promise.all([
     bookingIds.length
       ? admin.from("booking_payments").select("amount, paid_at").in("booking_id", bookingIds)
       : Promise.resolve({ data: [] as { amount: number; paid_at: string }[] }),
     admin.from("expenses").select("amount, category, label, paid_date").eq("property_id", propertyId).eq("paid", true),
+    admin
+      .from("property_deals")
+      .select("deal_type, owner_pct, mgmt_fee_pct, investment, owner_label, valid_from")
+      .eq("property_id", propertyId)
+      .order("valid_from", { ascending: false }),
+    admin.from("partner_withdrawals").select("amount").eq("property_id", propertyId),
   ]);
 
+  const payments = ((payRes.data ?? []) as { amount: number; paid_at: string }[])
+    .filter((p) => p.paid_at)
+    .map((p) => ({ amount: Number(p.amount) || 0, month: pktMonthOf(p.paid_at) }));
+
+  const expenses = ((expRes.data ?? []) as { amount: number; category: string | null; label: string | null; paid_date: string | null }[])
+    .filter((e) => e.paid_date)
+    .map((e) => {
+      const cat = e.category || "other";
+      return { amount: Number(e.amount) || 0, category: cat, label: EXPENSE_LABEL[cat] ?? cap(cat), month: (e.paid_date as string).slice(0, 7) };
+    });
+
+  const deals = ((dealRes.data ?? []) as { deal_type: string; owner_pct: number | null; mgmt_fee_pct: number | null; investment: number | null; owner_label: string | null; valid_from: string }[]).map((d) => ({
+    dealType: d.deal_type as PartnerDealType,
+    ownerPct: d.owner_pct == null ? 0 : Number(d.owner_pct),
+    mgmtFeePct: d.mgmt_fee_pct == null ? 0 : Number(d.mgmt_fee_pct),
+    investment: d.investment == null ? 0 : Number(d.investment),
+    ownerLabel: d.owner_label ?? null,
+    validFrom: d.valid_from,
+  }));
+
+  const withdrawnTotal = ((wRes.data ?? []) as { amount: number }[]).reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  return { payments, expenses, deals, withdrawnTotal };
+}
+
+/** The effective deal for a month = latest whose valid_from is on/before it. */
+function dealForMonth(deals: DealRow[], month: string): DealRow | null {
+  const cutoff = `${addMonth(month, 1)}-01`;
+  return deals.find((d) => d.validFrom < cutoff) ?? null;
+}
+
+/** Cash-basis revenue / itemised costs / net for one month under a deal. */
+function monthNet(fin: Finance, month: string, deal: DealRow | null) {
   let revenue = 0;
-  for (const p of (payRes.data ?? []) as { amount: number; paid_at: string }[]) {
-    if (pktMonthOf(p.paid_at) === month) revenue += Number(p.amount) || 0;
-  }
+  for (const p of fin.payments) if (p.month === month) revenue += p.amount;
 
   let expenses = 0;
   const byCat = new Map<string, { label: string; amount: number }>();
-  for (const e of (expRes.data ?? []) as { amount: number; category: string | null; label: string | null; paid_date: string | null }[]) {
-    if (!e.paid_date || e.paid_date.slice(0, 7) !== month) continue;
-    const amt = Number(e.amount) || 0;
-    expenses += amt;
-    const cat = e.category || "other";
-    const line = byCat.get(cat) ?? { label: EXPENSE_LABEL[cat] ?? cap(cat), amount: 0 };
-    line.amount += amt;
-    byCat.set(cat, line);
+  for (const e of fin.expenses) {
+    if (e.month !== month) continue;
+    expenses += e.amount;
+    const line = byCat.get(e.category) ?? { label: e.label, amount: 0 };
+    line.amount += e.amount;
+    byCat.set(e.category, line);
   }
-  const expenseLines: ExpenseLine[] = [...byCat.entries()].map(([category, v]) => ({ category, label: v.label, amount: round(v.amount) })).sort((a, b) => b.amount - a.amount);
+  const expenseLines: ExpenseLine[] = [...byCat.entries()]
+    .map(([category, v]) => ({ category, label: v.label, amount: round(v.amount) }))
+    .sort((a, b) => b.amount - a.amount);
 
-  const mgmtFee = dealType === "mgmt_fee_net_split" ? Math.floor(revenue * mgmtFeePct) : 0;
-  const net = revenue - mgmtFee - expenses;
+  const mgmtFee = deal && deal.dealType === "mgmt_fee_net_split" ? Math.floor(revenue * deal.mgmtFeePct) : 0;
+  return { revenue, expenses, expenseLines, net: revenue - mgmtFee - expenses };
+}
 
-  // Recovery is tracked on CASH ACTUALLY PAID to the investor (cumulative
-  // partner_withdrawals), not profit merely earned — matching the CRM.
+/** The partner's cut of a month's net, given the deal + whether recovery is ongoing. */
+function shareForMonth(deal: DealRow | null, net: number, inRecoveryNow: boolean): number {
+  if (!deal) return 0;
+  switch (deal.dealType) {
+    case "owner_net_split":
+    case "mgmt_fee_net_split":
+      return Math.floor(net * deal.ownerPct);
+    case "investor_recovery":
+      return inRecoveryNow ? net : Math.floor(net * deal.ownerPct);
+    default:
+      return 0; // company_owned
+  }
+}
+
+/** True while a recovery investor hasn't been fully repaid (drives 100%-to-you). */
+function inRecoveryNow(fin: Finance): boolean {
+  const d = fin.deals[0];
+  return !!d && d.dealType === "investor_recovery" && fin.withdrawnTotal < d.investment;
+}
+
+/** The viewed month's performance from a loaded finance set (pure). */
+function computePerformance(fin: Finance, month: string): PartnerPerformance | null {
+  const deal = dealForMonth(fin.deals, month);
+  if (!deal) return null;
+  const { revenue, expenses, expenseLines, net } = monthNet(fin, month, deal);
+
   let yourShare = 0;
   let inRecovery = false;
   let recovery: PartnerRecovery | null = null;
 
-  if (dealType === "owner_net_split") {
-    yourShare = Math.floor(net * ownerPct);
-  } else if (dealType === "mgmt_fee_net_split") {
-    yourShare = Math.floor(net * ownerPct);
-  } else if (dealType === "investor_recovery") {
-    const totalWithdrawn = await getWithdrawnTotal(propertyId);
-    const phase: "A" | "B" = totalWithdrawn >= investment ? "B" : "A";
-    const recovered = Math.min(totalWithdrawn, investment);
+  if (deal.dealType === "investor_recovery") {
+    // Recovery is tracked on CASH ACTUALLY PAID (cumulative withdrawals), not
+    // profit merely earned — matching the CRM.
+    const phaseA = fin.withdrawnTotal < deal.investment;
+    const recovered = Math.min(fin.withdrawnTotal, deal.investment);
     recovery = {
-      invested: round(investment),
+      invested: round(deal.investment),
       recovered: round(recovered),
-      remaining: round(Math.max(0, investment - totalWithdrawn)),
-      phase,
-      pct: investment > 0 ? Math.min(100, Math.round((recovered / investment) * 100)) : 0,
+      remaining: round(Math.max(0, deal.investment - fin.withdrawnTotal)),
+      phase: phaseA ? "A" : "B",
+      pct: deal.investment > 0 ? Math.min(100, Math.round((recovered / deal.investment) * 100)) : 0,
     };
-    if (phase === "A") {
-      inRecovery = true;
-      yourShare = net; // 100% earmarked for the investor until repaid
-    } else {
-      yourShare = Math.floor(net * ownerPct);
-    }
+    inRecovery = phaseA;
+    yourShare = phaseA ? net : Math.floor(net * deal.ownerPct);
+  } else {
+    yourShare = shareForMonth(deal, net, false);
   }
-  // company_owned → no partner distribution (won't normally be linked as a partner).
-  void eskerPct;
 
   return {
-    dealType,
-    ownerLabel: d.owner_label ?? null,
-    hasMgmtFee: dealType === "mgmt_fee_net_split",
+    dealType: deal.dealType,
+    ownerLabel: deal.ownerLabel,
+    hasMgmtFee: deal.dealType === "mgmt_fee_net_split",
     revenue: round(revenue),
     expenses: round(expenses),
     expenseLines,
@@ -253,12 +303,41 @@ export async function getPartnerPerformance(propertyId: string, month: string): 
   };
 }
 
-/** Cumulative cash paid out for a property (drives recovery). */
-async function getWithdrawnTotal(propertyId: string): Promise<number> {
-  const admin = createAdminClient();
-  const { data, error } = await admin.from("partner_withdrawals").select("amount").eq("property_id", propertyId);
-  if (error) return 0;
-  return (data ?? []).reduce((s, r) => s + (Number((r as { amount: number }).amount) || 0), 0);
+/** Trailing `count` months (oldest→newest) of net + the partner's share. */
+function computeTrend(fin: Finance, count = 6): PartnerTrendPoint[] {
+  const rec = inRecoveryNow(fin);
+  return recentMonths(count)
+    .slice()
+    .reverse()
+    .map((m) => {
+      const deal = dealForMonth(fin.deals, m);
+      const { net } = monthNet(fin, m, deal);
+      return { month: m, net: round(net), yourShare: round(shareForMonth(deal, net, rec)) };
+    });
+}
+
+/** Withdrawable now = the partner's share of COMPLETED months (never the running
+ *  month, whose costs are still accruing) minus what's already been paid out. */
+function computeAvailable(fin: Finance): PartnerAvailable {
+  const cur = currentPktMonth();
+  const throughMonth = addMonth(cur, -1);
+  const rec = inRecoveryNow(fin);
+  const months = new Set([...fin.payments.map((p) => p.month), ...fin.expenses.map((e) => e.month)].filter((m) => m < cur));
+
+  let earned = 0;
+  for (const m of months) {
+    const deal = dealForMonth(fin.deals, m);
+    earned += shareForMonth(deal, monthNet(fin, m, deal).net, rec);
+  }
+  return { amount: Math.max(0, round(earned - fin.withdrawnTotal)), throughMonth };
+}
+
+/** The viewed month's cash-basis performance + the partner's share, for a property
+ *  the caller partners on. null when it isn't theirs, or there's no deal on file. */
+export async function getPartnerPerformance(propertyId: string, month: string): Promise<PartnerPerformance | null> {
+  const own = await assertPartnerProperty(propertyId);
+  if (!own) return null;
+  return computePerformance(await loadFinance(propertyId), month);
 }
 
 // ── Bookings for the month (no guest identity) ──────────────────────────────
@@ -270,8 +349,10 @@ const BOOKING_STATUSES = ["awaiting_payment", "payment_collected", "handed_over"
 export async function getPartnerBookings(propertyId: string, month: string): Promise<PartnerBooking[]> {
   const own = await assertPartnerProperty(propertyId);
   if (!own) return [];
-  const admin = createAdminClient();
+  return queryBookings(createAdminClient(), propertyId, month);
+}
 
+async function queryBookings(admin: ReturnType<typeof createAdminClient>, propertyId: string, month: string): Promise<PartnerBooking[]> {
   const monthStart = `${month}-01`;
   const monthEnd = `${addMonth(month, 1)}-01`; // exclusive
 
@@ -322,7 +403,10 @@ function overlapNights(checkin: string, checkout: string, monthStart: string, mo
 export async function getPartnerPayouts(propertyId: string): Promise<PartnerPayout[]> {
   const own = await assertPartnerProperty(propertyId);
   if (!own) return [];
-  const admin = createAdminClient();
+  return queryPayouts(createAdminClient(), propertyId);
+}
+
+async function queryPayouts(admin: ReturnType<typeof createAdminClient>, propertyId: string): Promise<PartnerPayout[]> {
   const { data, error } = await admin
     .from("partner_withdrawals")
     .select("id, amount, withdrawn_on, for_period, receipt_no, note")
@@ -338,6 +422,72 @@ export async function getPartnerPayouts(propertyId: string): Promise<PartnerPayo
     receiptNo: r.receipt_no,
     note: r.note,
   }));
+}
+
+// ── Composed dashboard reads ────────────────────────────────────────────────
+
+/** Trailing 6-month net + share series for the property (oldest→newest). */
+export async function getPartnerTrend(propertyId: string, count = 6): Promise<PartnerTrendPoint[]> {
+  const own = await assertPartnerProperty(propertyId);
+  if (!own) return [];
+  return computeTrend(await loadFinance(propertyId), count);
+}
+
+/** What the partner can withdraw right now (settled months only). */
+export async function getPartnerAvailable(propertyId: string): Promise<PartnerAvailable | null> {
+  const own = await assertPartnerProperty(propertyId);
+  if (!own) return null;
+  return computeAvailable(await loadFinance(propertyId));
+}
+
+export type PartnerDashboardData = {
+  property: PartnerProperty;
+  month: string;
+  performance: PartnerPerformance | null;
+  bookings: PartnerBooking[];
+  occupancy: number;
+  payouts: PartnerPayout[];
+  trend: PartnerTrendPoint[];
+  available: PartnerAvailable;
+};
+
+/** Everything one property's dashboard needs, in a single owner-checked pass:
+ *  one finance load (→ performance + trend + available) plus bookings + payouts.
+ *  Used by both the single-property /partner home and the property detail page. */
+export async function getPartnerDashboard(propertyId: string, month: string): Promise<PartnerDashboardData | null> {
+  const property = await assertPartnerProperty(propertyId);
+  if (!property) return null;
+  const admin = createAdminClient();
+  const [fin, bookings, payouts] = await Promise.all([
+    loadFinance(propertyId),
+    queryBookings(admin, propertyId, month),
+    queryPayouts(admin, propertyId),
+  ]);
+  return {
+    property,
+    month,
+    performance: computePerformance(fin, month),
+    bookings,
+    occupancy: occupancyPct(bookings, month),
+    payouts,
+    trend: computeTrend(fin, 6),
+    available: computeAvailable(fin),
+  };
+}
+
+export type PartnerSummary = {
+  property: PartnerProperty;
+  performance: PartnerPerformance | null; // current month
+  available: PartnerAvailable;
+};
+
+/** A light per-property roll-up (current month + withdrawable) for the portfolio
+ *  overview when a partner holds more than one property. */
+export async function getPartnerSummary(propertyId: string): Promise<PartnerSummary | null> {
+  const property = await assertPartnerProperty(propertyId);
+  if (!property) return null;
+  const fin = await loadFinance(propertyId);
+  return { property, performance: computePerformance(fin, currentPktMonth()), available: computeAvailable(fin) };
 }
 
 // ── Statement (composed view-model for the printable page) ──────────────────

@@ -41,8 +41,13 @@ const primaryFor = (mode: Mode): Item[] => (mode === "host" ? HOST : mode === "p
 
 // The account/host/partner shell navigation: a Guest⇄Hosting⇄Partner mode switch +
 // section links with active states. Desktop = sticky left rail; mobile = pill strip.
-export function AccountNav({ mode, showPartner = false }: { mode: Mode; showPartner?: boolean }) {
+export function AccountNav({ mode, showPartner = false, partnerPropertyCount = 0 }: { mode: Mode; showPartner?: boolean; partnerPropertyCount?: number }) {
   const pathname = usePathname() || "/account";
+
+  // Single-property partners have no list to browse — hide the Properties tab.
+  const primary = primaryFor(mode).filter(
+    (it) => !(mode === "partner" && it.href === "/partner/properties" && partnerPropertyCount <= 1),
+  );
 
   const link = (it: Item, compact = false) => {
     const active = it.match(pathname) !== "";
@@ -64,7 +69,7 @@ export function AccountNav({ mode, showPartner = false }: { mode: Mode; showPart
       <div className="lg:hidden">
         <ModeSwitch mode={mode} showPartner={showPartner} />
         <div className="mt-3 -mx-6 flex gap-2 overflow-x-auto px-6 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {[...primaryFor(mode), ...SHARED].map((it) => link(it, true))}
+          {[...primary, ...SHARED].map((it) => link(it, true))}
         </div>
       </div>
 
@@ -72,7 +77,7 @@ export function AccountNav({ mode, showPartner = false }: { mode: Mode; showPart
       <nav className="hidden lg:block">
         <ModeSwitch mode={mode} showPartner={showPartner} />
         <div className="mt-5 space-y-1">
-          {primaryFor(mode).map((it) => link(it))}
+          {primary.map((it) => link(it))}
           <div className="my-3 border-t border-line" />
           {SHARED.map((it) => link(it))}
           <div className="my-3 border-t border-line" />
