@@ -8,6 +8,7 @@ import { BookingList } from "./BookingList";
 import { PayoutList } from "./PayoutList";
 import { AvailableCard } from "./AvailableCard";
 import { TrendChart } from "./TrendChart";
+import { BookingCalendar } from "./BookingCalendar";
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -56,6 +57,10 @@ export function PropertyDashboard({ data, months, monthBase }: { data: PartnerDa
           </div>
         </div>
       )}
+
+      <section className="mt-8">
+        <BookingCalendar month={month} bookings={bookings} />
+      </section>
 
       <section className="mt-8">
         <h2 className="mb-3 font-display text-lg font-semibold tracking-tight text-ink">Bookings</h2>
