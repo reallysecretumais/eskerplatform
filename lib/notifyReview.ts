@@ -1,4 +1,5 @@
 import "server-only";
+import crypto from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email";
 import { reviewRequestEmail } from "@/lib/emailTemplates";
@@ -18,11 +19,15 @@ export async function sendReviewRequest(bookingId: string): Promise<ReviewNudgeR
 
   const { data: b } = await admin
     .from("bookings")
-    .select("id, account_id, guest_id, property_id, status, review_requested_at")
+    .select("id, account_id, guest_id, property_id, status, review_requested_at, review_token")
     .eq("id", bookingId)
     .maybeSingle();
   if (!b) return { ok: false, emailed: false, queuedWhatsapp: false, reason: "not found" };
-  if (b.status !== "checked_out") return { ok: false, emailed: false, queuedWhatsapp: false, reason: "not completed" };
+  // "completed" too — CRM staff often close a stay out before the daily cron
+  // fires, and those bookings were silently never nudged.
+  if (!["checked_out", "completed"].includes(String(b.status))) {
+    return { ok: false, emailed: false, queuedWhatsapp: false, reason: "not completed" };
+  }
   if (b.review_requested_at) return { ok: true, emailed: false, queuedWhatsapp: false, reason: "already sent" };
 
   const [{ data: listing }, { data: acct }, { data: guest }] = await Promise.all([
@@ -35,10 +40,22 @@ export async function sendReviewRequest(bookingId: string): Promise<ReviewNudgeR
   const locationLabel = pretty([listing?.category, listing?.area]) || "Islamabad";
   const guestName = (acct?.name || guest?.name || "").trim() || "there";
 
-  // Deep link to the booking's "Rate your stay" card. For account holders we mint a
-  // one-tap magic link so they land straight in (best-effort); otherwise the plain
-  // URL (they'll sign in).
-  const target = `/account/bookings/${b.id}`;
+  // Where the review happens depends on how they booked:
+  //  · account holders → the booking's "Rate your stay" card (magic link, one tap)
+  //  · WhatsApp bookings (no account) → the public /review/<token> page — a
+  //    per-booking 64-hex token minted here, so no login is ever asked of them.
+  let target = `/account/bookings/${b.id}`;
+  if (!b.account_id) {
+    let token = (b.review_token as string | null) ?? null;
+    if (!token) {
+      token = crypto.randomBytes(32).toString("hex");
+      const { error: tokErr } = await admin.from("bookings").update({ review_token: token }).eq("id", b.id);
+      // Pre-migration DB (no review_token column): fall back to the account URL
+      // rather than sending a guest a broken /review link.
+      if (tokErr) token = null;
+    }
+    if (token) target = `/review/${token}`;
+  }
   let reviewLink = `${SITE_URL}${target}`;
   const email = acct?.email || null;
   if (email) {

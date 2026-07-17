@@ -1,4 +1,4 @@
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, MessageCircle } from "lucide-react";
 import { brand } from "@/lib/brand";
 import { StarsDisplay as Stars } from "@/components/StarsDisplay";
 import type { Review, RatingSummary } from "@/lib/data/reviews";
@@ -38,10 +38,16 @@ export function Reviews({ reviews, summary, exclusive }: { reviews: Review[]; su
           <figure key={r.id} className="rounded-2xl border border-line bg-surface p-4">
             <Stars value={r.rating} size={13} />
             <blockquote className="mt-2 text-sm leading-relaxed text-ink">“{r.body}”</blockquote>
-            <figcaption className="mt-3 text-xs text-muted">
+            <figcaption className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted">
               <span className="font-medium text-ink">{r.author_name}</span>
-              {r.author_location ? ` · ${r.author_location}` : ""}
-              {fmtStay(r.stayed_on) ? ` · ${fmtStay(r.stayed_on)}` : ""}
+              {r.author_location ? <span>· {r.author_location}</span> : null}
+              {fmtStay(r.stayed_on) ? <span>· {fmtStay(r.stayed_on)}</span> : null}
+              {/* A verified stay booked over WhatsApp — reviewed via their private link. */}
+              {r.source === "whatsapp" && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-line bg-surface-2/60 px-2 py-0.5 text-[10.5px] text-muted">
+                  <MessageCircle size={10} className="text-green" /> From WhatsApp booking
+                </span>
+              )}
             </figcaption>
             {r.host_reply && (
               <div className="mt-3 rounded-xl border-l-2 border-gold/50 bg-surface-2/50 px-3 py-2">

@@ -29,11 +29,17 @@ async function run(req: NextRequest): Promise<Response> {
   const today = new Date().toISOString().slice(0, 10);
   const since = new Date(Date.now() - LOOKBACK_DAYS * 86_400_000).toISOString().slice(0, 10);
 
+  // Every finished stay at one of OUR properties — account holders (email +
+  // account deep link) AND WhatsApp bookings (tokened /review link; they have no
+  // account, which used to exclude them entirely). "completed" too: CRM staff
+  // often close a stay out before this daily cron fires. Resold external stays
+  // are skipped — not our property to collect reviews for.
   const { data: due, error } = await admin
     .from("bookings")
     .select("id")
-    .eq("status", "checked_out")
-    .not("account_id", "is", null)
+    .in("status", ["checked_out", "completed"])
+    .eq("is_external", false)
+    .not("property_id", "is", null)
     .is("review_requested_at", null)
     .gte("checkout", since)
     .lte("checkout", today)
