@@ -28,7 +28,15 @@ export type PublicListing = {
   photos: string[] | null;
   esker_exclusive: boolean;
   public_facts?: string | null; // public-safe facts for the concierge (parking, landmarks, rules…)
+  /** Which table the listing came from. 'external' = resale inventory Esker
+   *  sources from another owner. Drives AVAILABILITY + BOOKING logic only —
+   *  guests must never see a difference (founder decision), so never render it. */
+  source?: "esker" | "external";
 };
+
+/** External (resale) units live in `external_properties`, so a booking on one
+ *  sets external_property_id (property_id stays NULL) and Esker pays the owner. */
+export const isExternal = (l: Pick<PublicListing, "source">) => l.source === "external";
 
 export type ListingHost = { firstName: string; avatarUrl: string | null; since: number | null; bio: string | null };
 
