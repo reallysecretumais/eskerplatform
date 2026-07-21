@@ -5,7 +5,10 @@ import { createHash, randomInt } from "node:crypto";
 // when creds are present, and no-ops safely until the number is live. In dev it
 // logs the code so the flow is testable without a live number.
 
-export const OTP_TTL_MIN = 10;
+// MUST match the approved `login_code` template's footer
+// ("Expires in 15 minutes", code_expiration_minutes: 15) — otherwise the message
+// promises longer than the code actually lives and guests hit a false expiry.
+export const OTP_TTL_MIN = 15;
 export const OTP_MAX_ATTEMPTS = 5;
 export const OTP_RESEND_COOLDOWN_SEC = 60;
 
