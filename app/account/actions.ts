@@ -6,16 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cancellationQuote } from "@/lib/payments";
 import { sendEmail } from "@/lib/email";
-import {
-  toE164Pk,
-  prettyPk,
-  generateCode,
-  hashCode,
-  sendWhatsappOtp,
-  OTP_TTL_MIN,
-  OTP_MAX_ATTEMPTS,
-  OTP_RESEND_COOLDOWN_SEC,
-} from "@/lib/otp";
+import { toE164Pk } from "@/lib/otp";
+import { issueOtp, checkOtp } from "@/lib/otpFlow";
+import { notifyStaff } from "@/lib/notifyStaff";
 
 export type ActionResult = { ok: boolean; message: string };
 
@@ -32,25 +25,8 @@ function fileExt(file: File): string {
   return (file.type.split("/")[1] || "jpg").toLowerCase();
 }
 
-// In-app alert for every active staff member (same shape the booking fan-out uses).
-async function notifyStaff(
-  admin: ReturnType<typeof createAdminClient>,
-  n: { title: string; body: string; link: string; type?: string },
-): Promise<void> {
-  try {
-    const { data: staff } = await admin.from("users").select("id").eq("active", true);
-    const rows = (staff ?? []).map((u: { id: string }) => ({
-      user_id: u.id,
-      type: n.type ?? "booking",
-      title: n.title,
-      body: n.body,
-      link: n.link,
-    }));
-    if (rows.length) await admin.from("notifications").insert(rows);
-  } catch {
-    /* best-effort */
-  }
-}
+// In-app staff alerts live in lib/notifyStaff.ts (shared with the external
+// date-request flow).
 
 export async function signOut() {
   const supabase = await createClient();
@@ -76,6 +52,8 @@ export async function becomeHost() {
 
 // ── WhatsApp phone verification (OTP) ────────────────────────────────────────
 
+// Same shape lib/otpFlow.ts returns — declared inline because a "use server"
+// file may only export async functions (a type-only re-export breaks Turbopack).
 export type OtpResult = { ok: boolean; message: string; devCode?: string };
 
 async function sessionUserId(): Promise<string | null> {
@@ -86,7 +64,8 @@ async function sessionUserId(): Promise<string | null> {
   return user?.id ?? null;
 }
 
-/** Send a WhatsApp OTP to the given number for the signed-in account. */
+/** Send a WhatsApp OTP to the given number for the signed-in account.
+ *  (Thin wrapper — the engine lives in lib/otpFlow.ts, shared with phone signup.) */
 export async function sendPhoneOtp(rawPhone: string): Promise<OtpResult> {
   const accountId = await sessionUserId();
   if (!accountId) return { ok: false, message: "Please sign in first." };
@@ -94,72 +73,21 @@ export async function sendPhoneOtp(rawPhone: string): Promise<OtpResult> {
   const e164 = toE164Pk(rawPhone);
   if (!e164) return { ok: false, message: "Enter a valid Pakistani mobile number." };
 
-  const admin = createAdminClient();
-
-  // Resend cooldown — one code per minute.
-  const { data: existing } = await admin.from("phone_otps").select("last_sent_at").eq("account_id", accountId).maybeSingle();
-  if (existing?.last_sent_at) {
-    const waited = (Date.now() - new Date(existing.last_sent_at as string).getTime()) / 1000;
-    if (waited < OTP_RESEND_COOLDOWN_SEC) {
-      return { ok: false, message: `Please wait ${Math.ceil(OTP_RESEND_COOLDOWN_SEC - waited)}s before requesting another code.` };
-    }
-  }
-
-  const code = generateCode();
-  const now = new Date();
-  const { error: upErr } = await admin.from("phone_otps").upsert({
-    account_id: accountId,
-    phone: e164,
-    code_hash: hashCode(code, accountId),
-    expires_at: new Date(now.getTime() + OTP_TTL_MIN * 60_000).toISOString(),
-    attempts: 0,
-    last_sent_at: now.toISOString(),
-  });
-  if (upErr) return { ok: false, message: "Could not start verification. Please try again." };
-
-  const sent = await sendWhatsappOtp(e164, code);
-  if (!sent.ok) {
-    if (sent.error === "not_configured") {
-      return { ok: false, message: "WhatsApp verification isn't available yet — please verify by email for now." };
-    }
-    return { ok: false, message: "Couldn't send the code. Check the number and try again." };
-  }
-  return { ok: true, message: `Code sent on WhatsApp to ${prettyPk(e164)}.`, devCode: sent.devCode };
+  return issueOtp(accountId, e164);
 }
 
-/** Verify the code the guest received; on success stamp the account verified. */
+/** Verify the code the guest received; on success stamp the account verified.
+ *  (Thin wrapper — the engine lives in lib/otpFlow.ts, shared with phone signup.) */
 export async function verifyPhoneOtp(code: string): Promise<OtpResult> {
   const accountId = await sessionUserId();
   if (!accountId) return { ok: false, message: "Please sign in first." };
 
-  const clean = (code || "").replace(/\D/g, "").slice(0, 6);
-  if (clean.length !== 6) return { ok: false, message: "Enter the 6-digit code." };
-
-  const admin = createAdminClient();
-  const { data: otp } = await admin
-    .from("phone_otps")
-    .select("phone, code_hash, expires_at, attempts")
-    .eq("account_id", accountId)
-    .maybeSingle();
-  if (!otp) return { ok: false, message: "Request a code first." };
-  if (new Date(otp.expires_at as string).getTime() < Date.now()) {
-    return { ok: false, message: "That code expired — request a new one." };
+  const res = await checkOtp(accountId, code);
+  if (res.ok) {
+    revalidatePath("/account");
+    revalidatePath("/account/profile");
   }
-  if ((otp.attempts as number) >= OTP_MAX_ATTEMPTS) {
-    return { ok: false, message: "Too many attempts — request a new code." };
-  }
-
-  if (hashCode(clean, accountId) !== otp.code_hash) {
-    await admin.from("phone_otps").update({ attempts: (otp.attempts as number) + 1 }).eq("account_id", accountId);
-    return { ok: false, message: "That code isn't right — try again." };
-  }
-
-  // Verified — set the account's phone + stamp, and clear the code.
-  await admin.from("accounts").update({ phone: otp.phone, phone_verified_at: new Date().toISOString() }).eq("id", accountId);
-  await admin.from("phone_otps").delete().eq("account_id", accountId);
-  revalidatePath("/account");
-  revalidatePath("/account/profile");
-  return { ok: true, message: "Your WhatsApp number is verified." };
+  return res;
 }
 
 // ── Profile ──────────────────────────────────────────────────────────────────

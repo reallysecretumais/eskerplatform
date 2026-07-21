@@ -177,6 +177,7 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
               capacity={listing.capacity}
               busy={busy}
               bookMode={bookMode}
+              signedIn={!!account}
             />
           </aside>
         </div>

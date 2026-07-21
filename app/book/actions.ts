@@ -8,6 +8,7 @@ import { SITE_URL } from "@/lib/seo";
 import { notifyBookingReceived } from "@/lib/notifyGuest";
 import { capiEvent } from "@/lib/analytics";
 import { getExternalBookability } from "@/lib/data/externalBooking";
+import { notifyStaff } from "@/lib/notifyStaff";
 
 const ACTIVE = ["awaiting_payment", "payment_collected", "handed_over", "awaiting_checkin", "currently_staying", "needs_attention"];
 // Unpaid WEBSITE holds free their dates after this long (matches the
@@ -381,7 +382,7 @@ export async function requestExternalDates(formData: FormData): Promise<RequestD
 
   // Must be a genuinely published EXTERNAL listing (read through the public window).
   const admin = createAdminClient();
-  const { data: listing } = await admin.from("public_listings").select("id, source").eq("id", listingId).maybeSingle();
+  const { data: listing } = await admin.from("public_listings").select("id, title, source").eq("id", listingId).maybeSingle();
   if (!listing || (listing as { source?: string }).source !== "external") {
     return { ok: false, message: "This place isn't available to request." };
   }
@@ -408,6 +409,22 @@ export async function requestExternalDates(formData: FormData): Promise<RequestD
     const out = (await res.json().catch(() => null)) as
       | { ok?: boolean; message?: string; checkId?: string; manualFallback?: boolean }
       | null;
+
+    // Staff must know WHO asked — the owner thread shows the question but not
+    // the guest. Fires on every outcome incl. the 24h dedupe ("already asked"),
+    // where no new Support message appears at all. Best-effort.
+    try {
+      const { data: acc } = await admin.from("accounts").select("name, phone, email").eq("id", user.id).maybeSingle();
+      const who = [acc?.name, acc?.phone, acc?.email].filter(Boolean).join(" · ") || "a website guest";
+      await notifyStaff(admin, {
+        type: "message",
+        title: "Website date request",
+        body: `${who} asked for ${(listing as { title?: string }).title ?? "an external stay"} · ${checkin} → ${checkout}. Reply once the owner confirms.`,
+        link: "/inquiries",
+      });
+    } catch {
+      /* best-effort */
+    }
 
     if (!res.ok || !out?.ok) {
       // The CRM returns ok:false for "already asked in the last 24h" — that's a

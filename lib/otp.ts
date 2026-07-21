@@ -37,7 +37,9 @@ export function hashCode(code: string, accountId: string): string {
 
 function waConfig() {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const token = process.env.WHATSAPP_TOKEN;
+  // WHATSAPP_ACCESS_TOKEN is the CRM's name for the same credential — accepted
+  // here so the founder can paste identical values into both Vercel projects.
+  const token = process.env.WHATSAPP_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
   const template = process.env.WHATSAPP_OTP_TEMPLATE || "otp";
   const lang = process.env.WHATSAPP_OTP_LANG || "en";
   return phoneNumberId && token ? { phoneNumberId, token, template, lang } : null;

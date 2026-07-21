@@ -7,6 +7,7 @@ import type { BusyRange } from "@/lib/data/listings";
 import { formatPrice, type BookingUnit } from "@/lib/listings";
 import { brand } from "@/lib/brand";
 import { requestExternalDates } from "@/app/book/actions";
+import { AccountGateModal } from "@/components/AccountGateModal";
 
 const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 
@@ -36,6 +37,7 @@ export function BookingWidget({
   capacity,
   busy,
   bookMode = "instant",
+  signedIn = false,
 }: {
   id: string;
   title: string;
@@ -46,6 +48,9 @@ export function BookingWidget({
   /** "request" = an EXTERNAL (resale) unit whose owner calendar we can't see
    *  right now, so we ask the owner before taking any money. */
   bookMode?: "instant" | "request";
+  /** Request mode needs an account (someone to come back to) — signed-out guests
+   *  get the in-place WhatsApp-code gate instead of a dead-end error. */
+  signedIn?: boolean;
 }) {
   const router = useRouter();
   const isNight = unit === "night";
@@ -62,6 +67,8 @@ export function BookingWidget({
   const [reserved, setReserved] = useState(false);
   const [asking, setAsking] = useState(false);
   const [askMsg, setAskMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [gateOpen, setGateOpen] = useState(false);
+  const [authed, setAuthed] = useState(signedIn);
   const ref = useRef<HTMLDivElement>(null);
 
   const atCurrentMonth = view.y === today.getFullYear() && view.m === today.getMonth();
@@ -141,22 +148,38 @@ export function BookingWidget({
       // collecting payment for dates that may already be gone. (createBooking
       // refuses these server-side too — this just avoids a dead-end form.)
       if (bookMode === "request") {
-        setAsking(true);
-        setAskMsg(null);
-        const fd = new FormData();
-        fd.set("propertyId", id);
-        fd.set("checkin", iso(ci));
-        fd.set("checkout", iso(co));
-        requestExternalDates(fd)
-          .then((r) => setAskMsg({ ok: r.ok, text: r.message }))
-          .catch(() => setAskMsg({ ok: false, text: "Couldn't send that request. Please message us and we'll confirm for you." }))
-          .finally(() => setAsking(false));
+        if (!authed) {
+          setGateOpen(true); // create the account in place, then auto-fire
+          return;
+        }
+        fireRequest();
         return;
       }
       router.push(`/book/${id}?checkin=${iso(ci)}&checkout=${iso(co)}&guests=${guests}`);
       return;
     }
     setReserved(true);
+  };
+
+  const fireRequest = () => {
+    if (!ci || !co) return;
+    setAsking(true);
+    setAskMsg(null);
+    const fd = new FormData();
+    fd.set("propertyId", id);
+    fd.set("checkin", iso(ci));
+    fd.set("checkout", iso(co));
+    requestExternalDates(fd)
+      .then((r) => setAskMsg({ ok: r.ok, text: r.message }))
+      .catch(() => setAskMsg({ ok: false, text: "Couldn't send that request. Please message us and we'll confirm for you." }))
+      .finally(() => setAsking(false));
+  };
+
+  const onGateAuthed = () => {
+    setAuthed(true);
+    setGateOpen(false);
+    router.refresh(); // nav/account state catches up in the background
+    fireRequest();
   };
 
   return (
@@ -256,6 +279,14 @@ export function BookingWidget({
             {askMsg.text}
           </p>
         )}
+
+        <AccountGateModal
+          open={gateOpen}
+          onClose={() => setGateOpen(false)}
+          onAuthed={onGateAuthed}
+          title="Confirm availability for these dates"
+          subtitle="Create your account in seconds — we'll WhatsApp you a code, then ask the owner right away. No payment yet."
+        />
 
         {reserved && (
           <div className="mt-3 rounded-xl border border-gold/30 bg-gold/[0.06] p-3 text-sm text-ink">
