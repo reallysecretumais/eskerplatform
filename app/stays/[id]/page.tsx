@@ -16,6 +16,7 @@ import { Reviews } from "@/components/Reviews";
 import { TrackEvent } from "@/components/TrackEvent";
 import { TrackListingView } from "@/components/TrackListingView";
 import { getListing, getListings, getAvailability, slimListings, getListingHost } from "@/lib/data/listings";
+import { getExternalBookability } from "@/lib/data/externalBooking";
 import { HostCard } from "@/components/HostCard";
 import { getReviews } from "@/lib/data/reviews";
 import { getAccount } from "@/lib/auth";
@@ -52,6 +53,12 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
   const account = await getAccount();
   const { reviews, summary } = await getReviews(id);
   const host = await getListingHost(id);
+
+  // Resale units can only be instant-booked while the owner's calendar sync is
+  // fresh; otherwise the CTA asks the owner instead of taking payment for dates
+  // Esker can't see. (createBooking enforces the same rule server-side.)
+  const bookMode =
+    listing.source === "external" ? (await getExternalBookability(id)).mode : "instant";
   const { amount, unit } = formatPrice(listing.price, unitForCategory(listing.category ?? ""));
 
   return (
@@ -169,6 +176,7 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
               unit={unitForCategory(listing.category ?? "")}
               capacity={listing.capacity}
               busy={busy}
+              bookMode={bookMode}
             />
           </aside>
         </div>

@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Minus, Plus, MessageCircle } from "lucide-re
 import type { BusyRange } from "@/lib/data/listings";
 import { formatPrice, type BookingUnit } from "@/lib/listings";
 import { brand } from "@/lib/brand";
+import { requestExternalDates } from "@/app/book/actions";
 
 const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 
@@ -34,6 +35,7 @@ export function BookingWidget({
   unit,
   capacity,
   busy,
+  bookMode = "instant",
 }: {
   id: string;
   title: string;
@@ -41,6 +43,9 @@ export function BookingWidget({
   unit: BookingUnit;
   capacity: number | null;
   busy: BusyRange[];
+  /** "request" = an EXTERNAL (resale) unit whose owner calendar we can't see
+   *  right now, so we ask the owner before taking any money. */
+  bookMode?: "instant" | "request";
 }) {
   const router = useRouter();
   const isNight = unit === "night";
@@ -55,6 +60,8 @@ export function BookingWidget({
   const [qty, setQty] = useState(1);
   const [guests, setGuests] = useState(1);
   const [reserved, setReserved] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const [askMsg, setAskMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   const atCurrentMonth = view.y === today.getFullYear() && view.m === today.getMonth();
@@ -130,6 +137,22 @@ export function BookingWidget({
       return;
     }
     if (isNight && ci && co) {
+      // Resale unit we can't instant-sell: ask the owner first instead of
+      // collecting payment for dates that may already be gone. (createBooking
+      // refuses these server-side too — this just avoids a dead-end form.)
+      if (bookMode === "request") {
+        setAsking(true);
+        setAskMsg(null);
+        const fd = new FormData();
+        fd.set("propertyId", id);
+        fd.set("checkin", iso(ci));
+        fd.set("checkout", iso(co));
+        requestExternalDates(fd)
+          .then((r) => setAskMsg({ ok: r.ok, text: r.message }))
+          .catch(() => setAskMsg({ ok: false, text: "Couldn't send that request. Please message us and we'll confirm for you." }))
+          .finally(() => setAsking(false));
+        return;
+      }
       router.push(`/book/${id}?checkin=${iso(ci)}&checkout=${iso(co)}&guests=${guests}`);
       return;
     }
@@ -209,10 +232,30 @@ export function BookingWidget({
         <button
           type="button"
           onClick={reserve}
-          className="mt-4 w-full rounded-xl bg-gold px-5 py-3 text-sm font-medium text-ink transition hover:brightness-105"
+          disabled={asking}
+          className="mt-4 w-full rounded-xl bg-gold px-5 py-3 text-sm font-medium text-ink transition hover:brightness-105 disabled:opacity-60"
         >
-          {canReserve ? "Reserve" : isNight ? "Select dates" : "Select a day"}
+          {asking
+            ? "Sending…"
+            : canReserve
+              ? bookMode === "request"
+                ? "Request these dates"
+                : "Reserve"
+              : isNight
+                ? "Select dates"
+                : "Select a day"}
         </button>
+
+        {bookMode === "request" && canReserve && !askMsg && (
+          <p className="mt-2 text-center text-xs leading-relaxed text-muted">
+            We&rsquo;ll confirm these dates with the owner before any payment.
+          </p>
+        )}
+        {askMsg && (
+          <p className={`mt-2 rounded-lg border px-3 py-2 text-center text-xs leading-relaxed ${askMsg.ok ? "border-green/40 bg-green/[0.06] text-green" : "border-red/40 bg-red/[0.06] text-red"}`}>
+            {askMsg.text}
+          </p>
+        )}
 
         {reserved && (
           <div className="mt-3 rounded-xl border border-gold/30 bg-gold/[0.06] p-3 text-sm text-ink">
