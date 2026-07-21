@@ -86,9 +86,13 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
 
   const admin = createAdminClient();
 
-  // 1. Property must exist and be PUBLIC (read the public window).
-  const { data: listing } = await admin.from("public_listings").select("id, title, price, area, category, esker_exclusive").eq("id", propertyId).maybeSingle();
+  // 1. Property must exist and be PUBLIC (read the public window). `source` tells
+  //    us whether this is an Esker-run property or EXTERNAL (resale) inventory
+  //    Esker sources from another owner — the two book against different columns
+  //    (external rows live in `external_properties`, so property_id must be NULL).
+  const { data: listing } = await admin.from("public_listings").select("id, title, price, area, category, esker_exclusive, source").eq("id", propertyId).maybeSingle();
   if (!listing) return { ok: false, message: "This place isn't available to book." };
+  const isExternal = (listing as { source?: string }).source === "external";
 
   // 2. Dates.
   const today = new Date().toISOString().slice(0, 10);
@@ -103,16 +107,28 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
   const advance = advanceAmount(amount, exclusive);
   const balance = amount - advance;
 
+  // What Esker pays the owner for this stay, SNAPSHOTTED now (whole-stay total,
+  // like the CRM's staff flow) so a later change to the owner's rate never
+  // rewrites this booking's margin. Read server-side only — `typical_cost` is
+  // deliberately absent from the public view because it reveals our margin.
+  let externalCost: number | null = null;
+  if (isExternal) {
+    const { data: ext } = await admin.from("external_properties").select("typical_cost").eq("id", propertyId).maybeSingle();
+    externalCost = Math.round((Number(ext?.typical_cost) || 0) * nights);
+  }
+
   // 3. No double-booking. (An unpaid WEBSITE hold older than HOLD_HOURS no
   //    longer blocks — its dates have auto-released.)
-  const { data: clashes } = await admin
+  const clashBase = admin
     .from("bookings")
     .select("id, status, source, created_at")
-    .eq("property_id", propertyId)
     .is("lost_reason", null)
     .in("status", ACTIVE)
     .lt("checkin", checkout)
     .gt("checkout", checkin);
+  const { data: clashes } = await (isExternal
+    ? clashBase.eq("external_property_id", propertyId)
+    : clashBase.eq("property_id", propertyId));
   const holdCutoff = Date.now() - HOLD_HOURS * 3600 * 1000;
   const realClash = (clashes ?? []).some((c) =>
     c.status === "awaiting_payment" && c.source === "Website"
@@ -121,16 +137,33 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
   );
   if (realClash) return { ok: false, message: "Sorry — those dates were just taken. Please pick others." };
 
-  // Host-blocked dates (self-listed places): treated exactly like bookings.
-  const { data: blocked } = await admin
-    .from("property_blocks")
-    .select("id")
-    .eq("property_id", propertyId)
-    .lt("start_date", checkout)
-    .gt("end_date", checkin)
-    .limit(1);
-  if (blocked && blocked.length > 0) {
-    return { ok: false, message: "Sorry — the host has those dates unavailable. Please pick others." };
+  if (isExternal) {
+    // The OWNER's own calendar, cached by the CRM's iCal sync. Stale rows still
+    // block: hiding a date that's actually free is far cheaper than double-selling
+    // one on a calendar Esker doesn't control. `ends` is exclusive, so a stay
+    // starting exactly when another ends is NOT a clash.
+    const { data: busy } = await admin
+      .from("external_ical_busy")
+      .select("id")
+      .eq("external_property_id", propertyId)
+      .lt("starts", checkout)
+      .gt("ends", checkin)
+      .limit(1);
+    if (busy && busy.length > 0) {
+      return { ok: false, message: "Sorry — those dates were just taken. Please pick others." };
+    }
+  } else {
+    // Host-blocked dates (self-listed places): treated exactly like bookings.
+    const { data: blocked } = await admin
+      .from("property_blocks")
+      .select("id")
+      .eq("property_id", propertyId)
+      .lt("start_date", checkout)
+      .gt("end_date", checkin)
+      .limit(1);
+    if (blocked && blocked.length > 0) {
+      return { ok: false, message: "Sorry — the host has those dates unavailable. Please pick others." };
+    }
   }
 
   // 4. Guest details + proof.
@@ -204,14 +237,24 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
     .insert({
       guest_id: guestId,
       account_id: accountId,
-      property_id: propertyId,
+      // External (resale) units live in `external_properties`, so property_id
+      // MUST stay null; `cost` is what Esker pays the owner and drives margin
+      // everywhere in the CRM.
+      ...(isExternal
+        ? { property_id: null, external_property_id: propertyId, is_external: true, cost: externalCost }
+        : { property_id: propertyId }),
       checkin,
       checkout,
       nights,
+      // Per-NIGHT guest price. `rate_at_booking` is NOT NULL DEFAULT 0, so
+      // leaving it unset silently yields 0 and breaks invoices (x0 bug).
       rate_at_booking: price,
       amount,
       status: "awaiting_payment",
       payment_status: "partial",
+      // The CHANNEL, not the inventory type — `is_external` marks resale. Keeping
+      // this 'Website' preserves ad/channel attribution AND arms the 18h
+      // unpaid-hold auto-release, which keys on source = 'Website'.
       source: "Website",
       notes: note,
     })
@@ -239,7 +282,9 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
     guestName: name,
     email: email || undefined,
     phone,
-    propertyId,
+    // null for external units — their id is NOT a `properties` row, and these
+    // notification/outbox rows carry a property_id that references it.
+    propertyId: isExternal ? null : propertyId,
     propertyTitle: String(listing.title ?? "your stay"),
     area: (listing as { area?: string | null }).area ?? null,
     category: (listing as { category?: string | null }).category ?? null,
@@ -269,7 +314,7 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
       if (convo) {
         await admin
           .from("conversations")
-          .update({ booking_id: booking.id, property_id: propertyId, updated_at: new Date().toISOString() })
+          .update({ booking_id: booking.id, property_id: isExternal ? null : propertyId, updated_at: new Date().toISOString() })
           .eq("id", convo.id);
         await admin.from("messages").insert({
           conversation_id: convo.id,

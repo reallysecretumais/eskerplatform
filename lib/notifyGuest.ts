@@ -14,7 +14,9 @@ type BookingReceived = {
   guestName: string;
   email?: string;
   phone: string;
-  propertyId: string;
+  /** null for EXTERNAL (resale) units — their id is not a `properties` row, and
+   *  the rows written below carry a property_id that references it. */
+  propertyId: string | null;
   propertyTitle: string;
   area?: string | null;
   category?: string | null;

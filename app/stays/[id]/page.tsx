@@ -58,7 +58,10 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
     <main className="min-h-full pb-28 lg:pb-16">
       <JsonLd data={[listingLd(listing, summary), breadcrumbLd([{ name: "Home", path: "/" }, { name: "Stays", path: "/stays" }, { name: listing.title, path: `/stays/${id}` }])]} />
       <TrackEvent event="ViewContent" params={{ content_ids: [id], content_type: "product", value: listing.price, currency: "PKR" }} />
-      <TrackListingView id={id} />
+      {/* Esker-run only: listing_views.property_id references `properties`, so a
+          beacon for an EXTERNAL (resale) id would fail the FK. Those view counts
+          only feed host dashboards, and external units aren't host listings. */}
+      {listing.source !== "external" && <TrackListingView id={id} />}
       <SiteNav theme="light" account={account} />
 
       <div className="mx-auto max-w-5xl px-6 py-8">
