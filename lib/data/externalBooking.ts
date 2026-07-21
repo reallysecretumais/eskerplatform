@@ -1,0 +1,42 @@
+import "server-only";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Can we SELL an external (resale) unit's dates on the spot?
+//
+// Esker doesn't control these owners' calendars — the owner keeps selling the
+// same apartment elsewhere. We may only instant-book when we have a recently
+// synced copy of their calendar (the CRM's iCal cron → `external_ical_busy`,
+// stamped on `external_properties.ical_synced_at`). Otherwise we ask the owner
+// first (request-to-book) rather than taking money for a night that may be gone.
+//
+// `ical_synced_at` is stamped ONLY on a successful sync, so an empty calendar
+// that synced fine still counts as fresh — never infer freshness from row count.
+// It is deliberately absent from the public view; this is a server-side call.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Past this, a cached owner calendar is too old to sell against. */
+export const ICAL_FRESH_HOURS = 12;
+
+export type ExternalBookability = {
+  mode: "instant" | "request";
+  reason: "ical-fresh" | "no-ical" | "stale-ical";
+};
+
+export async function getExternalBookability(listingId: string): Promise<ExternalBookability> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("external_properties")
+    .select("ical_url, ical_synced_at")
+    .eq("id", listingId)
+    .maybeSingle();
+
+  const row = data as { ical_url?: string | null; ical_synced_at?: string | null } | null;
+  if (!row?.ical_url) return { mode: "request", reason: "no-ical" };
+  if (!row.ical_synced_at) return { mode: "request", reason: "stale-ical" };
+
+  const ageMs = Date.now() - new Date(row.ical_synced_at).getTime();
+  return Number.isFinite(ageMs) && ageMs < ICAL_FRESH_HOURS * 3600 * 1000
+    ? { mode: "instant", reason: "ical-fresh" }
+    : { mode: "request", reason: "stale-ical" };
+}

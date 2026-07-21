@@ -7,6 +7,7 @@ import { advanceAmount, advanceLabel } from "@/lib/payments";
 import { SITE_URL } from "@/lib/seo";
 import { notifyBookingReceived } from "@/lib/notifyGuest";
 import { capiEvent } from "@/lib/analytics";
+import { getExternalBookability } from "@/lib/data/externalBooking";
 
 const ACTIVE = ["awaiting_payment", "payment_collected", "handed_over", "awaiting_checkin", "currently_staying", "needs_attention"];
 // Unpaid WEBSITE holds free their dates after this long (matches the
@@ -101,6 +102,20 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
   }
   const nights = nightsBetween(checkin, checkout);
   if (nights < 1) return { ok: false, message: "Your stay must be at least one night." };
+
+  // 2b. SAFETY GATE — never take money for an external (resale) unit whose owner
+  //     calendar we can't currently see. Esker doesn't control that calendar, so
+  //     without a fresh sync those dates may already be sold. Enforced HERE (not
+  //     just in the UI) so no request path can bypass it.
+  if (isExternal) {
+    const bookability = await getExternalBookability(propertyId);
+    if (bookability.mode !== "instant") {
+      return {
+        ok: false,
+        message: "We need to confirm these dates with the owner before taking payment. Please request them and we'll come back to you shortly.",
+      };
+    }
+  }
   const price = Number(listing.price) || 0;
   const amount = Math.round(price * nights);
   const exclusive = Boolean((listing as { esker_exclusive?: boolean }).esker_exclusive);
@@ -332,6 +347,81 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
   }
 
   return { ok: true, bookingId: booking.id };
+}
+
+export type RequestDatesResult = { ok: boolean; message: string; pending?: boolean };
+
+/**
+ * Request-to-book for an EXTERNAL (resale) unit we can't instant-sell — no owner
+ * calendar, or a stale sync. Fires the CRM's existing WhatsApp owner-ask (the
+ * same one staff use), which logs to the Support thread and records a row in
+ * `external_availability_checks`. Esker follows up with the guest from the inbox
+ * once the owner answers — we never take money before that.
+ *
+ * An account is required (founder decision) so we have someone to come back to.
+ * The CRM dedupes to one fresh pending ask per property per 24h.
+ */
+export async function requestExternalDates(formData: FormData): Promise<RequestDatesResult> {
+  const listingId = String(formData.get("propertyId") || "");
+  const checkin = String(formData.get("checkin") || "");
+  const checkout = String(formData.get("checkout") || "");
+
+  const session = await createClient();
+  const {
+    data: { user },
+  } = await session.auth.getUser();
+  if (!user) {
+    return { ok: false, message: "Please sign in first — we'll message you as soon as the owner confirms these dates." };
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  if (!checkin || !checkout || checkin < today || checkout <= checkin) {
+    return { ok: false, message: "Please pick valid check-in and check-out dates." };
+  }
+
+  // Must be a genuinely published EXTERNAL listing (read through the public window).
+  const admin = createAdminClient();
+  const { data: listing } = await admin.from("public_listings").select("id, source").eq("id", listingId).maybeSingle();
+  if (!listing || (listing as { source?: string }).source !== "external") {
+    return { ok: false, message: "This place isn't available to request." };
+  }
+
+  const base = (process.env.CRM_URL || "https://os.eskerrentals.com").replace(/\/$/, "");
+  const secret = process.env.PLATFORM_API_SECRET || process.env.REVALIDATE_SECRET;
+  if (!secret) {
+    console.error("[external-ask] no PLATFORM_API_SECRET/REVALIDATE_SECRET configured");
+    return { ok: false, message: "We couldn't send that request just now. Please message us and we'll confirm for you." };
+  }
+
+  try {
+    // PKT check-in 2pm / check-out 12pm, matching how the CRM records stays.
+    const res = await fetch(`${base}/api/platform/external-ask`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-esker-secret": secret },
+      body: JSON.stringify({
+        externalPropertyId: listingId,
+        checkin: `${checkin}T14:00:00+05:00`,
+        checkout: `${checkout}T12:00:00+05:00`,
+      }),
+      cache: "no-store",
+    });
+    const out = (await res.json().catch(() => null)) as
+      | { ok?: boolean; message?: string; checkId?: string; manualFallback?: boolean }
+      | null;
+
+    if (!res.ok || !out?.ok) {
+      // The CRM returns ok:false for "already asked in the last 24h" — that's a
+      // fine outcome for the guest, the question is already with the owner.
+      return { ok: true, pending: true, message: "We're already checking these dates with the owner — we'll come back to you shortly." };
+    }
+    if (out.manualFallback) {
+      return { ok: true, pending: true, message: "Request received — the team is confirming these dates with the owner and will message you shortly." };
+    }
+    return { ok: true, pending: true, message: "Request sent. We're confirming these dates with the owner and will message you as soon as we hear back." };
+  } catch (e) {
+    console.error("[external-ask] failed:", e);
+    return { ok: false, message: "We couldn't send that request just now. Please message us and we'll confirm for you." };
+  }
 }
 
 export type IdCheckResult = { ok: boolean; message?: string };
