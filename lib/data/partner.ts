@@ -169,6 +169,13 @@ type Finance = {
   expenses: { amount: number; category: string; label: string; month: string }[];
   deals: DealRow[]; // newest first
   withdrawnTotal: number;
+  withdrawals: { amount: number; on: string | null }[]; // for anchoring to an opening
+  // Founder-set starting balance for this property (Esker OS → Partners →
+  // Portal access). When set, it IS the partner's opening "available" and the
+  // balance rolls forward from `asOf`; when null we fall back to counting all
+  // history, which over-states anything settled before Esker OS had the data.
+  // The partner never sees this figure — only its effect.
+  opening: { amount: number; asOf: string } | null;
 };
 
 async function loadFinance(propertyId: string): Promise<Finance> {
@@ -176,7 +183,7 @@ async function loadFinance(propertyId: string): Promise<Finance> {
   const { data: bkRows } = await admin.from("bookings").select("id").eq("property_id", propertyId);
   const bookingIds = ((bkRows ?? []) as { id: string }[]).map((b) => b.id);
 
-  const [payRes, expRes, dealRes, wRes] = await Promise.all([
+  const [payRes, expRes, dealRes, wRes, opRes] = await Promise.all([
     bookingIds.length
       ? admin.from("booking_payments").select("amount, paid_at").in("booking_id", bookingIds)
       : Promise.resolve({ data: [] as { amount: number; paid_at: string }[] }),
@@ -186,7 +193,13 @@ async function loadFinance(propertyId: string): Promise<Finance> {
       .select("deal_type, owner_pct, mgmt_fee_pct, investment, owner_label, valid_from")
       .eq("property_id", propertyId)
       .order("valid_from", { ascending: false }),
-    admin.from("partner_withdrawals").select("amount").eq("property_id", propertyId),
+    admin.from("partner_withdrawals").select("amount, withdrawn_on").eq("property_id", propertyId),
+    admin
+      .from("cash_openings")
+      .select("amount, as_of")
+      .eq("property_id", propertyId)
+      .order("as_of", { ascending: false })
+      .limit(1),
   ]);
 
   const payments = ((payRes.data ?? []) as { amount: number; paid_at: string }[])
@@ -209,8 +222,16 @@ async function loadFinance(propertyId: string): Promise<Finance> {
     validFrom: d.valid_from,
   }));
 
-  const withdrawnTotal = ((wRes.data ?? []) as { amount: number }[]).reduce((s, r) => s + (Number(r.amount) || 0), 0);
-  return { payments, expenses, deals, withdrawnTotal };
+  const withdrawals = ((wRes.data ?? []) as { amount: number; withdrawn_on: string | null }[]).map((r) => ({
+    amount: Number(r.amount) || 0,
+    on: r.withdrawn_on ?? null,
+  }));
+  const withdrawnTotal = withdrawals.reduce((s, r) => s + r.amount, 0);
+
+  const openRow = ((opRes.data ?? []) as { amount: number; as_of: string }[])[0];
+  const opening = openRow ? { amount: Number(openRow.amount) || 0, asOf: openRow.as_of } : null;
+
+  return { payments, expenses, deals, withdrawnTotal, withdrawals, opening };
 }
 
 /** The effective deal for a month = latest whose valid_from is on/before it. */
@@ -316,20 +337,56 @@ function computeTrend(fin: Finance, count = 6): PartnerTrendPoint[] {
     });
 }
 
-/** Withdrawable now = the partner's share of COMPLETED months (never the running
- *  month, whose costs are still accruing) minus what's already been paid out. */
+/**
+ * Withdrawable now = the partner's share of COMPLETED months (never the running
+ * month, whose costs are still accruing) minus what's already been paid out.
+ *
+ * Anchored to the founder-set starting balance when there is one. That row is
+ * the PROPERTY's net cash carried in (the same row the CRM Finance page uses),
+ * so it is put through `shareForMonth` exactly like a month's net — the partner
+ * carries in THEIR side of it, never Esker's. Treating it as already-theirs
+ * would hand a 70% owner 100% of the cash on the books that day. Only months
+ * AFTER it, plus withdrawals after it, move the figure. Without an anchor this counts every
+ * month Esker OS holds data for, which includes history settled before the
+ * partnership and months whose expenses were never fully entered — the reason
+ * B-17 read ₨694,018.
+ *
+ * KEEP IN SYNC with Esker OS `lib/data/finance.ts getScopeCash` (same opening
+ * row, same "strictly after as_of" rule) and its Partners page, which is where
+ * the balance is set. Recovery deliberately stays on TOTAL withdrawals — an
+ * opening changes what's available, never how much of an investment is repaid.
+ */
 function computeAvailable(fin: Finance): PartnerAvailable {
   const cur = currentPktMonth();
   const throughMonth = addMonth(cur, -1);
   const rec = inRecoveryNow(fin);
-  const months = new Set([...fin.payments.map((p) => p.month), ...fin.expenses.map((e) => e.month)].filter((m) => m < cur));
+
+  // Months are whole units here, so an opening dated mid-month would silently
+  // drop the rest of that month. The CRM steers founders to a month-end date;
+  // we count months strictly after the opening's own month either way.
+  const afterMonth = fin.opening ? fin.opening.asOf.slice(0, 7) : null;
+
+  const months = new Set(
+    [...fin.payments.map((p) => p.month), ...fin.expenses.map((e) => e.month)].filter(
+      (m) => m < cur && (afterMonth === null || m > afterMonth),
+    ),
+  );
 
   let earned = 0;
   for (const m of months) {
     const deal = dealForMonth(fin.deals, m);
     earned += shareForMonth(deal, monthNet(fin, m, deal).net, rec);
   }
-  return { amount: Math.max(0, round(earned - fin.withdrawnTotal)), throughMonth };
+
+  if (!fin.opening) return { amount: Math.max(0, round(earned - fin.withdrawnTotal)), throughMonth };
+
+  // Withdrawals up to and including the opening date are already reflected in it.
+  const withdrawnSince = fin.withdrawals
+    .filter((w) => w.on !== null && w.on > fin.opening!.asOf)
+    .reduce((s, w) => s + w.amount, 0);
+
+  const carriedIn = shareForMonth(dealForMonth(fin.deals, afterMonth!), fin.opening.amount, rec);
+  return { amount: Math.max(0, round(carriedIn + earned - withdrawnSince)), throughMonth };
 }
 
 /** The viewed month's cash-basis performance + the partner's share, for a property
