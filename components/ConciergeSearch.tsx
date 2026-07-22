@@ -2,8 +2,9 @@
 
 import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import dynamic from "next/dynamic";
-import { MessageCircle, Mic } from "lucide-react";
+import { MessageCircle, Mic, Search, ArrowRight } from "lucide-react";
 import type { SlimListing } from "@/lib/data/listings";
 import { unlockAudio } from "@/lib/voiceAudio";
 
@@ -15,7 +16,17 @@ const CHIPS = ["Pool, sleeps 6, this weekend", "Ground floor for my parents", "U
 
 // Concierge input shell: type OR speak. The text box routes to the results page;
 // the mic opens the full-screen voice concierge (English or Urdu, hands-free).
-export function ConciergeSearch({ listings = [] }: { listings?: SlimListing[] }) {
+export function ConciergeSearch({
+  listings = [],
+  aiEnabled = true,
+  voiceEnabled = true,
+}: {
+  listings?: SlimListing[];
+  /** AI search off (CRM kill switch) → the hero falls back to real browsing
+   *  rather than vanishing; this is the most-visited page's only search. */
+  aiEnabled?: boolean;
+  voiceEnabled?: boolean;
+}) {
   const [value, setValue] = useState("");
   const [voiceOpen, setVoiceOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -31,6 +42,51 @@ export function ConciergeSearch({ listings = [] }: { listings?: SlimListing[] })
     const q = value.trim();
     router.push(q ? `/stays?q=${encodeURIComponent(q)}` : "/stays");
   };
+
+  // ── AI search switched off → browse, don't disappear ─────────────────────
+  const voiceEntry = voiceEnabled && (
+    <div className="mt-4 flex justify-center">
+      <button
+        type="button"
+        onClick={() => {
+          void unlockAudio();
+          setVoiceOpen(true);
+        }}
+        className="group inline-flex items-center gap-2.5 rounded-full border border-gold/40 bg-white/10 py-2.5 pl-2.5 pr-5 text-sm font-medium text-white backdrop-blur-md transition hover:bg-white/20"
+      >
+        <span className="relative grid h-8 w-8 place-items-center rounded-full bg-gold text-ink">
+          <span className="absolute inset-0 animate-ping rounded-full bg-gold/50 [animation-duration:2.2s]" />
+          <Mic size={16} className="relative" />
+        </span>
+        Speak to Esker — <span className="text-gold">English or Urdu</span>
+      </button>
+    </div>
+  );
+
+  if (!aiEnabled) {
+    return (
+      <div className="mx-auto max-w-xl">
+        <div className="flex flex-col items-center gap-3">
+          <Link
+            href="/stays"
+            className="inline-flex items-center gap-2 rounded-2xl bg-gold px-6 py-3 text-sm font-medium text-ink shadow-2xl shadow-black/40 transition hover:brightness-105"
+          >
+            <Search size={16} /> Browse all stays <ArrowRight size={15} />
+          </Link>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Link href="/stays?tier=exclusive" className="rounded-full border border-white/40 bg-black/10 px-3.5 py-1.5 text-xs text-white/90 backdrop-blur-sm transition hover:bg-white/15">
+              Esker Exclusive
+            </Link>
+            <Link href="/stays" className="rounded-full border border-white/40 bg-black/10 px-3.5 py-1.5 text-xs text-white/90 backdrop-blur-sm transition hover:bg-white/15">
+              Filter by area &amp; type
+            </Link>
+          </div>
+        </div>
+        {voiceEntry}
+        {voiceOpen && <VoiceConcierge listings={listings} onClose={() => setVoiceOpen(false)} />}
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-xl">
@@ -56,22 +112,7 @@ export function ConciergeSearch({ listings = [] }: { listings?: SlimListing[] })
       </form>
 
       {/* Voice entry — the signature moment */}
-      <div className="mt-4 flex justify-center">
-        <button
-          type="button"
-          onClick={() => {
-            void unlockAudio(); // unlock audio inside the gesture so replies play
-            setVoiceOpen(true);
-          }}
-          className="group inline-flex items-center gap-2.5 rounded-full border border-gold/40 bg-white/10 py-2.5 pl-2.5 pr-5 text-sm font-medium text-white backdrop-blur-md transition hover:bg-white/20"
-        >
-          <span className="relative grid h-8 w-8 place-items-center rounded-full bg-gold text-ink">
-            <span className="absolute inset-0 animate-ping rounded-full bg-gold/50 [animation-duration:2.2s]" />
-            <Mic size={16} className="relative" />
-          </span>
-          Speak to Esker — <span className="text-gold">English or Urdu</span>
-        </button>
-      </div>
+      {voiceEntry}
 
       <div className="mt-5 flex flex-wrap justify-center gap-2">
         {CHIPS.map((c) => (

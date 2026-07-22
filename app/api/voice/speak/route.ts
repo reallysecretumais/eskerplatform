@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { isUrduText } from "@/lib/listings";
+import { getAiSurface } from "@/lib/settings";
 
 export const runtime = "nodejs";
 
@@ -24,6 +25,9 @@ export async function POST(req: NextRequest) {
     /* ignore */
   }
   if (!apiKey || !text.trim()) return new Response(null, { status: 204 });
+  // Voice killed from the CRM → say nothing (204 is already the client's
+  // "no audio" path, so the orb degrades to text without an error).
+  if (!(await getAiSurface("voice")).enabled) return new Response(null, { status: 204 });
 
   const urdu = lang === "ur" || isUrduText(text);
   const persona =

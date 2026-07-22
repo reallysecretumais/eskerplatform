@@ -60,7 +60,7 @@ export function ConciergeStream({ query, listings }: { query: string; listings: 
       const res = await fetch("/api/concierge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: hist }),
+        body: JSON.stringify({ messages: hist, surface: "search" }),
       });
       const reader = res.body!.getReader();
       const dec = new TextDecoder();

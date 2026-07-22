@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { isUrduText } from "@/lib/listings";
+import { getAiSurface } from "@/lib/settings";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,9 @@ const STT_MODEL = process.env.ESKER_STT_MODEL || "gpt-4o-mini-transcribe";
 export async function POST(req: NextRequest) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return Response.json({ text: "", language: "en" });
+  // Voice killed from the CRM — return the same empty shape as "couldn't hear
+  // you" so the client handles it on an existing path.
+  if (!(await getAiSurface("voice")).enabled) return Response.json({ text: "", language: "en" });
 
   let file: File | null = null;
   try {

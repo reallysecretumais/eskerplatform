@@ -40,7 +40,7 @@ export function PropertyConcierge({ property, listings }: { property: SlimListin
       const res = await fetch("/api/concierge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: msgs, context }),
+        body: JSON.stringify({ messages: msgs, context, surface: "concierge" }),
       });
       const reader = res.body!.getReader();
       const dec = new TextDecoder();

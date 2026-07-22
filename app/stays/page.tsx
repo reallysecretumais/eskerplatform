@@ -6,6 +6,7 @@ import { StayCard } from "@/components/StayCard";
 import { ConciergeStream } from "@/components/ConciergeStream";
 import { getListings, slimListings } from "@/lib/data/listings";
 import { getAccount } from "@/lib/auth";
+import { getWebsiteAi } from "@/lib/settings";
 import { normalizeCategory } from "@/lib/listings";
 import { brand } from "@/lib/brand";
 
@@ -14,7 +15,10 @@ type SP = { q?: string; area?: string; category?: string; amenity?: string; tier
 export async function generateMetadata({ searchParams }: { searchParams: Promise<SP> }): Promise<Metadata> {
   const sp = await searchParams;
   const cities = brand.launchCities.join(" & ");
-  if (sp.q && sp.q.trim()) {
+  // Must mirror the page's own gate — otherwise, with AI search off, a ?q= URL
+  // renders a browse page titled "Concierge search" and (worse) noindexed.
+  const aiSearchOn = (await getWebsiteAi()).search.enabled;
+  if (aiSearchOn && sp.q && sp.q.trim()) {
     // Don't index the (infinite) AI-search permutations; keep the canonical on /stays.
     return { title: "Concierge search", description: `Stays matching “${sp.q.trim()}”.`, robots: { index: false, follow: true }, alternates: { canonical: "/stays" } };
   }
@@ -31,7 +35,10 @@ export default async function StaysPage({ searchParams }: { searchParams: Promis
   const account = await getAccount();
 
   // ── AI concierge mode ──────────────────────────────────────────
-  if (sp.q && sp.q.trim()) {
+  // Gated on the CRM kill switch, so an existing ?q= link or bookmark falls
+  // through to manual browse instead of bypassing the switch.
+  const aiSearchOn = (await getWebsiteAi()).search.enabled;
+  if (aiSearchOn && sp.q && sp.q.trim()) {
     const listings = await getListings();
     return (
       <main className="min-h-full pb-16">

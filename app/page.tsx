@@ -8,6 +8,7 @@ import { StayCard } from "@/components/StayCard";
 import { HeroCollage } from "@/components/HeroCollage";
 import { getListings, pickCollagePhotos, slimListings } from "@/lib/data/listings";
 import { getAccount } from "@/lib/auth";
+import { getWebsiteAi } from "@/lib/settings";
 import { JsonLd } from "@/components/JsonLd";
 import { EskerLogo } from "@/components/EskerLogo";
 import { organizationLd, websiteLd } from "@/lib/seo";
@@ -33,6 +34,7 @@ export default async function HomePage() {
   const collagePhotos = pickCollagePhotos(listings, 8, 18);
   const account = await getAccount();
   const slim = slimListings(listings); // client components get only what cards need
+  const ai = await getWebsiteAi(); // CRM kill switches for the hero search + voice
 
   // Showcase the best six: Exclusives when we have them (honest heading), else
   // the strongest of everything — photos first, then priciest.
@@ -72,7 +74,7 @@ export default async function HomePage() {
             </p>
 
             <div className="rise rise-4 mt-8">
-              <ConciergeSearch listings={slim} />
+              <ConciergeSearch listings={slim} aiEnabled={ai.search.enabled} voiceEnabled={ai.voice.enabled} />
             </div>
 
             <div className="rise rise-5 mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-white/75">

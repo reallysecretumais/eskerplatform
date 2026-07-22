@@ -165,7 +165,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: SlimListing[];
       const res = await fetch("/api/concierge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: hist, voice: true }),
+        body: JSON.stringify({ messages: hist, voice: true, surface: "voice" }),
       });
       const reader = res.body!.getReader();
       const dec = new TextDecoder();

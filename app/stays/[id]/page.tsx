@@ -17,6 +17,7 @@ import { TrackEvent } from "@/components/TrackEvent";
 import { TrackListingView } from "@/components/TrackListingView";
 import { getListing, getListings, getAvailability, slimListings, getListingHost } from "@/lib/data/listings";
 import { getExternalBookability } from "@/lib/data/externalBooking";
+import { getWebsiteAi } from "@/lib/settings";
 import { HostCard } from "@/components/HostCard";
 import { getReviews } from "@/lib/data/reviews";
 import { getAccount } from "@/lib/auth";
@@ -59,6 +60,8 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
   // Esker can't see. (createBooking enforces the same rule server-side.)
   const bookMode =
     listing.source === "external" ? (await getExternalBookability(id)).mode : "instant";
+
+  const conciergeOn = (await getWebsiteAi()).concierge.enabled;
   const { amount, unit } = formatPrice(listing.price, unitForCategory(listing.category ?? ""));
 
   return (
@@ -103,9 +106,11 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
 
         {/* Ask about this place — contextual concierge (slim props — the AI
             catalog itself is built server-side in /api/concierge) */}
+        {/* Concierge can be switched off from the CRM; the human chat entry below
+            stays either way, so there's always a way to ask a question. */}
         <div className="mt-6">
-          <PropertyConcierge property={slimListings([listing])[0]} listings={slimListings(all)} />
-          <div className="mt-2 px-1">
+          {conciergeOn && <PropertyConcierge property={slimListings([listing])[0]} listings={slimListings(all)} />}
+          <div className={conciergeOn ? "mt-2 px-1" : "px-1"}>
             <ChatEntry label="Message us about this place" propertyId={listing.id} />
           </div>
         </div>
