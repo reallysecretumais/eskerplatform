@@ -1,8 +1,13 @@
 "use client";
 
-import { useRef, useState, type ClipboardEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
 import { Loader2, MessageCircle } from "lucide-react";
 import { startPhoneAuth, completePhoneAuth } from "@/app/auth/phone/actions";
+
+/** A WhatsApp message Meta "accepted" can still never arrive (billing, a block,
+ *  a wrong number). After this long on the code step we stop pretending and
+ *  offer a way out, so a silent non-delivery isn't a dead end. */
+const STUCK_AFTER_MS = 25_000;
 
 // Passwordless phone → WhatsApp-code sign-in/up. The ONE phone-auth UI, used by
 // the signup/login pages and the AccountGateModal. Same UX idioms as
@@ -13,12 +18,15 @@ export function PhoneOtpForm({
   showName = false,
   cta = "Continue with WhatsApp",
   onDone,
+  onUseEmail,
 }: {
   /** Signup shows a name field; login hides it. */
   showName?: boolean;
   cta?: string;
   /** Called once the session cookie is set — caller refreshes/navigates. */
   onDone: () => void;
+  /** Offered when the code doesn't turn up (e.g. switch to email). */
+  onUseEmail?: () => void;
 }) {
   const [step, setStep] = useState<"phone" | "code">("phone");
   const [name, setName] = useState("");
@@ -27,7 +35,18 @@ export function PhoneOtpForm({
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [stuck, setStuck] = useState(false);
   const codeRef = useRef<HTMLInputElement>(null);
+
+  // Start the "didn't arrive?" timer when we land on the code step.
+  useEffect(() => {
+    if (step !== "code") {
+      setStuck(false);
+      return;
+    }
+    const t = setTimeout(() => setStuck(true), STUCK_AFTER_MS);
+    return () => clearTimeout(t);
+  }, [step]);
 
   const send = async (e: FormEvent) => {
     e.preventDefault();
@@ -132,6 +151,20 @@ export function PhoneOtpForm({
       >
         Change number / resend
       </button>
+
+      {/* WhatsApp said "accepted" but nothing arrived — give them a way out
+          rather than leaving them staring at an empty code box. */}
+      {stuck && (
+        <div className="rounded-lg border border-line bg-surface-2/60 px-3 py-2.5 text-center">
+          <p className="text-xs text-muted">Code still not here? WhatsApp can be slow — or the message may not have gone through.</p>
+          {onUseEmail && (
+            <button type="button" onClick={onUseEmail} className="mt-1.5 text-xs font-medium text-gold-deep hover:underline">
+              Use email instead
+            </button>
+          )}
+        </div>
+      )}
+
       {note && <p className="text-xs text-green">{note}</p>}
       {err && <p className="text-sm text-red">{err}</p>}
     </div>

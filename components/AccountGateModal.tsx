@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { X, MessageCircle } from "lucide-react";
 import { PhoneOtpForm } from "@/components/auth/PhoneOtpForm";
 
@@ -20,6 +21,7 @@ export function AccountGateModal({
   title?: string;
   subtitle?: string;
 }) {
+  const router = useRouter();
   if (!open) return null;
 
   return (
@@ -37,7 +39,9 @@ export function AccountGateModal({
         <p className="mt-1 text-sm leading-relaxed text-muted">{subtitle}</p>
 
         <div className="mt-4">
-          <PhoneOtpForm showName cta="Continue with WhatsApp" onDone={onAuthed} />
+          {/* No email form in this sheet — send them to the full signup page,
+              carrying nothing but intent, so a stuck code still converts. */}
+          <PhoneOtpForm showName cta="Continue with WhatsApp" onDone={onAuthed} onUseEmail={() => router.push("/signup")} />
         </div>
       </div>
     </div>

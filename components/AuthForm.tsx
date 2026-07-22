@@ -143,7 +143,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
         </form>
       ) : (
         <div className="space-y-3">
-          <PhoneOtpForm showName={mode === "signup"} cta={mode === "signup" ? "Create account with WhatsApp" : "Send my code"} onDone={() => finish()} />
+          <PhoneOtpForm
+            showName={mode === "signup"}
+            cta={mode === "signup" ? "Create account with WhatsApp" : "Send my code"}
+            onDone={() => finish()}
+            onUseEmail={() => setMethod("email")}
+          />
           {mode === "signup" && (
             <button type="button" onClick={() => setMethod("email")} className="block w-full text-center text-xs text-muted hover:text-ink">
               Prefer email &amp; password?

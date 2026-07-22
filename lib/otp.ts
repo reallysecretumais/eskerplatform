@@ -52,7 +52,33 @@ export function whatsappConfigured(): boolean {
   return waConfig() !== null;
 }
 
-export type OtpSendResult = { ok: boolean; devCode?: string; error?: string };
+export type OtpSendResult = {
+  ok: boolean;
+  devCode?: string;
+  error?: string; // "not_configured" | "send_failed"
+  /** Meta's message id. The ONLY handle for tracing a message that Meta accepted
+   *  but never delivered — always logged, so `vercel logs | grep [otp]` can tie a
+   *  guest's "I never got it" to a specific send. */
+  waMessageId?: string;
+  metaCode?: number; // e.g. 131042 = payment restricted
+  metaMessage?: string;
+};
+
+/** Meta error codes worth telling the guest something specific about. Anything
+ *  else falls back to the generic message. */
+const META_ERROR_COPY: Record<number, string> = {
+  131042: "WhatsApp is temporarily unavailable on our side. Please continue with email — we're on it.",
+  131026: "We couldn't reach that number on WhatsApp. Check the number, or sign up with email instead.",
+  132001: "WhatsApp verification is misconfigured on our side. Please use email — we've been alerted.",
+  133010: "WhatsApp verification isn't switched on yet. Please use email for now.",
+};
+
+/** Guest-safe wording for a failed send. */
+export function otpSendMessage(r: OtpSendResult): string {
+  if (r.error === "not_configured") return "WhatsApp verification isn't available yet — please use email for now.";
+  if (r.metaCode && META_ERROR_COPY[r.metaCode]) return META_ERROR_COPY[r.metaCode];
+  return "Couldn't send the code. Check the number and try again, or use email.";
+}
 
 /**
  * Send the OTP via the WhatsApp authentication template (Copy-code button).
@@ -89,14 +115,36 @@ export async function sendWhatsappOtp(e164: string, code: string): Promise<OtpSe
       }),
       signal: AbortSignal.timeout(10_000),
     });
-    if (!res.ok) {
-      const t = await res.text().catch(() => "");
-      console.error("[otp] whatsapp send failed:", res.status, t.slice(0, 300));
-      return { ok: false, error: "send_failed" };
+    const bodyText = await res.text().catch(() => "");
+    let parsed: {
+      messages?: { id?: string; message_status?: string }[];
+      error?: { code?: number; message?: string; error_data?: { details?: string } };
+    } | null = null;
+    try {
+      parsed = JSON.parse(bodyText);
+    } catch {
+      /* non-JSON — keep the raw text for the log */
     }
-    return { ok: true };
+
+    if (!res.ok) {
+      const err = parsed?.error;
+      // Persist Meta's REASON, not just "failed" — a generic error is what made
+      // the 2026-07-21 billing restriction take an hour to identify.
+      console.error(
+        `[otp] send FAILED to=${e164} http=${res.status} metaCode=${err?.code ?? "?"} msg=${err?.message ?? bodyText.slice(0, 200)}`,
+      );
+      return { ok: false, error: "send_failed", metaCode: err?.code, metaMessage: err?.message ?? err?.error_data?.details };
+    }
+
+    const waMessageId = parsed?.messages?.[0]?.id;
+    // NOTE: Meta returns `accepted` here, which means QUEUED — not delivered. A
+    // payment restriction or a block still returns 200. True delivery status only
+    // arrives later on the CRM's status webhook, so this id is the handle that
+    // makes a silent non-delivery traceable after the fact.
+    console.log(`[otp] send accepted to=${e164} wa_message_id=${waMessageId ?? "?"} status=${parsed?.messages?.[0]?.message_status ?? "?"}`);
+    return { ok: true, waMessageId };
   } catch (e) {
-    console.error("[otp] whatsapp send error:", (e as Error).message);
+    console.error(`[otp] send ERROR to=${e164}:`, (e as Error).message);
     return { ok: false, error: "send_failed" };
   }
 }

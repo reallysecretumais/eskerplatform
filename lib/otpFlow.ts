@@ -5,6 +5,7 @@ import {
   generateCode,
   hashCode,
   sendWhatsappOtp,
+  otpSendMessage,
   OTP_TTL_MIN,
   OTP_MAX_ATTEMPTS,
   OTP_RESEND_COOLDOWN_SEC,
@@ -48,10 +49,11 @@ export async function issueOtp(accountId: string, e164: string): Promise<OtpResu
 
   const sent = await sendWhatsappOtp(e164, code);
   if (!sent.ok) {
-    if (sent.error === "not_configured") {
-      return { ok: false, message: "WhatsApp verification isn't available yet — please use email for now." };
-    }
-    return { ok: false, message: "Couldn't send the code. Check the number and try again." };
+    // Tell the guest what actually went wrong (billing, bad number, misconfig)
+    // instead of one generic line — and clear the pending code so the cooldown
+    // doesn't lock them out of retrying by another route.
+    await admin.from("phone_otps").delete().eq("account_id", accountId);
+    return { ok: false, message: otpSendMessage(sent) };
   }
   return { ok: true, message: `Code sent on WhatsApp to ${prettyPk(e164)}.`, devCode: sent.devCode };
 }
