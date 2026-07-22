@@ -6,7 +6,8 @@ import { ConciergeSearch } from "@/components/ConciergeSearch";
 import { CategoryShowcase } from "@/components/CategoryShowcase";
 import { StayCard } from "@/components/StayCard";
 import { HeroCollage } from "@/components/HeroCollage";
-import { getListings, pickCollagePhotos, slimListings } from "@/lib/data/listings";
+import { getListings, pickCollagePhotos, slimListings, type PublicListing } from "@/lib/data/listings";
+import { homeSections, categoryCounts, MORE_SECTION_MAX } from "@/lib/listings";
 import { getAccount } from "@/lib/auth";
 import { getWebsiteAi } from "@/lib/settings";
 import { JsonLd } from "@/components/JsonLd";
@@ -36,18 +37,13 @@ export default async function HomePage() {
   const slim = slimListings(listings); // client components get only what cards need
   const ai = await getWebsiteAi(); // CRM kill switches for the hero search + voice
 
-  // Showcase the best six: Exclusives when we have them (honest heading), else
-  // the strongest of everything — photos first, then priciest.
-  const exclusives = listings.filter((l) => l.esker_exclusive);
-  const featured = (exclusives.length >= 3 ? exclusives : [...listings])
-    .sort(
-      (a, b) =>
-        Number(b.esker_exclusive) - Number(a.esker_exclusive) ||
-        (b.photos?.length ? 1 : 0) - (a.photos?.length ? 1 : 0) ||
-        b.price - a.price,
-    )
-    .slice(0, 6);
-  const featuredHeading = exclusives.length >= 3 ? brand.exclusiveTier : "Featured stays";
+  // Every stay is shown. While inventory is small that's ONE grid (splitting a
+  // handful into two headed sections looks emptier, not richer); it upgrades
+  // itself to "Esker Exclusive" + the rest once there's enough stock. See
+  // lib/listings.ts homeSections.
+  const sections = homeSections(listings);
+  const counts = categoryCounts(listings);
+  const cities = brand.launchCities.join(" & ");
 
   return (
     <main className="min-h-full">
@@ -97,36 +93,52 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Esker Exclusive — real listings from the DB ───────────── */}
-      {featured.length > 0 && (
-        <section className="mx-auto max-w-6xl px-6 pb-12 pt-16">
-          <div className="mb-5 flex items-baseline justify-between">
-            <h2 className="font-display text-2xl font-semibold tracking-tight text-ink">{featuredHeading}</h2>
-            <Link href="/stays" className="flex items-center gap-1 text-sm text-muted hover:text-ink">
-              Explore all stays <ArrowRight size={15} />
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-            {featured.map((l) => (
-              <StayCard
-                key={l.id}
-                title={l.title}
-                category={l.category ?? "Stay"}
-                area={l.area ?? ""}
-                price={l.price}
-                exclusive={l.esker_exclusive}
-                photo={l.photos?.[0] ?? undefined}
-                href={`/stays/${l.id}`}
-              />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* ── Our stays — every live listing from the DB ────────────── */}
+      {sections.mode === "unified"
+        ? sections.all.length > 0 && (
+            <section className="mx-auto max-w-6xl px-6 pb-12 pt-16">
+              <div className="mb-1 flex items-baseline justify-between">
+                <h2 className="font-display text-2xl font-semibold tracking-tight text-ink">Our stays</h2>
+                <Link href="/stays" className="flex items-center gap-1 text-sm text-muted hover:text-ink">
+                  Explore all stays <ArrowRight size={15} />
+                </Link>
+              </div>
+              {/* Explains the gold badge, which the homepage never did before. */}
+              <p className="mb-5 text-sm text-muted">
+                Every place we manage in {cities} — <span className="text-gold-deep">{brand.exclusiveTier}</span> marked in gold.
+              </p>
+              <StayGrid listings={sections.all} />
+            </section>
+          )
+        : (
+            <>
+              <section className="mx-auto max-w-6xl px-6 pb-12 pt-16">
+                <div className="mb-1 flex items-baseline justify-between">
+                  <h2 className="font-display text-2xl font-semibold tracking-tight text-ink">{brand.exclusiveTier}</h2>
+                  <Link href="/stays?tier=exclusive" className="flex items-center gap-1 text-sm text-muted hover:text-ink">
+                    See all <ArrowRight size={15} />
+                  </Link>
+                </div>
+                <p className="mb-5 text-sm text-muted">Personally inspected and managed by Esker to a guaranteed standard.</p>
+                <StayGrid listings={sections.exclusive} />
+              </section>
+
+              <section className="mx-auto max-w-6xl px-6 pb-12">
+                <div className="mb-5 flex items-baseline justify-between">
+                  <h2 className="font-display text-2xl font-semibold tracking-tight text-ink">More stays in {cities}</h2>
+                  <Link href="/stays" className="flex items-center gap-1 text-sm text-muted hover:text-ink">
+                    Explore all stays <ArrowRight size={15} />
+                  </Link>
+                </div>
+                <StayGrid listings={sections.rest.slice(0, MORE_SECTION_MAX)} />
+              </section>
+            </>
+          )}
 
       {/* ── Browse by category — visual showcase ──────────────────── */}
       <section className="mx-auto max-w-6xl px-6 pb-14 pt-4">
         <h2 className="mb-5 font-display text-2xl font-semibold tracking-tight text-ink">Browse by category</h2>
-        <CategoryShowcase />
+        <CategoryShowcase counts={counts} />
       </section>
 
       {/* ── Why Esker — trust strip ──────────────────────────────── */}
@@ -176,5 +188,27 @@ export default async function HomePage() {
         </div>
       </footer>
     </main>
+  );
+}
+
+/** One card grid, used by both the unified and split layouts so the two can
+ *  never drift apart. StayCard's 4:3 background-image render is deliberate —
+ *  don't swap it for <img>/srcset (see SESSION_HANDOFF). */
+function StayGrid({ listings }: { listings: PublicListing[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      {listings.map((l) => (
+        <StayCard
+          key={l.id}
+          title={l.title}
+          category={l.category ?? "Stay"}
+          area={l.area ?? ""}
+          price={l.price}
+          exclusive={l.esker_exclusive}
+          photo={l.photos?.[0] ?? undefined}
+          href={`/stays/${l.id}`}
+        />
+      ))}
+    </div>
   );
 }

@@ -44,9 +44,8 @@ export function StayCard({ title, category, area, price, exclusive, photo, tone 
       </div>
       <div className="p-3.5">
         <div className="truncate text-sm font-medium text-ink">{title}</div>
-        <div className="text-xs text-muted">
-          {category} · {area}
-        </div>
+        {/* Filtered join — a listing with no area set must not render "Apartment · ". */}
+        <div className="text-xs text-muted">{[category, area].filter(Boolean).join(" · ")}</div>
         <div className="mt-2 text-sm text-ink tnum">
           {amount}
           <span className="text-dim"> / {unit}</span>
