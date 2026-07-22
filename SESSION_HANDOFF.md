@@ -1,8 +1,45 @@
 # SESSION HANDOFF — Esker Stays
 
-> Read this first to resume. Pairs with `CLAUDE.md` (rules), `PROJECT_ARCHITECTURE.md` (how it's built), `ROADMAP.md`, `PHASE1_LAUNCH_CHECKLIST.md` (status + founder actions), `DEPLOYMENT.md`, and `Esker_Platform_AI_First_Master_Plan.md` (vision). Last updated: **2026‑07‑11**.
+> Read this first to resume. Pairs with `CLAUDE.md` (rules), `PROJECT_ARCHITECTURE.md` (how it's built), `ROADMAP.md`, `PHASE1_LAUNCH_CHECKLIST.md` (status + founder actions), `DEPLOYMENT.md`, and `Esker_Platform_AI_First_Master_Plan.md` (vision). Last updated: **2026‑07‑21**.
 >
-> **TL;DR (2026‑07‑11):** Account hub + **full host portal (Phase 3 / 3.5 / 3.6)** are BUILT, verified, DEPLOYED. Migrations **01–16 all applied**. Newest section is "Phase 3.6" below. **Next = Safepay payments (2.5b)** or **host pricing extras**. See "▶️ NEXT" + "Host portal map" near the bottom. ⚠️ `[HOST-DEMO]` data on `umais@esker.com` to remove.
+> **TL;DR (2026‑07‑21):** Four things shipped since the host portal: **Phase 4 partner/investor portal**, **external (resale) listings on the site**, **passwordless WhatsApp‑OTP accounts**, and **CRM‑controlled website AI**. Migrations **01–18 applied**. Start at "Session 2026‑07‑21" below. **Blocked on the founder:** a **WhatsApp Business payment restriction** stops every real WhatsApp send (OTP + owner asks) — code is fine, billing isn't. **Next = Safepay payments (2.5b)** or host pricing extras. ⚠️ `[HOST-DEMO]` data on `umais@esker.com` still to remove.
+
+## NEW 2026‑07‑21 — Session: partner portal · external listings · WhatsApp‑OTP accounts · website AI
+
+Four independent tracks. Migrations added this session: **`17_external_listings.sql`**, **`18_external_hold_release.sql`** (both RUN). No other schema changes — the OTP work reused migration 09's `phone_otps`.
+
+### 1. Phase 4 — Partner / investor read‑only portal ✅ LIVE
+Per‑property read‑only view for investors (Murad/B‑17, Zia/E‑11…). `lib/data/partner.ts` mirrors the CRM's split math (`Esker OS/lib/data/deals.ts` — **keep‑in‑sync seam**), service‑role reads gated by `owner_account_id === auth.uid()` AND `owner_relationship='partner'`. Never exposes Esker's share, guest identity, or other properties.
+- **`/partner` is ADAPTIVE:** 1 property → lands straight on that property's dashboard (no list to click through); >1 → portfolio roll‑up with drill‑down. The Properties nav item hides at ≤1 (count passed `AccountShell`→`AccountNav`), and `/partner/properties` redirects. One shared `components/partner/PropertyDashboard.tsx` renders both routes — no duplication.
+- **"Available to withdraw"** = the partner's share of **completed months only, minus payouts** — the running month is deliberately excluded because its costs are still accruing (founder's rule). ⚠️ It currently sums **all** CRM history; the founder wants a per‑partner **starting balance** set in the CRM — see memory `partner-available-opening-balance` (reuse the existing `cash_openings` + `getScopeCash`, don't invent a table).
+- **6‑month trend** + **month occupancy calendar** (privacy‑safe: booked nights only, arrival solid, checkout mornings open), printable statement.
+- One batched `loadFinance()` powers performance + trend + available (`getPartnerDashboard`) = a single query pass.
+- **Provisioning lives on the CRM's Partners & Investors page** ("Portal access"), not the property page. Includes **"Get sign‑in link"** — because generating a new magic link **invalidates the previous one**, which silently broke the first invites.
+- Bugs fixed here worth remembering: `checkin`/`checkout` are **timestamptz**, so appending `T00:00:00` produced `Invalid Date` and `NaN%` occupancy (→ `lib/partnerFormat.ts pktDate`); the Guest/Hosting/Partner switch clipped labels in the 15rem rail (icons dropped, text‑only).
+
+### 2. External (resale) inventory on the website ✅ LIVE (1 listing published)
+The CRM publishes `external_properties`; the site renders and books them. **Guests can't tell them apart** (founder's call — brand + anti‑disintermediation), so `source` is app logic only, never rendered.
+- **Migration 17:** `public_listings` + `public_availability` become UNIONs with a **`source` ('esker'|'external')** discriminator. Read through a `security_invoker=false` **VIEW, not service‑role app code** — that makes leaking `typical_cost` (our margin), `owner_id`, `notes`, `ical_url` **structurally impossible**. `description` has **no** fallback to `notes` (internal). Guard = `public_listing AND active`.
+- **Migration 18:** the 18h unpaid‑hold auto‑release now also applies to external bookings — without it an abandoned hold blocks dates forever on a calendar Esker doesn't control.
+- **Booking path:** `property_id: NULL` + `external_property_id` + `is_external: true`, `cost = typical_cost × nights` **snapshotted** (a later owner rate change never rewrites margin), `rate_at_booking` = per‑night (it's `NOT NULL DEFAULT 0` — omitting it is the ×0‑invoice bug), `source: 'Website'` (the CHANNEL — keeps ad attribution AND arms the 18h release; `is_external` marks resale). Clash check keys on `external_property_id` + the CRM's cached owner iCal.
+- **Three `properties` FK traps fixed:** notification/outbox rows, the `conversations.property_id` link, and the **listing‑view beacon** (`listing_views.property_id` REFERENCES properties → would throw on every external page view; now skipped).
+- **Overbooking gate:** instant‑book ONLY when `ical_synced_at` is fresh (≤12h, `lib/data/externalBooking.ts`); otherwise **request‑to‑book** — enforced **server‑side** in `createBooking`, not just UI. Neither external unit has an `ical_url`, so **everything is request‑to‑book today** and the instant path is untested.
+- `requestExternalDates` fires the CRM's `POST /api/platform/external-ask` and **bells staff with WHO asked** (fires even on the CRM's 24h dedupe, where no new Support message appears).
+
+### 3. Passwordless accounts — WhatsApp OTP ✅ BUILT (blocked on billing)
+- `lib/otpFlow.ts` = the ONE OTP engine (extracted from `app/account/actions.ts`, now thin wrappers) — shared by the verify‑your‑number card and the new pre‑auth flow.
+- `app/auth/phone/actions.ts`: `startPhoneAuth` finds‑or‑creates (reuses a booking‑provisioned account with the same phone → no duplicates; else a synthetic `wa<E164>@guest.eskerrentals.com`); `completePhoneAuth` mints the session **server‑side** via `generateLink(magiclink)` → `verifyOtp(token_hash)`.
+- `components/auth/PhoneOtpForm.tsx` is the single phone→code UI used by `/signup`, `/login` **and** `components/AccountGateModal.tsx` — the in‑place "create an account in seconds" sheet that the external **request‑to‑book** opens for signed‑out guests (auto‑fires the request after auth).
+- `/signup` leads with intent (**Book stays** → WhatsApp code, no password; **List my place** → email form, `/host` checklist then enforces phone+CNIC). `/login` defaults to the WhatsApp tab.
+- E2E‑verified locally on the dev‑code seam (signup → session → `/account`; login reused the account; test rows deleted by exact id).
+
+### 4. Website AI is configured from the CRM ✅ LIVE
+`lib/settings.ts getWebsiteAi()` reads `app_settings.website_ai` (**60s TTL** so the kill switch works with no deploy). Missing key / malformed JSON / failed read → **all‑on with our defaults**; only an explicit `false` disables.
+- Surfaces: **`search`** = homepage hero + `/stays?q=`; **`concierge`** = **property‑page Q&A**; **`voice`** = the orb. ⚠️ The CRM labels `concierge` as "guest chat" — **wrong**: guest chat is human‑only by design and has no AI.
+- All three shared `/api/concierge` with no way to tell them apart → clients now send a **`surface`** discriminator. Founder `prompt` is **layered on top** of the system prompt; `voice.model` overrides the **chat model only** (STT/TTS stay on env, where a bad value can't break the orb).
+- **Graceful fallbacks** (founder's choice): search off → hero becomes "Browse all stays" + Exclusive into the real filters (it's the homepage's only search); concierge off → Q&A hidden, the existing "Message us about this place" stays; voice off → orb hidden. `/stays?q=` **and its metadata** gate on the switch so a bookmark can't bypass it (it was rendering a browse page titled "Concierge search" **and noindexed**).
+- Verified live: all three off → fallbacks render + routes refuse; key deleted → AI back within the TTL, no restart.
+- `sender_kind='ai'` already renders as ✨ "Esker AI" in `components/chat/ChatThread.tsx` — nothing to do if the CRM ever enables auto‑AI for website chat.
 
 ## What this is (one line)
 The public, AI‑first short‑stay **booking website** for Esker Rentals (Islamabad/Rawalpindi) — the consumer face of the same business the **Esker OS CRM** runs, on the **same Supabase DB**. Folder: `C:\Claude Projects\Esker Platform` (sibling of `C:\Claude Projects\Esker OS`). **Live at https://eskerrentals.com** (Vercel, region hnd1). Repo: `github.com/reallysecretumais/eskerplatform` (push `main` → auto‑deploys). CRM is at `os.eskerrentals.com`.
@@ -92,8 +129,16 @@ Adds the depth the founder asked for: AI listing **interview**, availability **c
 - **APPROVED program (multi-phase, in shared memory `platform-portals-chat-program`)**: three-tier owners (partner / managed / host) · unified inventory in `properties` · messaging reuses the CRM Unified Inbox (`'website'` channel + account-scoped RLS). **Next: Phase 2 — guest↔Esker chat** (pre-booking inquiry + post-booking chatbox, realtime, CRM `phase21.sql`). Phase 3 (host portal) needs the payout/commission decision; Phase 4 = partner+managed portals.
 - **Logo still needed**: icon pipeline exists (`scripts/gen-icons.mjs` + generated PNGs, untracked); founder must save the real logo (ideally vector) to `public/brand/` — then icons + PWA manifest + `docs/MOBILE_APP.md` ship in one commit.
 
-## ⚠️ PENDING FOUNDER ACTIONS (current — 2026-07-11)
-**All migrations 01–16 are RUN. Everything below the account hub through the host portal is DEPLOYED.** The genuinely outstanding items:
+## ⚠️ PENDING FOUNDER ACTIONS (current — 2026-07-21)
+
+**🔴 BLOCKER — WhatsApp Business payment restriction.** Every real WhatsApp send fails: Meta accepts the API call (HTTP 200 `accepted`, `wa_id` resolves) and then never delivers. The CRM surfaces it explicitly as *"Business eligibility payment issue — your WhatsApp Business account payment has been restricted"* (Meta error **131042**). Nothing is wrong with the code, token, template or number — all verified: token is a **permanent SYSTEM_USER** token, `login_code` + `availability_check_web` are **APPROVED**, number `1238724549317765` (+92 332 5977626) is **CONNECTED/GREEN** on the live WABA `902646692166912`. Fix in **Meta Business Manager → Business settings → Billing / payment methods**. Until then: the OTP signup popup can't deliver codes, and owner availability asks won't reach owners. ⚠️ Confusingly, Meta's `health_status` endpoint reports `can_send_message: AVAILABLE` at every level — billing restrictions apparently aren't surfaced there, so trust the send‑time error, not health.
+
+**Also outstanding:**
+- **Edit the approved `availability_check_web` template** — Meta approved it **with a typo**: *"a quick tap below **let's** the guest know whether the place is available **for their required.**"* The CRM code sends the corrected wording, so template and in‑window copy are deliberately out of sync until this is edited. Corrected body is in memory `whatsapp-otp-accounts`.
+- **Add an `ical_url`** to one external property — with none set, every resale listing is request‑to‑book and the instant‑book branch ships untested.
+- **Partner starting balance** (CRM‑side work): see memory `partner-available-opening-balance`.
+
+**Historical (now done):** all migrations 01–18 RUN; account hub → host portal → partner portal → external listings → OTP accounts all DEPLOYED. Older items below:
 - **Safepay onboarding** (NTN + business registration + bank) — the long pole for real online payments (Phase 2.5b). Not started as far as this session knows. The seam (`lib/payments/provider.ts`) + a stubbed "Pay now by card" button already exist; I build behind it once onboarding clears.
 - **WhatsApp number go-live**: set `WHATSAPP_PHONE_NUMBER_ID` + `WHATSAPP_ACCESS_TOKEN` in the CRM Vercel → the CRM outbox drainer (BUILT, commit `b7d40c1`) starts sending booking-confirmation + review-nudge WhatsApps. Both Meta templates (`booking_received`, `review_request`) are **approved**. Also OTP + host-message WhatsApp light up.
 - **`CRON_SECRET`** in the website Vercel → daily post-stay review-nudge cron (founder said likely already set).
@@ -115,7 +160,8 @@ Adds the depth the founder asked for: AI listing **interview**, availability **c
 - ✅ Already done by founder: SMTP_PASS added (emails send); cancellation windows reviewed; 01–06 migrations run.
 
 ## Migrations (founder runs each in Supabase SQL Editor)
-**✅ ALL migrations `01`–`16` APPLIED (2026-07-11).** In order: `01_public_listings` · `02_public_facts` · `03_accounts` · `04_bookings` · `05_hold_expiry` · `06_notifications` · `07_reviews` · `08_accounts_links` · `09_phone_verification` · `10_account_prefs` · `11_guest_reviews` · `12_review_requests` · `13_avatars` · `14_host_portal` · `15_host_portal_2` · `16_host_engagement`. Nothing pending.
+**✅ ALL migrations `01`–`18` APPLIED (2026-07-21).** In order: `01_public_listings` · `02_public_facts` · `03_accounts` · `04_bookings` · `05_hold_expiry` · `06_notifications` · `07_reviews` · `08_accounts_links` · `09_phone_verification` · `10_account_prefs` · `11_guest_reviews` · `12_review_requests` · `13_avatars` · `14_host_portal` · `15_host_portal_2` · `16_host_engagement` · `17_whatsapp_reviews` · `17_external_listings` · `18_external_hold_release`. Nothing pending.
+> ⚠️ Two files share the `17` prefix (`17_whatsapp_reviews` came from the CRM-side session). Both are applied; next migration should be **19**.
 
 ## WhatsApp phone verification (OTP) — BUILT 2026-07-05, ready-to-flip
 Optional "Verify your WhatsApp number" card on `/account` (`components/account/PhoneVerifyCard`). Flow: enter PK number → `sendPhoneOtp` (`app/account/actions.ts`) generates a 6-digit code, hashes it into `phone_otps` (10-min TTL, 60-s resend cooldown, 5 attempts), sends via `lib/otp.ts` `sendWhatsappOtp` (WhatsApp **authentication template, Copy-code button**) → guest pastes code (auto-detected) → `verifyPhoneOtp` stamps `accounts.phone` + `phone_verified_at`. Send is a **seam**: real Cloud API when `WHATSAPP_*` env is set, else dev-logs the code (prod shows "verify by email for now"). **Not yet wired: "some verification required to book"** — the mechanism exists; switch it on once the number's live (or if email is to count as sufficient). Meta template delivery = **Copy code** (zero/one-tap autofill need a native Android app; web only gets copy-code).
@@ -131,15 +177,21 @@ Supabase URL/anon/**service‑role** (service key used ONLY by `app/book/actions
 - All guest comms are **best‑effort** (try/catch) — they never break a booking.
 - Logs (`dev.log`, `*.log`) are gitignored — don't commit them.
 
-## ▶️ NEXT (2026-07-11)
-The **account hub (2.5a)** and the **full host portal (Phase 3 + 3.5 + 3.6)** are BUILT, verified, and DEPLOYED. Recommended next, in order:
-1. **Safepay real payments (Phase 2.5b)** — the founder's ASAP ask. Build the "Pay now by card" path behind `lib/payments/provider.ts` (stubbed already); founder does the Safepay onboarding in parallel. Memory: `payment-integration-plan`.
-2. **Host pricing extras** — weekend rate, minimum nights, cleaning fee, weekly/monthly discounts (every listing is a flat nightly rate today). The most-requested real-world host gap.
-3. **Turn on WhatsApp** (CRM env creds) → confirmations + review nudges + host messages flow (drainer + templates ready).
-4. Later: payouts settlement ledger · host review analytics per-listing strip · Phase 4 partner/managed portals · ElevenLabs/Realtime voice · app icons/PWA (needs the logo).
+## ▶️ NEXT (2026-07-21)
+Account hub (2.5a), the full host portal (3/3.5/3.6), the **partner portal (Phase 4)**, **external listings**, **WhatsApp‑OTP accounts** and **CRM‑controlled website AI** are all BUILT and DEPLOYED. Recommended next, in order:
+1. **Unblock WhatsApp billing** (founder) — it gates OTP delivery and owner asks. Nothing to build.
+2. **OTP delivery‑status hardening** (small, agreed, not yet built) — `sendWhatsappOtp` treats HTTP 200 as success and discards the `wa_message_id`, so an accepted‑but‑undelivered message reports a cheerful "Code sent". The CRM's webhook already persists Meta's failure reason but has no row to attach it to. Store the id (and surface the failure) so a silent non‑delivery can never look like success again — this incident cost an hour of guessing.
+3. **Safepay real payments (Phase 2.5b)** — the founder's ASAP ask. Behind `lib/payments/provider.ts` (stubbed); founder does onboarding in parallel. Memory: `payment-integration-plan`.
+4. **Managed‑owner portal** — the other half of Phase 4 ("partner **+ managed‑external**"). Different by design: shows "business Esker brought you" with **Esker margin/cost HIDDEN** + a soft upsell to full management.
+5. **Host pricing extras** — weekend rate, minimum nights, cleaning fee, weekly/monthly discounts (everything is a flat nightly rate today).
+6. Later: partner **auto‑notify when an owner confirms** dates (today staff follow up manually from the bell) · payouts settlement ledger · ElevenLabs/Realtime voice · app icons/PWA (needs the logo).
 
-## Live now (2026-07-11)
-Account hub + guest reviews + review nudge + avatars + **the entire host portal** (self-listing incl. AI interview, photos/calendar/guest-info, bookings, reviews+reply, "Hosted by…" profile, analytics, payouts) are DEPLOYED on eskerrentals.com. Migrations 01–16 applied. Latest Platform commit `31e2c68`; CRM host-review + drainer commits pushed. **⚠️ [HOST-DEMO] data on `umais@esker.com` still present — remove when done.**
+## Live now (2026-07-21)
+Account hub + guest reviews + review nudge + avatars + **the entire host portal** + **the partner/investor portal** + **external resale listings** + **WhatsApp‑OTP passwordless accounts** + **CRM‑controlled website AI** are DEPLOYED on eskerrentals.com. Migrations 01–18 applied. Latest Platform commit `15b1eed`.
+- **1 external listing is public:** Hamza's 1BHK (Park Towers), `f1f62ad3-c76b-461a-8f57-42e2e4645e28` — request‑to‑book (no iCal).
+- **0 partners linked** — the portal is built but nobody has been provisioned yet; the founder's live provision + isolation test hasn't been run.
+- **⚠️ [HOST-DEMO] data on `umais@esker.com` still present — remove when done.**
+- **⚠️ WhatsApp sends are blocked by the billing restriction** (see Pending Founder Actions).
 
 ## Host portal map — EXHAUSTIVE surface (audited 2026-07-11; nothing beyond this exists or is missing)
 **Actions** (`app/host/actions.ts`, all owner-checked service-role): `createDraft` · `submitListing` (≥3 photos + title/desc/price) · `updateListing` (instant) · `interviewTurn` (AI) · `uploadListingPhoto` · `removeListingPhoto` · `setListingCover` · `reorderListingPhotos` (drag) · `saveGuestInfo` · `blockDates` · `unblockDates` · `pauseListing` · `resumeListing` · `sendHostMessage` · `loadHostThreadMessages` · `markHostThreadRead` · `replyToReview` · `savePayout` · `saveHostBio` · `submitHostId`.
