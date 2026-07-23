@@ -40,3 +40,34 @@ export async function getExternalBookability(listingId: string): Promise<Externa
     ? { mode: "instant", reason: "ical-fresh" }
     : { mode: "request", reason: "stale-ical" };
 }
+
+/** How long an owner's "available" answer authorises a booking of those exact
+ *  dates — mirrors the CRM's trust window for a WhatsApp reply. */
+export const AVAILABLE_TRUST_HOURS = 48;
+
+/**
+ * Did THIS account get an "available" answer for these EXACT dates, recently
+ * enough to book on? An owner's WhatsApp tap isn't an iCal sync, so this is the
+ * only thing that lets a request-to-book guest actually book without looping.
+ * Exact-date + 48h match, per the CRM's trust rules.
+ */
+export async function hasAuthorizedRequest(
+  accountId: string,
+  listingId: string,
+  checkin: string, // YYYY-MM-DD
+  checkout: string,
+): Promise<boolean> {
+  const admin = createAdminClient();
+  const cutoff = new Date(Date.now() - AVAILABLE_TRUST_HOURS * 3600 * 1000).toISOString();
+  const { data } = await admin
+    .from("external_date_requests")
+    .select("id")
+    .eq("account_id", accountId)
+    .eq("external_property_id", listingId)
+    .eq("status", "available")
+    .eq("checkin", checkin)
+    .eq("checkout", checkout)
+    .gte("resolved_at", cutoff)
+    .limit(1);
+  return !!(data && data.length > 0);
+}

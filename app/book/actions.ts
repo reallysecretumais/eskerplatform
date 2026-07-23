@@ -7,7 +7,7 @@ import { advanceAmount, advanceLabel } from "@/lib/payments";
 import { SITE_URL } from "@/lib/seo";
 import { notifyBookingReceived } from "@/lib/notifyGuest";
 import { capiEvent } from "@/lib/analytics";
-import { getExternalBookability } from "@/lib/data/externalBooking";
+import { getExternalBookability, hasAuthorizedRequest } from "@/lib/data/externalBooking";
 import { notifyStaff } from "@/lib/notifyStaff";
 
 const ACTIVE = ["awaiting_payment", "payment_collected", "handed_over", "awaiting_checkin", "currently_staying", "needs_attention"];
@@ -110,7 +110,11 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
   //     just in the UI) so no request path can bypass it.
   if (isExternal) {
     const bookability = await getExternalBookability(propertyId);
-    if (bookability.mode !== "instant") {
+    // A fresh iCal sync OR the owner's own "available" answer for these EXACT
+    // dates (within the 48h trust window) authorises the booking. Without the
+    // second path, a guest the owner just approved would loop back into a request.
+    const ownerApproved = !!accountId && (await hasAuthorizedRequest(accountId, propertyId, checkin, checkout));
+    if (bookability.mode !== "instant" && !ownerApproved) {
       return {
         ok: false,
         message: "We need to confirm these dates with the owner before taking payment. Please request them and we'll come back to you shortly.",
@@ -424,6 +428,25 @@ export async function requestExternalDates(formData: FormData): Promise<RequestD
       });
     } catch {
       /* best-effort */
+    }
+
+    // Durable record of this request, keyed by the CRM's checkId — this is how
+    // the /api/platform/availability-replied ping maps the owner's answer back to
+    // THIS guest, and how an "available" answer later authorises their booking.
+    // Only when we got a fresh checkId (a brand-new ask); an "already asked" reply
+    // has no new check to attach to.
+    if (out?.checkId) {
+      try {
+        await admin.from("external_date_requests").insert({
+          account_id: user.id,
+          external_property_id: listingId,
+          checkin,
+          checkout,
+          check_id: out.checkId,
+        });
+      } catch (e) {
+        console.error("[external-ask] could not record request:", e);
+      }
     }
 
     if (!res.ok || !out?.ok) {

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getMyThread, getThreadMessages, type ChatThread, type ChatMessage } from "@/lib/data/chat";
+import { getMyThread, getThreadMessages, getMyThreads, type ChatThread, type ChatMessage } from "@/lib/data/chat";
 import { notifyChatEmail } from "@/lib/notifyChat";
 
 // Guest chat actions. Reads are RLS-scoped (lib/data/chat.ts); ALL writes here go
@@ -320,6 +320,13 @@ export async function markThreadRead(conversationId: string): Promise<ChatResult
   if (!convo) return { ok: false };
   await admin.from("conversations").update({ guest_last_read_at: new Date().toISOString() }).eq("id", convo.id);
   return { ok: true, conversationId: convo.id };
+}
+
+/** Total unread across the guest's threads — drives the nav badge. 0 when
+ *  signed out. */
+export async function unreadCount(): Promise<number> {
+  const threads = await getMyThreads();
+  return threads.reduce((n, t) => n + (t.unread || 0), 0);
 }
 
 /** Load one thread's messages for the inbox (RLS guarantees it's the caller's). */

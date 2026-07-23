@@ -7,6 +7,23 @@ import { sendGuestMessage, markThreadRead, ensureThread, type ChatContext } from
 import type { ChatMessage } from "@/lib/data/chat";
 import { brand } from "@/lib/brand";
 
+// Make links in a message tappable (e.g. an Esker "Reserve these dates" URL)
+// without a markdown dep. Splits on http(s) URLs and renders the rest as text.
+const URL_SPLIT = /(https?:\/\/[^\s]+)/g;
+const IS_URL = /^https?:\/\//;
+function linkify(text: string | null, mine: boolean): React.ReactNode {
+  if (!text) return text;
+  return text.split(URL_SPLIT).map((part, i) =>
+    IS_URL.test(part) ? (
+      <a key={i} href={part} className={`underline underline-offset-2 ${mine ? "text-ink" : "text-gold-deep"} break-all hover:opacity-80`}>
+        {part}
+      </a>
+    ) : (
+      part
+    ),
+  );
+}
+
 // The shared chat engine — used by both the floating panel and /messages.
 // Guest bubbles right (gold-tinted); Esker replies left, labeled "Esker AI" ✨
 // or "Esker team"; system lines centered and subtle. New messages arrive live
@@ -167,7 +184,7 @@ export function ChatThread({
                     )}
                   </div>
                 )}
-                <p className="whitespace-pre-wrap">{m.body}</p>
+                <p className="whitespace-pre-wrap">{linkify(m.body, mine)}</p>
                 <div className={`mt-0.5 text-[10px] ${mine ? "text-right" : ""} text-dim`}>{fmtTime(m.created_at)}</div>
               </div>
             </div>

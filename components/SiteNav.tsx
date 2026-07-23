@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { brand } from "@/lib/brand";
 import { EskerLogo } from "@/components/EskerLogo";
+import { MessagesBadge } from "@/components/chat/MessagesBadge";
 
 const LINKS: { label: string; href: string; gold?: boolean; external?: boolean }[] = [
   { label: "Browse all stays", href: "/stays" },
@@ -48,8 +49,9 @@ export function SiteNav({
           );
         })}
         {account && (
-          <Link href="/messages" className={onPhoto ? "text-white/90 hover:text-white" : "text-muted hover:text-ink"}>
+          <Link href="/messages" className={`inline-flex items-center gap-1.5 ${onPhoto ? "text-white/90 hover:text-white" : "text-muted hover:text-ink"}`}>
             Messages
+            <MessagesBadge />
           </Link>
         )}
         <Link
@@ -99,8 +101,9 @@ export function SiteNav({
                 ),
               )}
               {account && (
-                <Link href="/messages" className="text-ink" onClick={() => setOpen(false)}>
+                <Link href="/messages" className="inline-flex items-center gap-2 text-ink" onClick={() => setOpen(false)}>
                   Messages
+                  <MessagesBadge />
                 </Link>
               )}
               <Link href={authHref} className="mt-2 rounded-lg border border-line px-4 py-2 text-center text-ink" onClick={() => setOpen(false)}>
