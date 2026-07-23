@@ -4,9 +4,10 @@ import { notifyChatEmail } from "@/lib/notifyChat";
 import { sendWhatsappTemplate } from "@/lib/whatsapp";
 import { SITE_URL } from "@/lib/seo";
 
-// Meta utility template — see the founder-setup note in the plan. Body vars:
-// {{1}} guest first name · {{2}} property · {{3}} dates. URL button base
-// "https://eskerrentals.com/book/" + one dynamic suffix "{id}?checkin=…&checkout=…".
+// Meta utility template. Body vars: {{1}} guest first name · {{2}} property ·
+// {{3}} dates. URL button base "https://eskerrentals.com/r/" + one dynamic suffix
+// = the request id (a clean path — no fragile ?query in a WhatsApp button; /r/[id]
+// redirects into the prefilled booking page).
 const WA_AVAILABLE_TEMPLATE = process.env.WHATSAPP_AVAILABLE_TEMPLATE || "dates_available";
 
 export const runtime = "nodejs";
@@ -115,7 +116,7 @@ export async function POST(req: NextRequest) {
     const firstName = (account.name as string)?.trim().split(/\s+/)[0] || "there";
     void sendWhatsappTemplate(digits, WA_AVAILABLE_TEMPLATE, [
       { type: "body", parameters: [{ type: "text", text: firstName }, { type: "text", text: title }, { type: "text", text: dates }] },
-      { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: `${listingId}?checkin=${checkin}&checkout=${checkout}` }] },
+      { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: reqRow.id as string }] },
     ]).catch(() => {});
   }
 
