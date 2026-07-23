@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyChatEmail } from "@/lib/notifyChat";
 import { sendWhatsappTemplate } from "@/lib/whatsapp";
+import { sendPush } from "@/lib/push";
 import { SITE_URL } from "@/lib/seo";
 
 // Meta utility template. Body vars: {{1}} guest first name · {{2}} property ·
@@ -107,6 +108,15 @@ export async function POST(req: NextRequest) {
       link: "/messages",
     });
   }
+
+  // Browser push (best-effort; only for guests who opted in). Available deep-links
+  // to the booking; unavailable opens Messages.
+  await sendPush(accountId, {
+    title: available ? "Good news from Esker" : "Update on your request",
+    body: available ? `${title} is available for ${dates} — reserve it now.` : `${title} isn't available for ${dates}. Tap to see similar stays.`,
+    url: available ? `/r/${reqRow.id}` : "/stays",
+    tag: `avail-${reqRow.id}`,
+  });
 
   // WhatsApp reminder — available only, respects the opt-out (the founder asked
   // for a nudge on the good news). In-app + email have already been sent, so this

@@ -2,12 +2,13 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Minus, Plus, MessageCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Minus, Plus, MessageCircle, Bell } from "lucide-react";
 import type { BusyRange } from "@/lib/data/listings";
 import { formatPrice, type BookingUnit } from "@/lib/listings";
 import { brand } from "@/lib/brand";
 import { requestExternalDates } from "@/app/book/actions";
 import { AccountGateModal } from "@/components/AccountGateModal";
+import { enablePush, pushSupported } from "@/lib/pushClient";
 
 const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 
@@ -69,6 +70,8 @@ export function BookingWidget({
   const [askMsg, setAskMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [gateOpen, setGateOpen] = useState(false);
   const [authed, setAuthed] = useState(signedIn);
+  const [pushState, setPushState] = useState<"off" | "on" | "denied">("off");
+  const showPushOffer = pushSupported();
   const ref = useRef<HTMLDivElement>(null);
 
   const atCurrentMonth = view.y === today.getFullYear() && view.m === today.getMonth();
@@ -278,6 +281,27 @@ export function BookingWidget({
           <p className={`mt-2 rounded-lg border px-3 py-2 text-center text-xs leading-relaxed ${askMsg.ok ? "border-green/40 bg-green/[0.06] text-green" : "border-red/40 bg-red/[0.06] text-red"}`}>
             {askMsg.text}
           </p>
+        )}
+
+        {/* After a request, offer a browser heads-up — a real gesture, never on
+            load. We already message + email (+ WhatsApp) them; this is extra. */}
+        {askMsg?.ok && showPushOffer && (
+          <button
+            type="button"
+            onClick={async () => {
+              const r = await enablePush();
+              setPushState(r === "enabled" ? "on" : r === "denied" ? "denied" : "off");
+            }}
+            disabled={pushState === "on"}
+            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-line px-3 py-2 text-xs text-muted transition hover:text-ink disabled:opacity-70"
+          >
+            <Bell size={13} />
+            {pushState === "on"
+              ? "You'll get a notification when they reply ✓"
+              : pushState === "denied"
+                ? "Notifications are blocked in your browser"
+                : "Notify me the moment the owner replies"}
+          </button>
         )}
 
         <AccountGateModal
