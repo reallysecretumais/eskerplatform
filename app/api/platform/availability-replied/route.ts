@@ -1,7 +1,13 @@
 import type { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyChatEmail } from "@/lib/notifyChat";
+import { sendWhatsappTemplate } from "@/lib/whatsapp";
 import { SITE_URL } from "@/lib/seo";
+
+// Meta utility template — see the founder-setup note in the plan. Body vars:
+// {{1}} guest first name · {{2}} property · {{3}} dates. URL button base
+// "https://eskerrentals.com/book/" + one dynamic suffix "{id}?checkin=…&checkout=…".
+const WA_AVAILABLE_TEMPLATE = process.env.WHATSAPP_AVAILABLE_TEMPLATE || "dates_available";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,7 +66,7 @@ export async function POST(req: NextRequest) {
   const checkout = reqRow.checkout as string;
 
   const [{ data: account }, { data: listing }] = await Promise.all([
-    admin.from("accounts").select("id, name, email, notify_email").eq("id", accountId).maybeSingle(),
+    admin.from("accounts").select("id, name, email, phone, notify_email, notify_whatsapp").eq("id", accountId).maybeSingle(),
     admin.from("public_listings").select("title, category").eq("id", listingId).maybeSingle(),
   ]);
   const title = (listing?.title as string) || "the apartment";
@@ -99,6 +105,18 @@ export async function POST(req: NextRequest) {
       cta: "Open Messages",
       link: "/messages",
     });
+  }
+
+  // WhatsApp reminder — available only, respects the opt-out (the founder asked
+  // for a nudge on the good news). In-app + email have already been sent, so this
+  // is a best-effort extra; needs the Meta template approved to actually deliver.
+  if (available && account?.phone && account.notify_whatsapp !== false) {
+    const digits = String(account.phone).replace(/\D/g, "");
+    const firstName = (account.name as string)?.trim().split(/\s+/)[0] || "there";
+    void sendWhatsappTemplate(digits, WA_AVAILABLE_TEMPLATE, [
+      { type: "body", parameters: [{ type: "text", text: firstName }, { type: "text", text: title }, { type: "text", text: dates }] },
+      { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: `${listingId}?checkin=${checkin}&checkout=${checkout}` }] },
+    ]).catch(() => {});
   }
 
   await admin.from("external_date_requests").update({ notified_at: new Date().toISOString() }).eq("id", reqRow.id);
