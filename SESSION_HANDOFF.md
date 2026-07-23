@@ -2,7 +2,7 @@
 
 > Read this first to resume. Pairs with `CLAUDE.md` (rules), `PROJECT_ARCHITECTURE.md` (how it's built), `ROADMAP.md`, `PHASE1_LAUNCH_CHECKLIST.md` (status + founder actions), `DEPLOYMENT.md`, and `Esker_Platform_AI_First_Master_Plan.md` (vision). Last updated: **2026‑07‑21**.
 >
-> **TL;DR (2026‑07‑21):** Homepage now shows **all 8 stays** (it was showing 3) and category tiles no longer dead‑end — newest section is first below. Before that, four things shipped since the host portal: **Phase 4 partner/investor portal**, **external (resale) listings on the site**, **passwordless WhatsApp‑OTP accounts**, and **CRM‑controlled website AI**. Migrations **01–18 applied**. Start at "Session 2026‑07‑21" below. **WhatsApp sending WORKS** — the payment restriction is cleared and a live OTP was received on a real handset. **The remaining launch gaps are CONTENT, not code:** `public_facts` is empty on all 8 listings (so the AI concierge can't answer property questions) and there are **0 published reviews**. **Next code = Safepay payments (2.5b)** or host pricing extras. ⚠️ `[HOST-DEMO]` data on `umais@esker.com` still to remove.
+> **TL;DR (2026‑07‑21):** Homepage now shows **all 8 stays** (it was showing 3) and category tiles no longer dead‑end — newest section is first below. Before that, four things shipped since the host portal: **Phase 4 partner/investor portal**, **external (resale) listings on the site**, **passwordless WhatsApp‑OTP accounts**, and **CRM‑controlled website AI**. Migrations **01–20** (17/18 external listings, 19 date-requests, 20 push — confirm 20 run). Start at "Session 2026‑07‑22" below. **Platform is fully DEPLOYED (`66ee45b`).** **WhatsApp WORKS** (OTP + reminders). **The request‑to‑book loop is live on the website but its CRM ping is unpushed** (see below). **Remaining launch gaps are CONTENT, not code:** `public_facts` empty on all 8 listings (AI concierge can't answer property questions) + **0 published reviews**. **Next code = Safepay (2.5b)** or host pricing extras. ⚠️ `[HOST-DEMO]` on `umais@esker.com` still to remove; **set 30‑June partner openings** before announcing the portal.
 
 ## NEW 2026‑07‑21 (later) — Homepage: every stay visible, category tiles no longer dead‑end
 
@@ -12,6 +12,22 @@ Two bugs on the most‑visited page, both fixed in `4ada03f`.
 - `StayCard` no longer renders a dangling `"Apartment · "` when a listing has no area. **Its 4:3 `background-image` render stays untouched** (locked founder decision — see the note in the host‑portal section).
 - **Data gap for the founder:** **Al‑Mustufa Apartment has no `area`/`location_id`** in the CRM, so it shows without a location and can't be found under any area filter.
 - Verified: 10/10 unit tests on the unified/split logic (incl. the "10 stays but only 1 Exclusive → stay unified" edge); live DOM = 8 cards, 3 badges, Apartments(5)/Penthouses(3) → non‑empty results, 4 inert tiles, zero links to the empty categories; no horizontal overflow at 1280 or 375.
+
+## NEW 2026‑07‑22 — Request‑to‑book LOOP + everything deployed
+
+**Platform DEPLOYED (`66ee45b`).** One push shipped this session's homepage fix, the OTP hardening, the **partner portal with the "A" cash‑opening anchoring**, and the **entire request‑to‑book feedback loop (website side)**. All live on eskerrentals.com.
+
+**The loop — when an owner answers a resale date‑request, the guest now hears back:**
+- Migration **19 `external_date_requests`** (RUN): a website‑owned record of each request keyed by the CRM's `checkId` (checkId→account) + outcome. `requestExternalDates` writes it.
+- **`POST /api/platform/availability-replied`** (secret‑gated, auth‑before‑body): the CRM pings it on the owner's reply → maps checkId→account, sets outcome, drops a **staff message** into the guest's Esker Support thread (available → a **Reserve** link; unavailable → similar‑stays nudge), fires the throttled email, and — Phase B — a **WhatsApp reminder** (`dates_available` template, sent from the website's own Cloud API creds, no CRM drainer) and — Phase C — a **web push**.
+- **Booking authorisation** (`hasAuthorizedRequest` + the `createBooking` gate): an owner "available" for the EXACT dates within **48h** authorises an instant booking, so the guest doesn't loop (an owner tap isn't an iCal sync).
+- **`/r/[id]`** clean redirect → the prefilled booking page (used by the WhatsApp button — a `?query` in a WA button is fragile at Meta).
+- **Nav unread badge** (`MessagesBadge`, live over realtime) + **linkified chat bubbles**.
+- **Web push** (Phase C): migration **20 `push_subscriptions`** (confirm RUN), `public/sw.js`, `lib/push.ts` (web‑push dep; no‑ops without VAPID so it can never break the loop), gesture‑only permission prompt after a request. Needs `VAPID_*` env (keys generated, added).
+
+**⚠️ THE LOOP'S LAST PIECE IS NOT LIVE.** The CRM ping (`applyAvailabilityReply` → this endpoint) is committed in the CRM (`a5f85cc`) but **CRM `master` is unpushed** (tangled under another session's lessons/plays commits). Until the CRM is pushed, an owner reply still bells STAFF but the guest is **not auto‑notified in prod**. The website endpoint is live + E2E‑verified; it's just not being pinged yet.
+
+**Founder follow‑ups:** confirm migration 20 is run; set the **30‑June partner openings** before Murad/Zia are told the portal exists (it's live but still 31‑May‑anchored); coordinate the CRM push.
 
 ## NEW 2026‑07‑21 — Session: partner portal · external listings · WhatsApp‑OTP accounts · website AI
 
