@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { SiteNav } from "@/components/SiteNav";
 import { getAccount } from "@/lib/auth";
 import { brand } from "@/lib/brand";
-import { company, addressOneLine } from "@/lib/contact";
 import { support } from "@/lib/payments";
 
 // Shared shell for the legal pages — nav + readable prose column + footer.
@@ -38,14 +37,6 @@ export async function LegalPage({ title, updated, children }: { title: string; u
               <Link href="/legal/service-delivery" className="hover:text-ink">Service delivery</Link>
               <Link href="/legal/privacy" className="hover:text-ink">Privacy</Link>
             </div>
-          </div>
-          {/* Verifiable business identity — required visible by payment gateways. */}
-          <div className="mt-5 border-t border-line pt-4 text-xs leading-relaxed text-dim">
-            {company.legalName} · {addressOneLine}
-            <br />
-            <a href={`tel:${company.phone}`} className="hover:text-muted">{company.phone}</a>
-            {" · "}
-            <a href={`mailto:${support.email}`} className="hover:text-muted">{support.email}</a>
           </div>
         </div>
       </footer>

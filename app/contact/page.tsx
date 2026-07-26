@@ -4,7 +4,7 @@ import { SiteNav } from "@/components/SiteNav";
 import { EskerLogo } from "@/components/EskerLogo";
 import { getAccount } from "@/lib/auth";
 import { brand } from "@/lib/brand";
-import { company, addressOneLine } from "@/lib/contact";
+import { company } from "@/lib/contact";
 import { support } from "@/lib/payments";
 
 export const metadata = {
@@ -153,9 +153,6 @@ export default async function ContactPage() {
       <footer className="border-t border-line">
         <div className="mx-auto max-w-3xl px-6 py-8 text-sm text-muted">
           <EskerLogo className="text-ink" />
-          <p className="mt-2 text-xs text-dim">
-            {company.legalName} · {addressOneLine}
-          </p>
         </div>
       </footer>
     </main>
