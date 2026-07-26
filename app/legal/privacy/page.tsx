@@ -28,6 +28,17 @@ export default function PrivacyPolicy() {
         Your CNIC/passport image and payment screenshots are stored in <strong>private, access-controlled storage</strong> and are viewable only by authorised Esker staff for verification. They are <strong>never sold</strong>, never used for marketing, and never shared publicly. We keep them only as long as needed for your booking and any legal or tax obligations, then remove them.
       </p>
 
+      <h2>Card and payment data</h2>
+      <p>
+        When you pay by card, bank account, wallet, or RAAST, your payment is processed by a{" "}
+        <strong>licensed third-party payment gateway</strong>. Your full card number, CVV, and PIN
+        are entered on the gateway&apos;s secure page and are{" "}
+        <strong>never seen, collected, or stored by Esker</strong> — we only receive confirmation
+        that a payment succeeded, along with the amount and a reference. We do not store card
+        details on our systems and cannot charge your card again without you authorising it.
+        Gateways are PCI-DSS compliant and process your data under their own privacy terms.
+      </p>
+
       <h2>Who we share with</h2>
       <ul>
         <li>The host/caretaker of your booked property, only with what they need to host your stay.</li>

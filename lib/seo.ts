@@ -1,4 +1,6 @@
 import { brand } from "@/lib/brand";
+import { company } from "@/lib/contact";
+import { support } from "@/lib/payments";
 import { thumb } from "@/lib/img";
 import type { PublicListing } from "@/lib/data/listings";
 
@@ -42,7 +44,17 @@ export function organizationLd() {
     image: absoluteUrl("/opengraph-image"),
     priceRange: "₨₨",
     areaServed: brand.launchCities.map((c) => ({ "@type": "City", name: c })),
-    address: { "@type": "PostalAddress", addressLocality: brand.launchCities[0], addressCountry: "PK" },
+    // Real registered address + callable number (lib/contact.ts) — machine
+    // readable so the business identity is verifiable, not just rendered text.
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: `${company.address.line1}, ${company.address.line2}`,
+      addressLocality: company.address.city,
+      addressCountry: "PK",
+    },
+    legalName: company.legalName,
+    telephone: company.phone,
+    email: support.email,
     sameAs: [] as string[], // add social profile URLs here
   };
 }

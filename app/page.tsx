@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Sparkles, ShieldCheck, Star, Clock, Wallet, Headphones, ArrowRight, ChevronDown, MessageCircle } from "lucide-react";
 import { brand } from "@/lib/brand";
+import { company, addressOneLine } from "@/lib/contact";
+import { support } from "@/lib/payments";
 import { SiteNav } from "@/components/SiteNav";
 import { ConciergeSearch } from "@/components/ConciergeSearch";
 import { CategoryShowcase } from "@/components/CategoryShowcase";
@@ -167,8 +169,10 @@ export default async function HomePage() {
             <div className="flex flex-wrap gap-x-6 gap-y-2">
               <Link href="/stays" className="hover:text-ink">Browse all stays</Link>
               <Link href="/stays?tier=exclusive" className="hover:text-ink">{brand.exclusiveTier}</Link>
+              <Link href="/contact" className="hover:text-ink">Contact</Link>
               <Link href="/legal/terms" className="hover:text-ink">Terms</Link>
               <Link href="/legal/cancellation" className="hover:text-ink">Cancellation</Link>
+              <Link href="/legal/service-delivery" className="hover:text-ink">Service delivery</Link>
               <Link href="/legal/privacy" className="hover:text-ink">Privacy</Link>
             </div>
           </div>
@@ -184,6 +188,18 @@ export default async function HomePage() {
             >
               <MessageCircle size={14} className="text-gold" /> WhatsApp support — replies in minutes
             </a>
+          </div>
+
+          {/* Verifiable business identity — required visible by payment gateways
+              (PayFast/Safepay review the footer for a local address + number). */}
+          <div className="mt-6 border-t border-line pt-6 text-xs leading-relaxed text-dim">
+            {company.legalName} · {addressOneLine}
+            <br />
+            <a href={`tel:${company.phone}`} className="hover:text-muted">{company.phone}</a>
+            {" · "}
+            <a href={`mailto:${support.email}`} className="hover:text-muted">{support.email}</a>
+            {" · "}
+            {company.hours}
           </div>
         </div>
       </footer>
