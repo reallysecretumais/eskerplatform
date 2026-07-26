@@ -34,7 +34,7 @@ export async function LegalPage({ title, updated, children }: { title: string; u
               <Link href="/stays" className="hover:text-ink">Browse stays</Link>
               <Link href="/contact" className="hover:text-ink">Contact</Link>
               <Link href="/legal/terms" className="hover:text-ink">Terms</Link>
-              <Link href="/legal/cancellation" className="hover:text-ink">Cancellation</Link>
+              <Link href="/legal/cancellation" className="hover:text-ink">Cancellation &amp; refunds</Link>
               <Link href="/legal/service-delivery" className="hover:text-ink">Service delivery</Link>
               <Link href="/legal/privacy" className="hover:text-ink">Privacy</Link>
             </div>

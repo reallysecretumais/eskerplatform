@@ -171,7 +171,7 @@ export default async function HomePage() {
               <Link href="/stays?tier=exclusive" className="hover:text-ink">{brand.exclusiveTier}</Link>
               <Link href="/contact" className="hover:text-ink">Contact</Link>
               <Link href="/legal/terms" className="hover:text-ink">Terms</Link>
-              <Link href="/legal/cancellation" className="hover:text-ink">Cancellation</Link>
+              <Link href="/legal/cancellation" className="hover:text-ink">Cancellation &amp; refunds</Link>
               <Link href="/legal/service-delivery" className="hover:text-ink">Service delivery</Link>
               <Link href="/legal/privacy" className="hover:text-ink">Privacy</Link>
             </div>
@@ -219,7 +219,9 @@ function StayGrid({ listings }: { listings: PublicListing[] }) {
           title={l.title}
           category={l.category ?? "Stay"}
           area={l.area ?? ""}
+          city={l.city}
           price={l.price}
+          priceUnit={l.price_unit}
           exclusive={l.esker_exclusive}
           photo={l.photos?.[0] ?? undefined}
           href={`/stays/${l.id}`}
