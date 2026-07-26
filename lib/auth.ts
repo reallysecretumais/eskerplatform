@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, bearerToken } from "@/lib/supabase/server";
 
 export type AccountRole = "guest" | "owner" | "partner";
 
@@ -23,9 +23,12 @@ export type Account = {
 // removes the auth waterfall on every account page. Returns null when signed out.
 export const currentUser = cache(async () => {
   const supabase = await createClient();
+  // Browser → session from cookies. Mobile app → the Bearer token it sent, which
+  // must be passed explicitly because there is no cookie session to read.
+  const token = await bearerToken();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = token ? await supabase.auth.getUser(token) : await supabase.auth.getUser();
   return user;
 });
 
