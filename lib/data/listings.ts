@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import { createClient as createAnonClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { unitForCategory } from "@/lib/listings";
 
 // Cookieless anon client for cacheable public reads (no per-request cookies, so
 // the result can be cached + shared). Public listing data is the same for
@@ -14,14 +15,32 @@ const anon = () => createAnonClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, proce
 // Live read of the public listing window (anon-safe; only public_listing = true
 // rows, only safe columns). This is the single source the homepage reads from.
 
+/** How a listing sells. Comes from the DB (`category_modes` → `public_listings`),
+ *  never derived client-side, so the website and the mobile app can never
+ *  disagree about how the same thing is booked. `session` is reserved for
+ *  experiences and is not built yet. */
+export type BookingMode = "nightly" | "blocks" | "hourly" | "session";
+
 export type PublicListing = {
   id: string;
   title: string;
+  /** Fine location inside a market, e.g. "Bahria Phase 7". */
   area: string | null;
+  /** The truth-teller — always shown in labels so a Rawalpindi stay reads
+   *  honestly even while the guest browses the Islamabad · Rawalpindi market. */
+  city: string | null;
+  /** The metro a guest selects, e.g. "Islamabad · Rawalpindi". */
+  market: string | null;
+  market_slug: string | null;
   category: string | null;
+  /** Set by category via `category_modes`. Drives step one of booking only. */
+  booking_mode: BookingMode;
+  /** The word after the price: night | block | hour. Never hardcode a unit. */
+  price_unit: string;
   type: string | null;
   bedrooms: number | null;
   capacity: number | null;
+  /** Mode-correct: per night, cheapest block ("from"), or per hour. */
   price: number;
   description: string | null;
   amenities: string[] | null;
@@ -33,6 +52,10 @@ export type PublicListing = {
    *  guests must never see a difference (founder decision), so never render it. */
   source?: "esker" | "external";
 };
+
+/** True when the listing sells time-of-day rather than nights. */
+export const isSlotted = (l: Pick<PublicListing, "booking_mode">) =>
+  l.booking_mode === "blocks" || l.booking_mode === "hourly";
 
 /** External (resale) units live in `external_properties`, so a booking on one
  *  sets external_property_id (property_id stays NULL) and Esker pays the owner. */
@@ -76,8 +99,12 @@ export type SlimListing = {
   id: string;
   title: string;
   area: string | null;
+  city: string | null;
   category: string | null;
   price: number;
+  /** Carried so a card never renders a bare number or the wrong unit. */
+  price_unit: string;
+  booking_mode: BookingMode;
   esker_exclusive: boolean;
   photo: string | null; // lead photo only
 };
@@ -87,11 +114,32 @@ export function slimListings(listings: PublicListing[]): SlimListing[] {
     id: l.id,
     title: l.title,
     area: l.area,
+    city: l.city,
     category: l.category,
     price: l.price,
+    price_unit: l.price_unit,
+    booking_mode: l.booking_mode,
     esker_exclusive: l.esker_exclusive,
     photo: l.photos?.[0] ?? null,
   }));
+}
+
+// Deploy-order safety: this code and the DB migration (18/19) can land in either
+// order. Before the migrations run, `public_listings` simply doesn't return the
+// geography/mode columns, so we fill them from the category — the same rule the
+// migration itself seeds. After the migrations, the DB's answer always wins.
+// Without this, a code-first deploy would render "₨35,000 / undefined".
+function normalizeListing(row: Record<string, unknown>): PublicListing {
+  const category = (row.category as string | null) ?? null;
+  const fallback = unitForCategory(category ?? "");
+  return {
+    ...(row as PublicListing),
+    city: (row.city as string | null) ?? null,
+    market: (row.market as string | null) ?? null,
+    market_slug: (row.market_slug as string | null) ?? null,
+    booking_mode: (row.booking_mode as BookingMode | null) ?? fallback.mode,
+    price_unit: (row.price_unit as string | null) ?? fallback.unit,
+  };
 }
 
 const cachedListings = unstable_cache(
@@ -101,7 +149,7 @@ const cachedListings = unstable_cache(
       console.error("[home] public_listings read failed:", error.message);
       return [];
     }
-    return (data ?? []) as PublicListing[];
+    return (data ?? []).map(normalizeListing);
   },
   ["public-listings"],
   { tags: ["listings"], revalidate: 600 },
@@ -119,7 +167,7 @@ const cachedListing = unstable_cache(
       console.error("[listing] read failed:", error.message);
       return null;
     }
-    return (data as PublicListing) ?? null;
+    return data ? normalizeListing(data) : null;
   },
   ["public-listing"],
   { tags: ["listings"], revalidate: 600 },

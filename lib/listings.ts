@@ -1,22 +1,38 @@
 // Mixed inventory books in different ways. Price must be labeled by booking
 // type or it erodes trust (a slot-booked pool showing "/night" is wrong).
-// For now the unit is derived from the category; later the listing can carry an
-// explicit booking_type field that this reads instead.
+//
+// THE MODE IS DECIDED BY CATEGORY, and the DATABASE is the referee: the
+// `category_modes` table is surfaced on `public_listings` as booking_mode +
+// price_unit, so the website and the mobile app read the same answer and cannot
+// diverge. Read `listing.booking_mode` / `listing.price_unit` — do NOT call this
+// helper in new code. It exists only as the deploy-order fallback used by
+// lib/data/listings.ts before migration 19 has run (and for the rare caller that
+// has a category string but no listing row).
 
-export type BookingUnit = "night" | "slot" | "hour";
+export type BookingUnit = "night" | "block" | "hour" | "session";
+export type BookingModeName = "nightly" | "blocks" | "hourly" | "session";
 
-export function unitForCategory(category: string): BookingUnit {
+/** Fallback mapping — must stay identical to the `category_modes` seed in
+ *  supabase/19_bookable.sql. If you change one, change both. */
+export function unitForCategory(category: string): { mode: BookingModeName; unit: BookingUnit } {
   const c = category.toLowerCase();
-  if (c.includes("pool")) return "slot"; // swimming pools — day-use / slot
-  if (c.includes("content")) return "hour"; // content spaces — hourly
-  return "night"; // apartments, penthouses, villas, farmhouses
+  if (c.includes("pool")) return { mode: "blocks", unit: "block" }; // swimming pools — day-use blocks
+  if (c.includes("content")) return { mode: "hourly", unit: "hour" }; // content spaces — hourly
+  return { mode: "nightly", unit: "night" }; // apartments, penthouses, villas, farmhouses
 }
 
 const NF = new Intl.NumberFormat("en-PK");
 
-/** Returns the formatted amount + the unit word, e.g. { amount: "₨31,000", unit: "night" }. */
-export function formatPrice(price: number, unit: BookingUnit): { amount: string; unit: string } {
+/** Returns the formatted amount + the unit word, e.g. { amount: "₨31,000", unit: "night" }.
+ *  Pass `listing.price_unit` straight through — never a hardcoded unit. */
+export function formatPrice(price: number, unit: string): { amount: string; unit: string } {
   return { amount: `₨${NF.format(price)}`, unit };
+}
+
+/** True when a mode sells time-of-day rather than nights (blocks or hourly).
+ *  Slotted listings show a "from" price and a block/hour picker, not a range. */
+export function isSlottedMode(mode: string): boolean {
+  return mode === "blocks" || mode === "hourly";
 }
 
 /** Loose category match key (handles plural showcase labels vs singular `kind`). */

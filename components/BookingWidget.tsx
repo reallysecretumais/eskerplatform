@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Minus, Plus, MessageCircle, Bell } from "lucide-react";
 import type { BusyRange } from "@/lib/data/listings";
-import { formatPrice, type BookingUnit } from "@/lib/listings";
+import { formatPrice } from "@/lib/listings";
 import { brand } from "@/lib/brand";
 import { requestExternalDates } from "@/app/book/actions";
 import { AccountGateModal } from "@/components/AccountGateModal";
@@ -43,7 +43,9 @@ export function BookingWidget({
   id: string;
   title: string;
   price: number;
-  unit: BookingUnit;
+  /** The listing's own price unit ("night" | "block" | "hour"), decided by
+   *  category in the DB. Never derive it here — web and app must agree. */
+  unit: string;
   capacity: number | null;
   busy: BusyRange[];
   /** "request" = an EXTERNAL (resale) unit whose owner calendar we can't see
@@ -236,7 +238,7 @@ export function BookingWidget({
 
         {/* Slot/hour quantity, or guests */}
         <div className="mt-4 flex items-center justify-between border-t border-line pt-4 text-sm">
-          <span className="text-muted">{isNight ? "Guests" : unit === "hour" ? "Hours" : "Slots"}</span>
+          <span className="text-muted">{isNight ? "Guests" : unit === "hour" ? "Hours" : "Blocks"}</span>
           <Stepper
             value={isNight ? guests : qty}
             min={1}

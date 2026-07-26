@@ -5,7 +5,7 @@ import { SiteNav } from "@/components/SiteNav";
 import { CheckoutForm } from "@/components/CheckoutForm";
 import { getListing, getAvailability } from "@/lib/data/listings";
 import { getAccount } from "@/lib/auth";
-import { unitForCategory, formatPrice } from "@/lib/listings";
+import { formatPrice } from "@/lib/listings";
 import { advanceAmount, advanceLabel as advancePctLabel } from "@/lib/payments";
 import { thumb } from "@/lib/img";
 import { TrackEvent } from "@/components/TrackEvent";
@@ -58,7 +58,7 @@ export default async function BookPage({
 
   const price = listing.price;
   const total = price * nights;
-  const unit = unitForCategory(listing.category ?? "");
+  const unit = listing.price_unit;
   const totalLabel = formatPrice(total, unit).amount;
   const exclusive = listing.esker_exclusive;
   const advance = advanceAmount(total, exclusive);

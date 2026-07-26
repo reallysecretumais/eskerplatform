@@ -9,9 +9,14 @@ export const brand = {
   short: "Esker",
   tagline: "Premium short stays, beautifully managed.",
   exclusiveTier: "Esker Exclusive",
-  // Launch markets — but the platform expands to more cities soon, so treat
-  // "city" as a first-class dimension everywhere; never hardcode just these two.
+  // Launch geography. The real dimension is the MARKET (a metro a guest would
+  // travel within): Islamabad + Rawalpindi are ONE market, and Lahore/Karachi
+  // arrive soon as their own. Markets + their cities live in the DB (`markets`,
+  // `locations`) — these values are COPY ONLY (SEO strings, prose). Never filter
+  // or branch on them, and never hardcode a city name anywhere else.
   launchCities: ["Islamabad", "Rawalpindi"],
+  /** Human phrase for the launch market, used in prose and the AI prompt. */
+  launchMarket: "Islamabad and Rawalpindi",
   expansionNote: "more cities soon",
   gold: "#C9A84C",
   // Team WhatsApp for "Request a price" (digits only, country code, no +).

@@ -143,7 +143,7 @@ export function ConciergeStream({ query, listings }: { query: string; listings: 
           <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {matches.map((l) => (
               <div key={l.id}>
-                <StayCard title={l.title} category={l.category ?? "Stay"} area={l.area ?? ""} price={l.price} exclusive={l.esker_exclusive} photo={l.photo ?? undefined} href={`/stays/${l.id}`} />
+                <StayCard title={l.title} category={l.category ?? "Stay"} area={l.area ?? ""} city={l.city} price={l.price} priceUnit={l.price_unit} exclusive={l.esker_exclusive} photo={l.photo ?? undefined} href={`/stays/${l.id}`} />
                 {l.why && (
                   <p className="mt-1.5 flex items-start gap-1 px-1 text-xs text-gold-deep">
                     <Sparkles size={12} className="mt-0.5 shrink-0" /> {l.why}

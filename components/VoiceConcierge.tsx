@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { X, Volume2, VolumeX, Send, Keyboard } from "lucide-react";
 import Link from "next/link";
 import type { SlimListing } from "@/lib/data/listings";
-import { unitForCategory, formatPrice } from "@/lib/listings";
+import { formatPrice } from "@/lib/listings";
 import { thumb } from "@/lib/img";
 import { getAudioCtx } from "@/lib/voiceAudio";
 import { VoiceOrb, type OrbState } from "@/components/VoiceOrb";
@@ -505,7 +505,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: SlimListing[];
         <div className="relative z-10 px-4">
           <div className="mx-auto flex max-w-3xl gap-3 overflow-x-auto pb-1 sm:justify-center [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {matches.slice(0, 4).map((l, i) => {
-              const { amount, unit } = formatPrice(l.price, unitForCategory(l.category ?? ""));
+              const { amount, unit } = formatPrice(l.price, l.price_unit);
               return (
                 <Link
                   key={l.id}

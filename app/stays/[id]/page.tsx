@@ -21,7 +21,7 @@ import { getWebsiteAi } from "@/lib/settings";
 import { HostCard } from "@/components/HostCard";
 import { getReviews } from "@/lib/data/reviews";
 import { getAccount } from "@/lib/auth";
-import { unitForCategory, formatPrice } from "@/lib/listings";
+import { formatPrice } from "@/lib/listings";
 import { brand } from "@/lib/brand";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -62,7 +62,7 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
     listing.source === "external" ? (await getExternalBookability(id)).mode : "instant";
 
   const conciergeOn = (await getWebsiteAi()).concierge.enabled;
-  const { amount, unit } = formatPrice(listing.price, unitForCategory(listing.category ?? ""));
+  const { amount, unit } = formatPrice(listing.price, listing.price_unit);
 
   return (
     <main className="min-h-full pb-28 lg:pb-16">
@@ -178,7 +178,7 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
               id={listing.id}
               title={listing.title}
               price={listing.price}
-              unit={unitForCategory(listing.category ?? "")}
+              unit={listing.price_unit}
               capacity={listing.capacity}
               busy={busy}
               bookMode={bookMode}

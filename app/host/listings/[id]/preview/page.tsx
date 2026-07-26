@@ -21,7 +21,9 @@ export default async function ListingPreviewPage({ params }: { params: Promise<{
   const [listing, guestInfo] = await Promise.all([getMyListing(id), getListingGuestInfo(id)]);
   if (!listing) notFound();
 
-  const { amount, unit } = formatPrice(listing.price, unitForCategory(listing.category ?? ""));
+  // Host drafts aren't in `public_listings` yet, so the mode comes from the
+  // category mapping (same rule the DB applies once it's published).
+  const { amount, unit } = formatPrice(listing.price, unitForCategory(listing.category ?? "").unit);
 
   return (
     <div className="max-w-4xl">

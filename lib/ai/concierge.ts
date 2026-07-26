@@ -1,6 +1,6 @@
 import "server-only";
 import type { PublicListing, BusyRange } from "@/lib/data/listings";
-import { unitForCategory } from "@/lib/listings";
+import { brand } from "@/lib/brand";
 
 /** Today in Pakistan time (YYYY-MM-DD) so the model can resolve "this weekend". */
 export function todayPK(): string {
@@ -14,9 +14,11 @@ export function todayPK(): string {
 
 export const MODEL = process.env.ESKER_AI_MODEL || "gpt-4.1-mini";
 
-const RULES = `You are the Esker Stays concierge — a warm, concise, premium hospitality assistant for a short-stay booking site in Islamabad and Rawalpindi, Pakistan.
+const RULES = `You are the ${brand.name} concierge — a warm, concise, premium hospitality assistant for a short-stay booking site in ${brand.launchMarket}, Pakistan.
 
 - Recommend ONLY from the listings provided in the conversation. Never invent places, prices, areas, or details.
+- Each listing shows its area and city. Islamabad and Rawalpindi are ONE market — a guest asking for Islamabad is happy with a Rawalpindi stay 30 minutes away, so include those, but always name the city honestly (e.g. "Bahria Phase 7, Rawalpindi"). Never present a stay as being in a city it isn't.
+- Most stays book per night. Some listings book differently — a listing showing "books by: day-use block" is a swimming pool sold in day-use blocks, and "books by: hourly" is a space sold by the hour. Quote each listing in its OWN unit (per night / per block / per hour) and never describe a pool or hourly space as a nightly stay.
 - Availability matters: each listing shows its "booked" date ranges (check-in→check-out, Pakistan time). When the guest mentions dates, ONLY recommend places that are FREE for those dates; if a place they ask about is booked then, gently tell them it's not available for those dates and offer the closest free alternative. If they give no dates, recommend normally.
 - Understand the guest even in Roman Urdu (e.g. "mujhe F-7 mein 2 din ke liye chahiye"), but ALWAYS reply in clean, natural English.
 - Use the conversation history for context — handle refinements like "cheaper", "with a pool too", "for 6 guests".
@@ -67,13 +69,17 @@ export const VOICE_SYSTEM = `${VOICE_RULES}\n\n${VOICE_TAIL}`;
 export function catalog(listings: PublicListing[], busy?: Map<string, BusyRange[]>): string {
   return listings
     .map((l) => {
-      const unit = unitForCategory(l.category ?? "");
       const amen = (l.amenities ?? []).slice(0, 8).join(", ") || "—";
       const facts = l.public_facts ? ` | facts: ${l.public_facts}` : "";
       const desc = l.description ? ` | ${l.description}` : "";
       const ranges = busy?.get(l.id) ?? [];
       const booked = ` | booked: ${ranges.length ? ranges.slice(0, 8).map((r) => `${r.start_date}→${r.end_date}`).join(", ") : "none"}`;
-      return `id:${l.id} | ${l.title} | ${l.category ?? "stay"} | area:${l.area ?? "?"} | ${l.bedrooms ?? "?"}BR | sleeps:${l.capacity ?? "?"} | PKR ${l.price}/${unit} | ${amen}${desc}${facts}${booked}${l.esker_exclusive ? " | Esker Exclusive" : ""}`;
+      // Geography: the model needs the city to answer "anything in Rawalpindi?"
+      // and the market to know what counts as the same trip. The unit comes from
+      // the listing (DB-decided), so a pool is never quoted as a nightly rate.
+      const where = `area:${l.area ?? "?"}${l.city ? ` | city:${l.city}` : ""}`;
+      const sells = l.booking_mode !== "nightly" ? ` | books by:${l.booking_mode === "blocks" ? "day-use block" : l.booking_mode}` : "";
+      return `id:${l.id} | ${l.title} | ${l.category ?? "stay"} | ${where} | ${l.bedrooms ?? "?"}BR | sleeps:${l.capacity ?? "?"} | PKR ${l.price}/${l.price_unit}${sells} | ${amen}${desc}${facts}${booked}${l.esker_exclusive ? " | Esker Exclusive" : ""}`;
     })
     .join("\n");
 }

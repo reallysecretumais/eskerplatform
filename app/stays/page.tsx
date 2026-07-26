@@ -62,7 +62,18 @@ export default async function StaysPage({ searchParams }: { searchParams: Promis
   if (sp.area) results = results.filter((l) => (l.area ?? "").toLowerCase() === sp.area!.toLowerCase());
   if (sp.amenity) results = results.filter((l) => (l.amenities ?? []).some((a) => a.toLowerCase().includes(sp.amenity!.toLowerCase())));
 
-  const areas = Array.from(new Set(all.map((l) => l.area).filter(Boolean))) as string[];
+  // Areas grouped BY CITY, never a flat list — the location hierarchy is
+  // market → city → area (Islamabad + Rawalpindi are one market). With one
+  // market the city renders as a small header rather than a row of one pill.
+  const byCity = new Map<string, string[]>();
+  for (const l of all) {
+    if (!l.area) continue;
+    const key = l.city ?? "";
+    const arr = byCity.get(key) ?? [];
+    if (!arr.includes(l.area)) arr.push(l.area);
+    byCity.set(key, arr);
+  }
+  const cityGroups = Array.from(byCity.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   const categories = Array.from(new Set(all.map((l) => l.category).filter(Boolean))) as string[];
   const noFilter = !sp.category && !sp.area && !sp.tier;
   const heading = sp.tier === "exclusive" ? "Esker Exclusive" : sp.category ?? sp.area ?? "All stays";
@@ -80,10 +91,20 @@ export default async function StaysPage({ searchParams }: { searchParams: Promis
           {categories.map((c) => (
             <Pill key={c} label={c} href={`/stays?category=${encodeURIComponent(c)}`} active={!!sp.category && normalizeCategory(sp.category) === normalizeCategory(c)} />
           ))}
-          {areas.map((a) => (
-            <Pill key={a} label={a} href={`/stays?area=${encodeURIComponent(a)}`} active={(sp.area ?? "").toLowerCase() === a.toLowerCase()} />
-          ))}
         </div>
+
+        {/* Areas, grouped by city — the hierarchy is visible, so adding Lahore
+            later is a data insert rather than a redesign. */}
+        {cityGroups.map(([city, areas]) => (
+          <div key={city || "unknown"} className="mt-4">
+            {city && <div className="mb-2 text-[11px] uppercase tracking-[0.18em] text-dim">{city}</div>}
+            <div className="flex flex-wrap gap-2">
+              {areas.map((a) => (
+                <Pill key={a} label={a} href={`/stays?area=${encodeURIComponent(a)}`} active={(sp.area ?? "").toLowerCase() === a.toLowerCase()} />
+              ))}
+            </div>
+          </div>
+        ))}
 
         <p className="mb-4 mt-6 text-sm text-muted">
           {results.length} {results.length === 1 ? "stay" : "stays"}
@@ -92,7 +113,7 @@ export default async function StaysPage({ searchParams }: { searchParams: Promis
         {results.length > 0 ? (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {results.map((l) => (
-              <StayCard key={l.id} title={l.title} category={l.category ?? "Stay"} area={l.area ?? ""} price={l.price} exclusive={l.esker_exclusive} photo={l.photos?.[0] ?? undefined} href={`/stays/${l.id}`} />
+              <StayCard key={l.id} title={l.title} category={l.category ?? "Stay"} area={l.area ?? ""} city={l.city} price={l.price} priceUnit={l.price_unit} exclusive={l.esker_exclusive} photo={l.photos?.[0] ?? undefined} href={`/stays/${l.id}`} />
             ))}
           </div>
         ) : (
