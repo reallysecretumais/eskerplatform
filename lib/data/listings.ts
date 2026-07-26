@@ -53,9 +53,10 @@ export type PublicListing = {
   source?: "esker" | "external";
 };
 
-/** True when the listing sells time-of-day rather than nights. */
-export const isSlotted = (l: Pick<PublicListing, "booking_mode">) =>
-  l.booking_mode === "blocks" || l.booking_mode === "hourly";
+// To ask whether a listing sells time-of-day rather than nights, use
+// `isSlottedMode(listing.booking_mode)` from `@/lib/listings` — that is the ONE
+// definition, and it lives there because this module is server-only while client
+// components need the same answer. Do not add a listing-shaped wrapper here.
 
 /** External (resale) units live in `external_properties`, so a booking on one
  *  sets external_property_id (property_id stays NULL) and Esker pays the owner. */

@@ -54,6 +54,11 @@ create policy category_modes_admin_write on public.category_modes
 
 grant select on public.category_modes to anon, authenticated;
 
+-- ⚠️ THE ONE PLACE MODE IS DECIDED. `lib/listings.ts unitForCategory()` mirrors
+-- this seed as a fallback (it covers a code-first deploy before this migration
+-- runs, and host drafts, which aren't in public_listings yet). If you change a
+-- row here, change that function too — they are the only two copies and they
+-- must agree. Everything else reads public_listings.booking_mode.
 insert into public.category_modes (category, mode, unit_label, sort_order) values
   ('apartment',      'nightly', 'night',   1),
   ('penthouse',      'nightly', 'night',   2),
