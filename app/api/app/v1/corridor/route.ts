@@ -55,14 +55,25 @@ function byStrength(a: PublicListing, b: PublicListing): number {
  *  1. The centre column carries the strongest imagery — it's the only part of
  *     the corridor nothing covers, so whatever quality the cover has, it has
  *     there. Dealing centre-first each cycle gives it the 1st, 4th, 7th… best.
- *  2. The same property never appears in adjacent tiles, within a column or
- *     across the loop seam. Round-robin gives this away for free: a column only
- *     revisits a property after every other one has had a turn.
+ *  2. No tile repeats the CAPTION of the tile above it, within a column or
+ *     across the loop seam.
+ *
+ * Rule 2 used to compare property ids, which was the wrong thing to compare.
+ * A guest doesn't see ids — they see a line of text, and five of the seventeen
+ * properties read "1BHK Apartment" while four read "2BHK Apartment". Two
+ * different Gulberg Greens flats stacked in the centre column therefore printed
+ * the identical caption twice and looked like a rendering bug. Comparing the
+ * rendered line subsumes the id check: the same property always reads the same.
  *
  * The pool CYCLES rather than truncating — with fewer than 18 photographed
  * properties we want three full columns, not three short ones.
  */
 const DEAL_ORDER = [1, 0, 2] as const; // centre, left wall, right wall
+
+/** The line a guest actually reads on a captioned tile: what it is, and where. */
+function captionLine(l: PublicListing): string {
+  return `${describeListing(l)}|${l.city ?? ""}`;
+}
 
 function deal(listings: PublicListing[]): PublicListing[][] {
   const cols: PublicListing[][] = [[], [], []];
@@ -72,15 +83,28 @@ function deal(listings: PublicListing[]): PublicListing[][] {
   for (let cycle = 0; cycle < PER_COLUMN; cycle++) {
     for (const target of DEAL_ORDER) {
       const col = cols[target];
-      // Skip a pick that would repeat the property directly above it, unless the
-      // portfolio is too small to avoid it.
-      let listing = listings[taken % listings.length];
-      if (listings.length > 1 && col[col.length - 1]?.id === listing.id) {
-        taken++;
-        listing = listings[taken % listings.length];
+      const above = col[col.length - 1];
+      // The seam: on the last cycle, the tile we place loops round to sit
+      // directly above the column's first tile, so it has a neighbour on both
+      // sides and must clash with neither.
+      const below = cycle === PER_COLUMN - 1 ? col[0] : undefined;
+
+      // Walk forward for a pick that repeats neither neighbour. Bounded by the
+      // pool size so a portfolio too small to satisfy the rule still deals a
+      // full column rather than looping forever — a repeat is worse than a gap,
+      // but a gap in the wall is worse than both.
+      let chosen = taken;
+      for (let probe = 0; probe < listings.length; probe++) {
+        const cand = listings[(taken + probe) % listings.length];
+        const line = captionLine(cand);
+        if (above && captionLine(above) === line) continue;
+        if (below && captionLine(below) === line) continue;
+        chosen = taken + probe;
+        break;
       }
-      col.push(listing);
-      taken++;
+
+      col.push(listings[chosen % listings.length]);
+      taken = chosen + 1;
     }
   }
   return cols;
