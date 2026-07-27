@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { toE164Pk } from "@/lib/otp";
-import { issueOtp, checkOtp, type OtpResult } from "@/lib/otpFlow";
+import { issueOtp, checkOtp, accountIdForPendingOtp, type OtpResult } from "@/lib/otpFlow";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Passwordless signup/login by WhatsApp OTP — the default way guests get an
@@ -79,14 +79,8 @@ export async function completePhoneAuth(rawPhone: string, code: string): Promise
   const admin = createAdminClient();
 
   // The pending code identifies the exact account this attempt belongs to.
-  const { data: pending } = await admin
-    .from("phone_otps")
-    .select("account_id")
-    .eq("phone", e164)
-    .order("last_sent_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const accountId = pending?.account_id as string | undefined;
+  // Shared with the mobile route so both faces resolve the account identically.
+  const accountId = await accountIdForPendingOtp(e164);
   if (!accountId) return { ok: false, message: "Request a code first." };
 
   const check = await checkOtp(accountId, code);

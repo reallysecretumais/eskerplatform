@@ -1,4 +1,5 @@
 import "server-only";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   prettyPk,
@@ -21,6 +22,76 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type OtpResult = { ok: boolean; message: string; devCode?: string };
+
+/**
+ * Which account a pending code belongs to. The code itself identifies the
+ * account, so this is how both the website and the app resolve "who is this
+ * person" before checking the digits.
+ */
+export async function accountIdForPendingOtp(e164: string): Promise<string | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("phone_otps")
+    .select("account_id")
+    .eq("phone", e164)
+    .order("last_sent_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data?.account_id as string) ?? null;
+}
+
+/**
+ * Mint a real Supabase session for an account, as TOKENS.
+ *
+ * The website's own flow verifies onto a cookie client instead; the mobile app
+ * holds no cookies, so it needs the tokens themselves to put in its keystore.
+ * Both routes share the same mechanism — Supabase can't sign a phone-only user
+ * in without an SMS provider, so we generate a magic link for the account's
+ * (synthetic) email and verify its token_hash server-side.
+ *
+ * Returns null on failure; callers must not leak the reason to the guest.
+ */
+export async function mintSessionTokens(
+  accountId: string,
+): Promise<{ accessToken: string; refreshToken: string; expiresAt: number | null } | null> {
+  const admin = createAdminClient();
+
+  const { data: authUser } = await admin.auth.admin.getUserById(accountId);
+  const email = authUser?.user?.email;
+  if (!email) {
+    console.error("[otp] no email on account", accountId);
+    return null;
+  }
+
+  const { data: link, error: linkErr } = await admin.auth.admin.generateLink({ type: "magiclink", email });
+  const tokenHash = link?.properties?.hashed_token;
+  if (linkErr || !tokenHash) {
+    console.error("[otp] generateLink failed:", linkErr?.message);
+    return null;
+  }
+
+  // A stateless client: verifying here returns the session instead of writing a
+  // cookie, which is exactly what a native client needs.
+  const stateless = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } },
+  );
+  const { data: verified, error: verifyErr } = await stateless.auth.verifyOtp({
+    type: "magiclink",
+    token_hash: tokenHash,
+  });
+  if (verifyErr || !verified.session) {
+    console.error("[otp] verifyOtp failed:", verifyErr?.message);
+    return null;
+  }
+
+  return {
+    accessToken: verified.session.access_token,
+    refreshToken: verified.session.refresh_token,
+    expiresAt: verified.session.expires_at ?? null,
+  };
+}
 
 /** Generate + store + WhatsApp a code for this account (cooldown-guarded). */
 export async function issueOtp(accountId: string, e164: string): Promise<OtpResult> {

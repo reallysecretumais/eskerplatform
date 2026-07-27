@@ -1,6 +1,7 @@
 import { ok, guard } from "@/lib/app/api";
 import { getListings } from "@/lib/data/listings";
-import { normalizeCategory } from "@/lib/listings";
+import { getInventory } from "@/lib/data/inventory";
+import { normalizeCategory, describeListing } from "@/lib/listings";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,8 +29,13 @@ export const GET = guard(async (req: Request) => {
   const exclusiveOnly = sp.get("tier") === "exclusive";
   const q = sp.get("q")?.trim().toLowerCase();
   const limit = Math.min(Math.max(Number(sp.get("limit")) || 60, 1), 120);
+  // The grid's intent doorways. Availability-aware, so they must be resolved
+  // where availability lives — never guessed by the client.
+  const openTonight = sp.get("openTonight") === "1";
+  const minSleeps = Number(sp.get("minSleeps")) || 0;
+  const amenityPool = sp.get("intent") === "pool";
 
-  let rows = await getListings();
+  let rows = openTonight ? (await getInventory(market ?? null)).freeTonight : await getListings();
 
   if (market) rows = rows.filter((l) => l.market_slug === market);
   if (city) rows = rows.filter((l) => (l.city ?? "").toLowerCase() === city);
@@ -37,6 +43,8 @@ export const GET = guard(async (req: Request) => {
   if (category) rows = rows.filter((l) => l.category && normalizeCategory(l.category) === normalizeCategory(category));
   if (mode) rows = rows.filter((l) => l.booking_mode === mode);
   if (exclusiveOnly) rows = rows.filter((l) => l.esker_exclusive);
+  if (minSleeps) rows = rows.filter((l) => (l.capacity ?? 0) >= minSleeps);
+  if (amenityPool) rows = rows.filter((l) => (l.amenities ?? []).some((a) => a.toLowerCase().includes("pool")));
   if (amenity) rows = rows.filter((l) => (l.amenities ?? []).some((a) => a.toLowerCase().includes(amenity)));
   if (q) {
     rows = rows.filter((l) =>
@@ -59,6 +67,9 @@ export const GET = guard(async (req: Request) => {
     listings: sorted.slice(0, limit).map((l) => ({
       id: l.id,
       title: l.title,
+      // What the place IS — generated once here so the app and the website can
+      // never describe the same listing differently.
+      caption: describeListing(l),
       area: l.area,
       city: l.city,
       market: l.market,

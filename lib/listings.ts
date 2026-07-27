@@ -40,6 +40,48 @@ export function normalizeCategory(s: string): string {
   return s.trim().toLowerCase().replace(/s$/, "");
 }
 
+// ── What a place IS ──────────────────────────────────────────────────────────
+
+/**
+ * The one-line description of a listing: `2BHK Penthouse`, `Studio Penthouse`,
+ * `Swimming Pool`.
+ *
+ * Used on the app's corridor captions and property cards, and by the website
+ * wherever a listing needs describing. **Generated, never hand-written** — every
+ * new property describes itself correctly the day it's published, and there is
+ * no second set of names to maintain.
+ *
+ * Deliberately NOT the property's name. "Park Towers" is internal shorthand and
+ * means nothing to a first-time guest; "1BHK Apartment" tells them what it is.
+ *
+ * `notation` is market-scoped. BHK is the South Asian (and Gulf) vernacular and
+ * is Esker's own vocabulary — the properties are literally named "E-11 2BHK
+ * Luxury Penthouse". It would read as jargon in Europe, so a future market can
+ * pass `bedrooms` instead without touching a caller.
+ */
+export type BedroomNotation = "bhk" | "bedrooms";
+
+export function describeListing(
+  listing: { bedrooms?: number | null; category?: string | null },
+  notation: BedroomNotation = "bhk",
+): string {
+  const category = (listing.category ?? "").trim();
+  if (!category) return "";
+
+  // Types where a bedroom count is meaningless carry no prefix at all. Without
+  // this a swimming pool reads "0BHK Swimming Pool", which is exactly the sort
+  // of thing that ships when the rule isn't written down.
+  const { mode } = unitForCategory(category);
+  if (mode !== "nightly") return category;
+
+  const beds = listing.bedrooms;
+  if (beds == null) return category;
+  // A studio is a kind of home, not zero of something.
+  if (beds <= 0) return `Studio ${category}`;
+
+  return notation === "bhk" ? `${beds}BHK ${category}` : `${beds}-bedroom ${category.toLowerCase()}`;
+}
+
 // ── Homepage composition ─────────────────────────────────────────────────────
 // Both helpers are pure and run over the already-cached `getListings()` result,
 // so the homepage costs no extra query and updates itself when the CRM busts the
