@@ -66,7 +66,13 @@ function byStrength(a: PublicListing, b: PublicListing): number {
  * rendered line subsumes the id check: the same property always reads the same.
  *
  * The pool CYCLES rather than truncating — with fewer than 18 photographed
- * properties we want three full columns, not three short ones.
+ * properties we want three full columns, not three short ones. It must cycle
+ * FAIRLY: every property earns a tile before any property gets a second one.
+ * Resolving a caption clash by skipping forward past the clashing candidate
+ * silently spends it, and the wall then shows thirteen of seventeen properties
+ * while five appear twice — which is how the first version of this rule shipped.
+ * So a clash SWAPS rather than skips: the acceptable candidate trades places
+ * with the one in line, and nothing is ever consumed out of turn.
  */
 const DEAL_ORDER = [1, 0, 2] as const; // centre, left wall, right wall
 
@@ -79,7 +85,10 @@ function deal(listings: PublicListing[]): PublicListing[][] {
   const cols: PublicListing[][] = [[], [], []];
   if (!listings.length) return cols;
 
+  // A working copy: clashes reorder the queue, they never shorten it.
+  const pool = [...listings];
   let taken = 0;
+
   for (let cycle = 0; cycle < PER_COLUMN; cycle++) {
     for (const target of DEAL_ORDER) {
       const col = cols[target];
@@ -89,22 +98,31 @@ function deal(listings: PublicListing[]): PublicListing[][] {
       // sides and must clash with neither.
       const below = cycle === PER_COLUMN - 1 ? col[0] : undefined;
 
-      // Walk forward for a pick that repeats neither neighbour. Bounded by the
-      // pool size so a portfolio too small to satisfy the rule still deals a
-      // full column rather than looping forever — a repeat is worse than a gap,
-      // but a gap in the wall is worse than both.
-      let chosen = taken;
-      for (let probe = 0; probe < listings.length; probe++) {
-        const cand = listings[(taken + probe) % listings.length];
-        const line = captionLine(cand);
+      const base = taken % pool.length;
+      // Look down the queue for the first candidate that repeats neither
+      // neighbour, testing every one. If the portfolio is too small for any to
+      // qualify, take the one whose turn it is: a repeated caption is bad, and a
+      // hole in the wall is worse.
+      let pick = base;
+      for (let probe = 0; probe < pool.length; probe++) {
+        const at = (base + probe) % pool.length;
+        const line = captionLine(pool[at]);
         if (above && captionLine(above) === line) continue;
         if (below && captionLine(below) === line) continue;
-        chosen = taken + probe;
+        pick = at;
         break;
       }
 
-      col.push(listings[chosen % listings.length]);
-      taken = chosen + 1;
+      // Swap the chosen one into its place in line. The candidate it displaces
+      // keeps its turn later in the cycle instead of being thrown away.
+      if (pick !== base) {
+        const held = pool[base];
+        pool[base] = pool[pick];
+        pool[pick] = held;
+      }
+
+      col.push(pool[base]);
+      taken++;
     }
   }
   return cols;
@@ -151,9 +169,29 @@ export const GET = guard(async (req: Request) => {
 
   const [left, centre, right] = deal(lifted);
 
+  /**
+   * Eighteen tiles, seventeen properties — someone has to appear twice, and if
+   * both tiles carry photo[0] the wall shows the same photograph in two places
+   * at once. Every property has at least three photos, so the second sighting
+   * costs nothing but an index.
+   *
+   * The CENTRE is numbered first on purpose: the hero column is the one nothing
+   * covers, so it always gets a property's strongest (first) photograph, and any
+   * second sighting is pushed out to a wall.
+   */
+  const seen = new Map<string, number>();
+  const entry = (l: PublicListing): Entry => {
+    const n = seen.get(l.id) ?? 0;
+    seen.set(l.id, n + 1);
+    return toEntry(l, n);
+  };
+  const centreEntries = centre.map(entry);
+  const leftEntries = left.map(entry);
+  const rightEntries = right.map(entry);
+
   return ok({
     // Column order: left wall, centre (hero), right wall.
-    columns: [left.map((l) => toEntry(l)), centre.map((l) => toEntry(l)), right.map((l) => toEntry(l))],
+    columns: [leftEntries, centreEntries, rightEntries],
     centre: 1,
     market: market?.slug ?? null,
     // `hour` is accepted and deliberately unused for now: photo time-tags don't
