@@ -176,20 +176,42 @@ export async function buildGreeting(input: GreetingInput, now = new Date()): Pro
                 ? "plenty_tonight"
                 : "fallback";
 
-  const template = pick(linesFor(bank, basis, bucket), seed) ?? pick(linesFor(bank, "fallback", bucket), seed);
-  if (!template) return { salutation, line: null, basis: "none" };
-
-  const line = fill(template, input, basis);
-  // A template whose data didn't resolve (a leftover {placeholder}) is a bug we
-  // must not show a guest — fall back to something plainly true instead.
-  if (line.includes("{")) {
-    const safe = pick(linesFor(bank, "fallback", bucket), seed);
-    return { salutation, line: safe ?? null, basis: "fallback" };
+  // Try every line this condition offers, not just one. A template can be
+  // unusable for reasons the CONDITION doesn't know about — "The pool lights are
+  // on at {property}" needs a property, and the portfolio conditions have none.
+  // Picking blind produced "The pool lights are on at ." in front of a guest,
+  // which is exactly the kind of not-quite-true the design forbids.
+  const candidates = rotate(linesFor(bank, basis, bucket) ?? [], seed);
+  for (const template of candidates) {
+    const line = fill(template, input, basis);
+    if (line) return { salutation, line, basis };
   }
-  return { salutation, line, basis };
+
+  // Nothing in this condition could be said honestly — say something plain.
+  for (const template of rotate(linesFor(bank, "fallback", bucket) ?? [], seed)) {
+    const line = fill(template, input, basis);
+    if (line) return { salutation, line, basis: "fallback" };
+  }
+
+  // The salutation alone is always true.
+  return { salutation, line: null, basis: "none" };
 }
 
-function fill(template: string, input: GreetingInput, basis: string): string {
+/** The same list, started at a different point — so repeated opens vary. */
+function rotate<T>(list: T[], seed: number): T[] {
+  if (list.length < 2) return list;
+  const at = seed % list.length;
+  return [...list.slice(at), ...list.slice(0, at)];
+}
+
+/**
+ * Fill a template, or return NULL if any placeholder it uses has no real value.
+ *
+ * Returning null rather than an empty string is the whole point: a line is
+ * either wholly true or it isn't said. This is what stops "The pool lights are
+ * on at ." — the sentence is discarded and another is tried instead.
+ */
+function fill(template: string, input: GreetingInput, basis: string): string | null {
   const t = input.trip;
   const n =
     basis === "pools_free_tonight"
@@ -198,15 +220,29 @@ function fill(template: string, input: GreetingInput, basis: string): string {
         ? input.tonight.exclusives
         : input.tonight.free;
 
-  return template
-    .replace(/\{n\}/g, String(n))
+  const values: Record<string, string> = {
+    n: String(n),
     // Agreement tokens, so a hand-written line never reads "1 pools are".
-    .replace(/\{s\}/g, n === 1 ? "" : "s")
-    .replace(/\{is\}/g, n === 1 ? "is" : "are")
-    .replace(/\{property\}/g, t ? describeListing(t.property) : "")
-    .replace(/\{area\}/g, t?.property.area ?? "")
-    .replace(/\{time\}/g, t?.checkinTime ?? "")
-    .replace(/\{when\}/g, t ? whenWord(t.startsInHours) : "");
+    s: n === 1 ? "" : "s",
+    is: n === 1 ? "is" : "are",
+    property: t ? describeListing(t.property) : "",
+    area: t?.property.area ?? "",
+    time: t?.checkinTime ?? "",
+    when: t ? whenWord(t.startsInHours) : "",
+  };
+
+  let out = template;
+  for (const [key, value] of Object.entries(values)) {
+    const token = `{${key}}`;
+    if (!out.includes(token)) continue;
+    // `{s}` legitimately resolves to "" for a count of one; every other empty
+    // value means the sentence can't be told truthfully.
+    if (!value && key !== "s") return null;
+    out = out.split(token).join(value);
+  }
+
+  // An unknown placeholder someone added to the bank — never show the braces.
+  return out.includes("{") ? null : out;
 }
 
 function whenWord(hours: number): string {
