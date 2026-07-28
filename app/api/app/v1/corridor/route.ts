@@ -2,7 +2,7 @@ import { ok, guard } from "@/lib/app/api";
 import { getInventory } from "@/lib/data/inventory";
 import { getMarkets, resolveMarket } from "@/lib/data/markets";
 import { describeListing } from "@/lib/listings";
-import { thumb } from "@/lib/img";
+import { thumb, crop } from "@/lib/img";
 import type { PublicListing } from "@/lib/data/listings";
 
 export const runtime = "nodejs";
@@ -22,8 +22,23 @@ export const dynamic = "force-dynamic";
  * nothing — and each image costs ~1KB instead of ~40KB.
  */
 
-/** Cover tiles. Side walls sit at an angle and are never seen sharp. */
-const TILE_W = 340;
+/**
+ * Cover tiles, asked for at the FRAME they are displayed in rather than fitted
+ * inside a square box — see `crop()` for why the old square cost most of the
+ * resolution before the pixels ever reached the phone.
+ *
+ * The hero column is 44% of the screen wide at a 0.265 tile height, so roughly a
+ * 0.82 portrait; on a 1080p phone that is about 476×578 real pixels. 520×640
+ * covers it with margin on the devices this ships to, at a quality worth looking
+ * at — this column is the one thing on the cover that nothing covers.
+ *
+ * The walls are asked for less on purpose, and not only to save bytes: they sit
+ * at 31°, dimmed behind a falloff, and never carry text. Serving them softer
+ * than the centre is a depth-of-field cue we get for free, and it is the
+ * cheapest way to make the hero look sharper than it is.
+ */
+const HERO = { w: 520, h: 640, q: 76 };
+const WALL = { w: 330, h: 340, q: 62 };
 /** Ambient: small enough that upscaling IS the blur. */
 const SOFT_W = 48;
 /** Spec §2.2 — six per column, recycled, never grown. */
@@ -128,15 +143,16 @@ function deal(listings: PublicListing[]): PublicListing[][] {
   return cols;
 }
 
-function toEntry(l: PublicListing, photoIndex = 0): Entry {
+function toEntry(l: PublicListing, photoIndex = 0, role: "hero" | "wall" = "wall"): Entry {
   const photo = l.photos?.[photoIndex] ?? l.photos?.[0] ?? "";
+  const frame = role === "hero" ? HERO : WALL;
   return {
     id: l.id,
     caption: describeListing(l),
     area: l.area,
     city: l.city,
     exclusive: l.esker_exclusive,
-    url: thumb(photo, TILE_W),
+    url: crop(photo, frame.w, frame.h, frame.q),
     soft: thumb(photo, SOFT_W, 40),
   };
 }
@@ -180,14 +196,14 @@ export const GET = guard(async (req: Request) => {
    * second sighting is pushed out to a wall.
    */
   const seen = new Map<string, number>();
-  const entry = (l: PublicListing): Entry => {
+  const entry = (role: "hero" | "wall") => (l: PublicListing): Entry => {
     const n = seen.get(l.id) ?? 0;
     seen.set(l.id, n + 1);
-    return toEntry(l, n);
+    return toEntry(l, n, role);
   };
-  const centreEntries = centre.map(entry);
-  const leftEntries = left.map(entry);
-  const rightEntries = right.map(entry);
+  const centreEntries = centre.map(entry("hero"));
+  const leftEntries = left.map(entry("wall"));
+  const rightEntries = right.map(entry("wall"));
 
   return ok({
     // Column order: left wall, centre (hero), right wall.
