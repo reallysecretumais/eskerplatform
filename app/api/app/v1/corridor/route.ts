@@ -46,14 +46,14 @@ const HERO = { w: 520, h: 640, q: 76 };
  * does when the subject is in focus and the room isn't. Deliberate defocus makes
  * the hero read sharper than it is, and takes bytes OFF the cover.
  *
- * The FRAME is 1.2 landscape because the wall column is now 54% wide against a
- * 0.221 tile height — it grew outward so the tilt could not drag its outer edge
- * on-screen. Asking for the shape actually displayed is the whole point of
- * `crop()`; leaving this portrait would have re-introduced the stretch that made
- * the corridor look cheap in the first place, on the very tiles meant to sell
- * depth.
+ * The FRAME follows the column, which is 36% wide against a 0.221 tile height —
+ * a 0.81 portrait. It has been landscape and back within a day because the wall
+ * width moved twice; the lesson is that this constant is DERIVED from the app's
+ * layout, not chosen. Asking for the shape actually displayed is the whole point
+ * of `crop()`, and a mismatch here re-introduces exactly the stretch that made
+ * the corridor look cheap.
  */
-const WALL = { w: 300, h: 250, q: 58 };
+const WALL = { w: 250, h: 310, q: 58 };
 /**
  * How many photographs a hero tile cycles through. Every property has at least
  * three; two is what the corridor can afford to hold at hero resolution without
