@@ -56,6 +56,20 @@ const WALL = { w: 230, h: 240, q: 58 };
  * being a slideshow OF properties and becomes a look INTO each one.
  */
 const HERO_FRAMES = 2;
+/**
+ * The load-in placeholder, and its own size for a reason.
+ *
+ * The 48px ambient texture was pressed into this job and it was the wrong
+ * number: 48px stretched across a 520px tile is an eleven-fold upscale, which
+ * is not a soft blur but visible mosaic — "an ugly kind of blur that gets
+ * resolved". 128px over the same tile is a four-fold upscale, which reads as
+ * genuinely out of focus, and still costs about 3KB.
+ *
+ * The ambient build keeps 48px, where the extreme upscale IS the blur effect
+ * and the tiny payload is the whole performance strategy. Same idea, two jobs,
+ * two numbers.
+ */
+const BLUR_W = 128;
 /** Ambient: small enough that upscaling IS the blur. */
 const SOFT_W = 48;
 /** Spec §2.2 — six per column, recycled, never grown. */
@@ -69,8 +83,10 @@ type Entry = {
   exclusive: boolean;
   /** The first frame. Kept as its own field so an older build keeps working. */
   url: string;
-  /** Every frame this tile cycles through, `url` first. One entry on a wall. */
+  /** Every frame this tile cycles through, `url` first. */
   urls: string[];
+  /** Small-but-not-tiny frame shown while the real one loads. */
+  blur: string;
   soft: string;
 };
 
@@ -171,8 +187,10 @@ function toEntry(l: PublicListing, photoIndex = 0, role: "hero" | "wall" = "wall
   // A hero tile cycles; a wall shows one frame and stays put. Starting at this
   // tile's own photoIndex means the two sightings of a property that has to
   // appear twice never run the same pair in the same order.
+  // Walls cycle too (founder, 2026-07-28). They cost 7KB a frame at 230px, so
+  // the whole corridor breathing is cheaper than one sharp hero tile.
   const frames =
-    role === "hero" && photos.length > 1
+    photos.length > 1
       ? Array.from({ length: Math.min(HERO_FRAMES, photos.length) }, (_, k) => photos[(photoIndex + k) % photos.length])
       : [photo];
 
@@ -184,6 +202,7 @@ function toEntry(l: PublicListing, photoIndex = 0, role: "hero" | "wall" = "wall
     exclusive: l.esker_exclusive,
     url: crop(photo, frame.w, frame.h, frame.q),
     urls: frames.map((p) => crop(p, frame.w, frame.h, frame.q)),
+    blur: crop(photo, BLUR_W, Math.round((BLUR_W * frame.h) / frame.w), 40),
     soft: thumb(photo, SOFT_W, 40),
   };
 }
