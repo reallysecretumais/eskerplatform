@@ -43,12 +43,17 @@ const HERO = { w: 520, h: 640, q: 76 };
  *
  * They sit at 31°, behind a falloff, carrying no text — nobody reads them, and
  * an undersized image stretched across an angled surface is exactly what a lens
- * does when the subject is in focus and the room isn't. Serving them at 230
- * rather than 330 deepens that defocus, makes the hero read sharper than it
- * actually is, and takes bytes OFF the cover rather than adding them. The
- * cheapest quality win available.
+ * does when the subject is in focus and the room isn't. Deliberate defocus makes
+ * the hero read sharper than it is, and takes bytes OFF the cover.
+ *
+ * The FRAME is 1.2 landscape because the wall column is now 54% wide against a
+ * 0.221 tile height — it grew outward so the tilt could not drag its outer edge
+ * on-screen. Asking for the shape actually displayed is the whole point of
+ * `crop()`; leaving this portrait would have re-introduced the stretch that made
+ * the corridor look cheap in the first place, on the very tiles meant to sell
+ * depth.
  */
-const WALL = { w: 230, h: 240, q: 58 };
+const WALL = { w: 300, h: 250, q: 58 };
 /**
  * How many photographs a hero tile cycles through. Every property has at least
  * three; two is what the corridor can afford to hold at hero resolution without
