@@ -38,7 +38,24 @@ export const dynamic = "force-dynamic";
  * cheapest way to make the hero look sharper than it is.
  */
 const HERO = { w: 520, h: 640, q: 76 };
-const WALL = { w: 330, h: 340, q: 62 };
+/**
+ * The walls are asked for far less than they could be, deliberately.
+ *
+ * They sit at 31°, behind a falloff, carrying no text — nobody reads them, and
+ * an undersized image stretched across an angled surface is exactly what a lens
+ * does when the subject is in focus and the room isn't. Serving them at 230
+ * rather than 330 deepens that defocus, makes the hero read sharper than it
+ * actually is, and takes bytes OFF the cover rather than adding them. The
+ * cheapest quality win available.
+ */
+const WALL = { w: 230, h: 240, q: 58 };
+/**
+ * How many photographs a hero tile cycles through. Every property has at least
+ * three; two is what the corridor can afford to hold at hero resolution without
+ * turning the cover into a megabyte. The point is that the centre column stops
+ * being a slideshow OF properties and becomes a look INTO each one.
+ */
+const HERO_FRAMES = 2;
 /** Ambient: small enough that upscaling IS the blur. */
 const SOFT_W = 48;
 /** Spec §2.2 — six per column, recycled, never grown. */
@@ -50,7 +67,10 @@ type Entry = {
   area: string | null;
   city: string | null;
   exclusive: boolean;
+  /** The first frame. Kept as its own field so an older build keeps working. */
   url: string;
+  /** Every frame this tile cycles through, `url` first. One entry on a wall. */
+  urls: string[];
   soft: string;
 };
 
@@ -144,8 +164,18 @@ function deal(listings: PublicListing[]): PublicListing[][] {
 }
 
 function toEntry(l: PublicListing, photoIndex = 0, role: "hero" | "wall" = "wall"): Entry {
-  const photo = l.photos?.[photoIndex] ?? l.photos?.[0] ?? "";
+  const photos = l.photos ?? [];
+  const photo = photos[photoIndex] ?? photos[0] ?? "";
   const frame = role === "hero" ? HERO : WALL;
+
+  // A hero tile cycles; a wall shows one frame and stays put. Starting at this
+  // tile's own photoIndex means the two sightings of a property that has to
+  // appear twice never run the same pair in the same order.
+  const frames =
+    role === "hero" && photos.length > 1
+      ? Array.from({ length: Math.min(HERO_FRAMES, photos.length) }, (_, k) => photos[(photoIndex + k) % photos.length])
+      : [photo];
+
   return {
     id: l.id,
     caption: describeListing(l),
@@ -153,6 +183,7 @@ function toEntry(l: PublicListing, photoIndex = 0, role: "hero" | "wall" = "wall
     city: l.city,
     exclusive: l.esker_exclusive,
     url: crop(photo, frame.w, frame.h, frame.q),
+    urls: frames.map((p) => crop(p, frame.w, frame.h, frame.q)),
     soft: thumb(photo, SOFT_W, 40),
   };
 }
