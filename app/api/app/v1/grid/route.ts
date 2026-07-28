@@ -37,6 +37,35 @@ function photosFor(listings: PublicListing[]): string[] {
   return out;
 }
 
+/**
+ * NO TWO DOORWAYS LEAD WITH THE SAME PROPERTY.
+ *
+ * Each tile builds its own photo list from its own listings, and `intentFilter`
+ * preserves one shared strength order — so the strongest property led several
+ * doorways at once. Measured live: All stays, Open tonight and Apartments all
+ * opened with the identical photograph, and With a pool matched the Exclusive
+ * band. Three distinct images across six surfaces, on the screen whose entire
+ * job is to make seventeen properties feel like seventeen places.
+ *
+ * Greedy, in the order the guest reads them: the hero goes first and keeps the
+ * strongest, then each following doorway rotates to the strongest property not
+ * already leading somewhere else. Rotation rather than removal, so a doorway
+ * keeps every one of its own properties — it just starts somewhere else, which
+ * also means the montages stay distinct if they ever cycle.
+ *
+ * If a doorway has nothing unclaimed left it keeps its own first: a true repeat
+ * beats an empty tile, and a category with one property in it has no choice.
+ */
+function spreadLeads(groups: { listings: PublicListing[] }[]): void {
+  const led = new Set<string>();
+  for (const g of groups) {
+    const at = g.listings.findIndex((l) => !led.has(l.id) && l.photos?.length);
+    if (at > 0) g.listings = [...g.listings.slice(at), ...g.listings.slice(0, at)];
+    const lead = g.listings[0];
+    if (lead) led.add(lead.id);
+  }
+}
+
 export const GET = guard(async (req: Request) => {
   const requested = new URL(req.url).searchParams.get("market")?.trim() || null;
 
@@ -67,8 +96,14 @@ export const GET = guard(async (req: Request) => {
     { key: "sleeps6", label: "Sleeps 6+", size: "sm" as const, count: c.sleeps6, listings: intentFilter(inv.all, "sleeps6") },
   ];
 
-  const tiles = candidates
-    .filter((t) => t.count > 0) // a doorway with nothing behind it doesn't render
+  // A doorway with nothing behind it doesn't render.
+  const live = candidates.filter((t) => t.count > 0);
+  // The Exclusive band draws from the same pool, so it takes part in the same
+  // spread — it was leading with the identical photograph as "With a pool".
+  const exclusiveGroup = { listings: intentFilter(inv.all, "exclusive") };
+  spreadLeads([...live, exclusiveGroup]);
+
+  const tiles = live
     .map((t) => ({
       key: t.key,
       label: t.label,
@@ -93,7 +128,7 @@ export const GET = guard(async (req: Request) => {
           label: "Esker Exclusive",
           subtitle: "Inspected and managed by us",
           count: c.exclusives,
-          photos: photosFor(intentFilter(inv.all, "exclusive")),
+          photos: photosFor(exclusiveGroup.listings),
         }
       : null;
 
