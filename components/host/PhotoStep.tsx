@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Camera, ArrowRight, Sun, Maximize, Sparkles } from "lucide-react";
 import { PhotoManager } from "@/components/host/PhotoManager";
+import { VideoManager } from "@/components/host/VideoManager";
 
 // The shared, emphatic photo step both listing flows land on right after the
 // draft is created. Photos are Esker's approval gate, so this makes them the
@@ -26,6 +27,10 @@ export function PhotoStep({ draftId }: { draftId: string }) {
       </div>
 
       <PhotoManager listingId={draftId} photos={[]} />
+
+      {/* Optional, and deliberately after the photos — a video is a bonus, not
+          a second hurdle. It never gates submitting. */}
+      <VideoManager listingId={draftId} videoUrl={null} />
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-5">
         <div>

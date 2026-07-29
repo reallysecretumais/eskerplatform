@@ -23,6 +23,8 @@ export type HostListing = {
   price: number;
   amenities: string[];
   photos: string[];
+  /** One optional walkthrough video. Null = none. */
+  videoUrl: string | null;
   status: ListingStatus;
   reviewNote: string | null;
   createdAt: string | null;
@@ -42,13 +44,14 @@ type ListingRow = {
   public_price: number | null;
   amenities: string[] | null;
   photos: string[] | null;
+  video_url: string | null;
   listing_status: string | null;
   review_note: string | null;
   created_at: string | null;
 };
 
 const LISTING_COLS =
-  "id, name, public_title, public_description, kind, area, location_id, bedrooms, capacity, nightly_rate, public_price, amenities, photos, listing_status, review_note, created_at";
+  "id, name, public_title, public_description, kind, area, location_id, bedrooms, capacity, nightly_rate, public_price, amenities, photos, video_url, listing_status, review_note, created_at";
 
 function toListing(r: ListingRow): HostListing {
   return {
@@ -63,6 +66,7 @@ function toListing(r: ListingRow): HostListing {
     price: Number(r.public_price ?? r.nightly_rate ?? 0),
     amenities: r.amenities ?? [],
     photos: r.photos ?? [],
+    videoUrl: r.video_url ?? null,
     status: (r.listing_status as ListingStatus) || "pending",
     reviewNote: r.review_note,
     createdAt: r.created_at,

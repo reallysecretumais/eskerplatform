@@ -30,16 +30,19 @@ export const dynamic = "force-dynamic";
  * real pixels — a 2× upscale on the largest thing on the screen — while a small
  * doorway a fifth of its area paid for the identical fetch.
  *
- * The doorways are square (see the app's grid), so the frames are square, and
- * the hero gets its own because it is four times the area of the rest. A small
- * tile now costs a fifth of what it did.
+ * The hero gets its own frame because it is four times the area of the rest;
+ * a small tile costs a fifth of what it did. The shapes themselves live on the
+ * constants below and follow the app's mosaic.
  */
-const HERO_TILE = { w: 640, h: 640, q: 74 };
-const SMALL_TILE = { w: 340, h: 340, q: 64 };
-/** The Exclusive band: full width at 64dp, so roughly 4.5:1 — nothing like a
- *  doorway. It also sits at 42% opacity behind text, which is the one place a
- *  lower quality genuinely cannot be seen. */
-const BAND = { w: 900, h: 200, q: 60 };
+// DERIVED FROM THE APP'S LAYOUT, not chosen — the mosaic fills the screen
+// height, so a doorway is ~1.3 portrait (124×164dp) and the hero ~254×334dp.
+// The corridor taught this lesson twice: a frame that disagrees with the tile
+// it fills is either an upscale (blur) or a stretch (cheap).
+const HERO_TILE = { w: 620, h: 815, q: 72 };
+const SMALL_TILE = { w: 340, h: 450, q: 62 };
+/** The Exclusive cell: 2×1 in the mosaic, ~1.55 wide. At 42% opacity behind
+ *  text, the one place lower quality genuinely cannot be seen. */
+const BAND = { w: 640, h: 415, q: 60 };
 const MONTAGE_MAX = 5;
 
 function photosFor(listings: PublicListing[], size: "hero" | "sm" = "sm"): string[] {

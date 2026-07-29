@@ -101,7 +101,7 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
 
         {/* Gallery */}
         <div className="mt-5">
-          <Gallery photos={listing.photos ?? []} title={listing.title} />
+          <Gallery photos={listing.photos ?? []} title={listing.title} video={listing.video_url} />
         </div>
 
         {/* Ask about this place — contextual concierge (slim props — the AI

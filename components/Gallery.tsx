@@ -1,13 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { X, LayoutGrid } from "lucide-react";
+import { X, LayoutGrid, Play } from "lucide-react";
 import { thumb } from "@/lib/img";
 
-// Airbnb-style gallery: a large lead photo + a 2×2 grid of more, so you see
-// several at a glance. "Show all photos" opens a lightbox with full, uncropped
-// images. Resized thumbnails keep it fast; full-size only loads when opened.
-export function Gallery({ photos, title }: { photos: string[]; title: string }) {
+// Airbnb-style gallery: a large lead photo + a grid of more, so you see several
+// at a glance — on phones as well as desktop. "Show all photos" opens a lightbox
+// with full, uncropped images. Resized thumbnails keep it fast; full-size only
+// loads when opened.
+export function Gallery({
+  photos,
+  title,
+  video,
+}: {
+  photos: string[];
+  title: string;
+  /** Optional walkthrough video. Never mixed into `photos` — thumb() is the
+   *  IMAGE transform CDN and errors on a video URL. */
+  video?: string | null;
+}) {
   const [open, setOpen] = useState(false);
   const show = () => setOpen(true);
 
@@ -21,12 +32,16 @@ export function Gallery({ photos, title }: { photos: string[]; title: string }) 
     <>
       <div className="relative overflow-hidden rounded-2xl">
         {grid ? (
-          <div className="grid h-[340px] grid-cols-4 grid-rows-2 gap-2 sm:h-[460px]">
-            <button type="button" onClick={show} className="col-span-4 row-span-2 overflow-hidden sm:col-span-2">
+          // Phones get the collage too: lead photo on top, then a 2×2 of the
+          // next four. Previously the tiles were `hidden sm:block`, so a phone
+          // saw exactly ONE photo and had to tap "Show all" to discover the
+          // rest — most never did. Desktop keeps the 4-col side-by-side layout.
+          <div className="grid h-[480px] grid-cols-2 grid-rows-[3fr_1fr_1fr] gap-2 sm:h-[460px] sm:grid-cols-4 sm:grid-rows-2">
+            <button type="button" onClick={show} className="col-span-2 row-span-1 overflow-hidden sm:row-span-2">
               <img src={thumb(photos[0], 1200, 80)} alt={title} className="h-full w-full object-cover transition hover:opacity-95" />
             </button>
             {photos.slice(1, 5).map((p, i) => (
-              <button key={i} type="button" onClick={show} className="hidden overflow-hidden sm:block">
+              <button key={i} type="button" onClick={show} className="overflow-hidden">
                 <img src={thumb(p, 640, 72)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition hover:opacity-95" />
               </button>
             ))}
@@ -34,6 +49,17 @@ export function Gallery({ photos, title }: { photos: string[]; title: string }) 
         ) : (
           <button type="button" onClick={show} className="block h-[340px] w-full overflow-hidden sm:h-[460px]">
             <img src={thumb(photos[0], 1400, 80)} alt={title} className="h-full w-full object-cover" />
+          </button>
+        )}
+
+        {/* Bottom-left so it never collides with "Show all photos". */}
+        {video && (
+          <button
+            type="button"
+            onClick={show}
+            className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-lg border border-line bg-white/95 px-3 py-1.5 text-sm font-medium text-ink shadow-sm transition hover:bg-white"
+          >
+            <Play size={14} /> Watch video
           </button>
         )}
 
@@ -57,8 +83,21 @@ export function Gallery({ photos, title }: { photos: string[]; title: string }) 
             </button>
           </div>
           <div className="mx-auto max-w-3xl space-y-3 px-4 pb-12" onClick={(e) => e.stopPropagation()}>
-            {photos.map((p, i) => (
-              <img key={i} src={thumb(p, 1400, 82)} alt="" loading={i < 2 ? "eager" : "lazy"} decoding="async" className="w-full rounded-xl" />
+            {/* Cover first, then the video (high up — it's the most convincing
+                thing here), then the rest of the photos. */}
+            <img src={thumb(photos[0], 1400, 82)} alt="" loading="eager" decoding="async" className="w-full rounded-xl" />
+            {video && (
+              <video
+                controls
+                preload="metadata"
+                playsInline
+                poster={thumb(photos[0], 1200, 80)}
+                src={video}
+                className="w-full rounded-xl bg-black"
+              />
+            )}
+            {photos.slice(1).map((p, i) => (
+              <img key={i} src={thumb(p, 1400, 82)} alt="" loading={i < 1 ? "eager" : "lazy"} decoding="async" className="w-full rounded-xl" />
             ))}
           </div>
         </div>

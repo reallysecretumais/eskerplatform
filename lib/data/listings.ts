@@ -45,6 +45,9 @@ export type PublicListing = {
   description: string | null;
   amenities: string[] | null;
   photos: string[] | null;
+  /** One optional walkthrough video. Null = none. Never a member of `photos` —
+   *  the image transform CDN errors on a video URL. */
+  video_url: string | null;
   esker_exclusive: boolean;
   public_facts?: string | null; // public-safe facts for the concierge (parking, landmarks, rules…)
   /** Which table the listing came from. 'external' = resale inventory Esker
@@ -138,6 +141,8 @@ function normalizeListing(row: Record<string, unknown>): PublicListing {
     city: (row.city as string | null) ?? null,
     market: (row.market as string | null) ?? null,
     market_slug: (row.market_slug as string | null) ?? null,
+    // Same deploy-order safety: null until migration 21 adds it to the view.
+    video_url: (row.video_url as string | null) ?? null,
     booking_mode: (row.booking_mode as BookingMode | null) ?? fallback.mode,
     price_unit: (row.price_unit as string | null) ?? fallback.unit,
   };

@@ -15,6 +15,7 @@ import {
 } from "@/lib/ai/hostInterview";
 import { getCoveredAreas } from "@/lib/data/host";
 import { PAYOUT_METHODS, MIN_LISTING_PHOTOS, MAX_LISTING_PHOTOS } from "@/lib/hostConstants";
+import { isVideoExt } from "@/lib/videoClient";
 
 export type ActionResult = { ok: boolean; message: string; id?: string };
 
@@ -48,12 +49,12 @@ type Admin = ReturnType<typeof createAdminClient>;
 async function ownListing(admin: Admin, accountId: string, listingId: string) {
   const { data } = await admin
     .from("properties")
-    .select("id, name, public_title, photos, listing_status")
+    .select("id, name, public_title, photos, video_url, listing_status")
     .eq("id", listingId)
     .eq("owner_account_id", accountId)
     .eq("owner_relationship", "host")
     .maybeSingle();
-  return data as { id: string; name: string; public_title: string | null; photos: string[] | null; listing_status: string | null } | null;
+  return data as { id: string; name: string; public_title: string | null; photos: string[] | null; video_url: string | null; listing_status: string | null } | null;
 }
 
 /** In-app alert for every active staff member (same shape as booking alerts). */
@@ -439,6 +440,97 @@ export async function reorderListingPhotos(listingId: string, ordered: string[])
   revalidatePath(`/host/listings/${listingId}`);
   revalidatePath(`/stays/${listingId}`);
   return { ok: true, message: "Order saved." };
+}
+
+// ── Video ────────────────────────────────────────────────────────────────────
+// One optional walkthrough video per listing. Unlike photos, the file does NOT
+// pass through this server: a 16MB upload cannot fit in a server-action request
+// body, so the browser uploads straight to Storage with a signed URL. Three
+// steps — mint (authorise + hand out the URL), the browser PUTs, then confirm
+// (which is what actually stamps the column, so an abandoned upload is inert).
+//
+// Size and file type are enforced by the property-videos bucket itself, since
+// nothing here ever sees the bytes. See Esker OS supabase/phase66.sql.
+
+const VIDEO_BUCKET = "property-videos";
+
+/** Host listings are `properties` rows, so they share the CRM's prefix — which
+ *  means deleting a property in the CRM cleans up a host's video for free. */
+function listingVideoPrefix(listingId: string) {
+  return `properties/${listingId}`;
+}
+
+/** Keep exactly one video: drop every other object under the prefix. */
+async function sweepListingVideo(admin: Admin, prefix: string, keepPath?: string) {
+  const { data: files } = await admin.storage.from(VIDEO_BUCKET).list(prefix);
+  const stale = (files ?? []).map((f) => `${prefix}/${f.name}`).filter((p) => p !== keepPath);
+  if (stale.length) await admin.storage.from(VIDEO_BUCKET).remove(stale);
+}
+
+export async function createListingVideoUpload(
+  listingId: string,
+  fileExt: string,
+): Promise<ActionResult & { path?: string; token?: string }> {
+  const accountId = await sessionUserId();
+  if (!accountId) return { ok: false, message: "Please sign in first." };
+  // The extension builds a storage path, so only these four values reach it.
+  if (!isVideoExt(fileExt)) return { ok: false, message: "Please upload an MP4, MOV, WebM or 3GP." };
+
+  const admin = createAdminClient();
+  const own = await ownListing(admin, accountId, listingId);
+  if (!own) return { ok: false, message: "Listing not found." };
+
+  const path = `${listingVideoPrefix(listingId)}/${crypto.randomUUID()}.${fileExt}`;
+  const { data, error } = await admin.storage.from(VIDEO_BUCKET).createSignedUploadUrl(path);
+  if (error || !data) return { ok: false, message: "Couldn't start the upload. Please try again." };
+  return { ok: true, message: "Ready.", path: data.path, token: data.token };
+}
+
+export async function confirmListingVideo(listingId: string, path: string): Promise<ActionResult> {
+  const accountId = await sessionUserId();
+  if (!accountId) return { ok: false, message: "Please sign in first." };
+
+  const admin = createAdminClient();
+  const own = await ownListing(admin, accountId, listingId);
+  if (!own) return { ok: false, message: "Listing not found." };
+
+  // The path comes back from the browser — refuse anything outside this
+  // listing's own prefix, or one listing could claim another's file.
+  const prefix = listingVideoPrefix(listingId);
+  if (!path.startsWith(`${prefix}/`)) return { ok: false, message: "That upload doesn't belong to this listing." };
+
+  const name = path.slice(prefix.length + 1);
+  const { data: files } = await admin.storage.from(VIDEO_BUCKET).list(prefix);
+  if (!(files ?? []).some((f) => f.name === name))
+    return { ok: false, message: "The upload didn't finish — please try again." };
+
+  const { data: pub } = admin.storage.from(VIDEO_BUCKET).getPublicUrl(path);
+  const { error } = await admin.from("properties").update({ video_url: pub.publicUrl }).eq("id", listingId);
+  if (error) return { ok: false, message: "Couldn't save the video. Please try again." };
+
+  await sweepListingVideo(admin, prefix, path);
+
+  revalidatePath(`/host/listings/${listingId}`);
+  revalidatePath(`/stays/${listingId}`);
+  return { ok: true, message: "Video added." };
+}
+
+export async function removeListingVideo(listingId: string): Promise<ActionResult> {
+  const accountId = await sessionUserId();
+  if (!accountId) return { ok: false, message: "Please sign in first." };
+
+  const admin = createAdminClient();
+  const own = await ownListing(admin, accountId, listingId);
+  if (!own) return { ok: false, message: "Listing not found." };
+
+  const { error } = await admin.from("properties").update({ video_url: null }).eq("id", listingId);
+  if (error) return { ok: false, message: "Couldn't remove the video. Please try again." };
+
+  await sweepListingVideo(admin, listingVideoPrefix(listingId));
+
+  revalidatePath(`/host/listings/${listingId}`);
+  revalidatePath(`/stays/${listingId}`);
+  return { ok: true, message: "Video removed." };
 }
 
 // ── Guest info (private stay details + public facts) ────────────────────────

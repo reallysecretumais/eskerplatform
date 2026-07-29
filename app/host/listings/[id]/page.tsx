@@ -6,6 +6,7 @@ import { requireAccount } from "@/lib/auth";
 import { getMyListing, getCoveredAreas, getListingCalendar, getListingGuestInfo } from "@/lib/data/host";
 import { ListingForm } from "@/components/host/ListingForm";
 import { PhotoManager } from "@/components/host/PhotoManager";
+import { VideoManager } from "@/components/host/VideoManager";
 import { ListingStatusBadge } from "@/components/host/ListingStatus";
 import { PauseResume } from "@/components/host/PauseResume";
 import { SubmitBar } from "@/components/host/SubmitBar";
@@ -95,6 +96,10 @@ export default async function EditListingPage({
 
       <div className="mt-5">
         <PhotoManager listingId={listing.id} photos={listing.photos} />
+      </div>
+
+      <div className="mt-5">
+        <VideoManager listingId={listing.id} videoUrl={listing.videoUrl} />
       </div>
 
       {calendar && (

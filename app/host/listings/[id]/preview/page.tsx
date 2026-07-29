@@ -57,7 +57,7 @@ export default async function ListingPreviewPage({ params }: { params: Promise<{
 
         <div className="mt-5">
           {listing.photos.length > 0 ? (
-            <Gallery photos={listing.photos} title={listing.title} />
+            <Gallery photos={listing.photos} title={listing.title} video={listing.videoUrl} />
           ) : (
             <div className="grid aspect-[16/9] place-items-center rounded-2xl border border-dashed border-line-hi text-sm text-dim">
               Add photos to see your gallery here
