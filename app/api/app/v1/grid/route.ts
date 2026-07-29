@@ -3,7 +3,7 @@ import { getInventory, intentFilter } from "@/lib/data/inventory";
 import { getMarkets, getHomeMarket, resolveMarket } from "@/lib/data/markets";
 import { getMyBookings } from "@/lib/auth";
 import { describeListing } from "@/lib/listings";
-import { thumb } from "@/lib/img";
+import { crop } from "@/lib/img";
 import type { PublicListing } from "@/lib/data/listings";
 
 export const runtime = "nodejs";
@@ -21,17 +21,35 @@ export const dynamic = "force-dynamic";
  * does not render — the app never has to hide an empty promise.
  */
 
-/** Tile imagery: 3–5 photos per doorway, pre-sized. Grid tiles are small. */
-const TILE_W = 420;
+/**
+ * Tile imagery, asked for at the SHAPE each doorway is drawn in.
+ *
+ * This carried the same fault the corridor did: a square `contain` box, which
+ * spends most of its pixels on the axis the client then crops away. Measured on
+ * the live grid, the hero was being served a 336×420 portrait to fill 667×499
+ * real pixels — a 2× upscale on the largest thing on the screen — while a small
+ * doorway a fifth of its area paid for the identical fetch.
+ *
+ * The doorways are square (see the app's grid), so the frames are square, and
+ * the hero gets its own because it is four times the area of the rest. A small
+ * tile now costs a fifth of what it did.
+ */
+const HERO_TILE = { w: 640, h: 640, q: 74 };
+const SMALL_TILE = { w: 340, h: 340, q: 64 };
+/** The Exclusive band: full width at 64dp, so roughly 4.5:1 — nothing like a
+ *  doorway. It also sits at 42% opacity behind text, which is the one place a
+ *  lower quality genuinely cannot be seen. */
+const BAND = { w: 900, h: 200, q: 60 };
 const MONTAGE_MAX = 5;
 
-function photosFor(listings: PublicListing[]): string[] {
+function photosFor(listings: PublicListing[], size: "hero" | "sm" = "sm"): string[] {
+  const f = size === "hero" ? HERO_TILE : SMALL_TILE;
   const out: string[] = [];
   // One photo per property before a second from any — a montage of one room
   // photographed five ways is not a montage.
   for (const l of listings) {
     const p = l.photos?.[0];
-    if (p) out.push(thumb(p, TILE_W));
+    if (p) out.push(crop(p, f.w, f.h, f.q));
     if (out.length >= MONTAGE_MAX) break;
   }
   return out;
@@ -109,7 +127,7 @@ export const GET = guard(async (req: Request) => {
       label: t.label,
       size: t.size,
       count: t.count,
-      photos: photosFor(t.listings),
+      photos: photosFor(t.listings, t.size),
       // Only the hero speaks a full sentence (spec §5.2) — every other tile is
       // a name alone, so the app receives no subtitle to be tempted by.
       subtitle:
@@ -128,7 +146,13 @@ export const GET = guard(async (req: Request) => {
           label: "Esker Exclusive",
           subtitle: "Inspected and managed by us",
           count: c.exclusives,
-          photos: photosFor(exclusiveGroup.listings),
+          // The band is wide and short — 4.5:1, nothing like a doorway — so it
+          // gets its own frame. It also sits at 42% opacity behind text, which
+          // is the one place a lower quality genuinely cannot be seen.
+          photos: exclusiveGroup.listings
+            .slice(0, 1)
+            .map((l) => crop(l.photos?.[0] ?? "", BAND.w, BAND.h, BAND.q))
+            .filter(Boolean),
         }
       : null;
 
