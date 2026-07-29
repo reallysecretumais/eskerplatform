@@ -36,7 +36,7 @@ export function Gallery({
           // next four. Previously the tiles were `hidden sm:block`, so a phone
           // saw exactly ONE photo and had to tap "Show all" to discover the
           // rest — most never did. Desktop keeps the 4-col side-by-side layout.
-          <div className="grid h-[480px] grid-cols-2 grid-rows-[3fr_1fr_1fr] gap-2 sm:h-[460px] sm:grid-cols-4 sm:grid-rows-2">
+          <div className="grid h-[520px] grid-cols-2 grid-rows-[2.2fr_1fr_1fr] gap-2 sm:h-[460px] sm:grid-cols-4 sm:grid-rows-2">
             <button type="button" onClick={show} className="col-span-2 row-span-1 overflow-hidden sm:row-span-2">
               <img src={thumb(photos[0], 1200, 80)} alt={title} className="h-full w-full object-cover transition hover:opacity-95" />
             </button>

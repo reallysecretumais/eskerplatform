@@ -53,6 +53,22 @@ type ListingRow = {
 const LISTING_COLS =
   "id, name, public_title, public_description, kind, area, location_id, bedrooms, capacity, nightly_rate, public_price, amenities, photos, video_url, listing_status, review_note, created_at";
 
+/**
+ * The same columns without `video_url`, for the window between this code
+ * deploying and the phase66 migration running.
+ *
+ * This matters more than it looks: naming a column that doesn't exist fails the
+ * WHOLE PostgREST query, and the caller sees an EMPTY LIST rather than an
+ * error — a host would open their listings page and find nothing there, with
+ * nothing anywhere saying why. Same reason booking creation retries without
+ * `guest_count`: a pending migration must never cost someone their data.
+ */
+const LISTING_COLS_NO_VIDEO = LISTING_COLS.replace(", video_url", "");
+
+function missingVideoColumn(error: { message?: string } | null): boolean {
+  return !!error?.message?.includes("video_url");
+}
+
 function toListing(r: ListingRow): HostListing {
   return {
     id: r.id,
@@ -78,13 +94,17 @@ export async function getMyListings(): Promise<HostListing[]> {
   const user = await currentUser();
   if (!user) return [];
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("properties")
-    .select(LISTING_COLS)
-    .eq("owner_account_id", user.id)
-    .eq("owner_relationship", "host")
-    .order("created_at", { ascending: false });
-  return ((data ?? []) as ListingRow[]).map(toListing);
+  const run = (cols: string) =>
+    admin
+      .from("properties")
+      .select(cols)
+      .eq("owner_account_id", user.id)
+      .eq("owner_relationship", "host")
+      .order("created_at", { ascending: false });
+
+  let { data, error } = await run(LISTING_COLS);
+  if (missingVideoColumn(error)) ({ data } = await run(LISTING_COLS_NO_VIDEO));
+  return ((data ?? []) as unknown as ListingRow[]).map(toListing);
 }
 
 /** One listing the signed-in host owns, or null. */
@@ -92,14 +112,18 @@ export async function getMyListing(id: string): Promise<HostListing | null> {
   const user = await currentUser();
   if (!user) return null;
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("properties")
-    .select(LISTING_COLS)
-    .eq("id", id)
-    .eq("owner_account_id", user.id)
-    .eq("owner_relationship", "host")
-    .maybeSingle();
-  return data ? toListing(data as ListingRow) : null;
+  const run = (cols: string) =>
+    admin
+      .from("properties")
+      .select(cols)
+      .eq("id", id)
+      .eq("owner_account_id", user.id)
+      .eq("owner_relationship", "host")
+      .maybeSingle();
+
+  let { data, error } = await run(LISTING_COLS);
+  if (missingVideoColumn(error)) ({ data } = await run(LISTING_COLS_NO_VIDEO));
+  return data ? toListing(data as unknown as ListingRow) : null;
 }
 
 // ── Guest info (private stay details + public facts) ────────────────────────

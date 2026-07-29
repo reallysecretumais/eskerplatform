@@ -47,14 +47,22 @@ type Admin = ReturnType<typeof createAdminClient>;
 
 /** The host's own listing row, or null (not theirs / not a host listing). */
 async function ownListing(admin: Admin, accountId: string, listingId: string) {
-  const { data } = await admin
-    .from("properties")
-    .select("id, name, public_title, photos, video_url, listing_status")
-    .eq("id", listingId)
-    .eq("owner_account_id", accountId)
-    .eq("owner_relationship", "host")
-    .maybeSingle();
-  return data as { id: string; name: string; public_title: string | null; photos: string[] | null; video_url: string | null; listing_status: string | null } | null;
+  const run = (cols: string) =>
+    admin
+      .from("properties")
+      .select(cols)
+      .eq("id", listingId)
+      .eq("owner_account_id", accountId)
+      .eq("owner_relationship", "host")
+      .maybeSingle();
+
+  // Retry without `video_url` for the window between this deploying and the
+  // phase66 migration running — otherwise an unknown column fails the whole
+  // query, this returns null, and EVERY host action answers "Listing not
+  // found." for a listing that is sitting right there.
+  let { data, error } = await run("id, name, public_title, photos, video_url, listing_status");
+  if (error?.message?.includes("video_url")) ({ data } = await run("id, name, public_title, photos, listing_status"));
+  return data as unknown as { id: string; name: string; public_title: string | null; photos: string[] | null; video_url?: string | null; listing_status: string | null } | null;
 }
 
 /** In-app alert for every active staff member (same shape as booking alerts). */
