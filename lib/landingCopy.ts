@@ -3,66 +3,77 @@
  *
  * A page does NOT exist until its slug appears here. That is deliberate: a
  * generated page with the area name swapped into a template is thin content,
- * and thin content is how programmatic SEO gets a site demoted. Writing three
+ * and thin content is how programmatic SEO gets a site demoted. Writing a few
  * honest paragraphs is the price of admission for a new page.
  *
- * RULES FOR ADDING COPY (keep these):
- *  • Every claim must be true and checkable. No invented distances, no
- *    "best in the city", no amenities the listings don't have.
- *  • Say something a competitor's scraper cannot: what the stays here are
- *    actually like, who they suit, what the trade-offs are.
- *  • Do NOT restate live numbers (count, price) — the page renders those from
- *    the database, so copy that repeats them goes stale.
- *  • 2–3 short paragraphs. This is an intro, not an essay.
+ * ── THE RULE: WRITE ONLY WHAT CANNOT CHANGE ───────────────────────────────
+ * This copy is static; the inventory underneath it is not. So it describes the
+ * AREA and the KIND of stay — geography, character, who it suits — and never
+ * the current stock. Specifically, NEVER write:
  *
- * ⚠️ These drafts are grounded in the listing data plus uncontrovertible
- * geography. The lines a competitor genuinely cannot copy — which building is
- * quiet, where to park at night, which block loses power — are Umais's to add.
- * See the content review doc; his edits land straight in this file.
+ *   ✗ what we currently have    ("a studio, two 2BHKs and a penthouse")
+ *   ✗ counts                    ("all four", "our three apartments")
+ *   ✗ prices or positioning     ("from ₨21,000", "the affordable option")
+ *   ✗ amenity lists             ("WiFi, AC, backup power, parking")
+ *   ✗ booking terms             ("rates are quoted per night")
+ *
+ * Every one of those goes stale the moment a listing is added, delisted,
+ * repriced or edited in the CRM — silently, because nobody re-reads this file.
+ * And they are all rendered ON the page already, live from the database: the
+ * stay count, the from-price, and the "Standard across these stays" line. Copy
+ * that repeats them is duplicated truth waiting to become a contradiction.
+ *
+ * What DOES belong here: what the area is actually like, what it is near, the
+ * honest trade-off against other areas, and who should book it. Those are true
+ * this year and next.
+ *
+ * ⚠️ These drafts hold to that rule but are written from public geography. The
+ * lines a competitor genuinely cannot copy — which building is quiet, where to
+ * park at night, what the drive is really like at 9am — are Umais's to add.
  */
 export const LANDING_COPY: Record<string, string[]> = {
   // ── Area pages ────────────────────────────────────────────────────────
   "short-stay-f-10-f-11-islamabad": [
     "F-10 and F-11 are two of Islamabad's most established residential sectors, sitting side by side in the middle of the city. For a short stay they are about as convenient as Islamabad gets: F-10 Markaz and Jinnah Super are close by for food and groceries, Fatima Jinnah (F-9) Park is a few minutes away, and you are within easy reach of both the Blue Area and the Margalla foothills.",
-    "Our stays here are almost all one-bedroom apartments in modern residential towers — the right size for a couple, a business traveller, or a small family who would rather have a full apartment than a hotel room. Most look out over the city, and every one comes furnished with a proper kitchen, fast WiFi, air conditioning and backup power, so a load-shedding hour doesn't end your evening.",
-    "This is the pocket to book if you want to be central, arrive late, and not think about logistics. Rates are quoted per night, there is no minimum-stay games, and each apartment is cleaned and checked between guests by the same team that manages it.",
+    "The housing here is largely modern residential towers rather than houses with gardens, so a stay in F-10/F-11 means a city apartment — lifts, secure buildings, views over the sectors, and everything within a short drive. That is the trade: you give up outdoor space and gain the ability to get anywhere in Islamabad quickly.",
+    "It is the pocket to book if you want to be central, arrive late, and not think about logistics — a business trip, a city weekend, or a family visit where being close to everything matters more than having a lawn.",
   ],
 
   "short-stay-bahria-town-phase-7-8-rawalpindi": [
-    "Bahria Town Phase 7 and 8 sit on the Rawalpindi side of the twin cities, inside one of the largest gated communities in the country. It is a different feel from central Islamabad — wider roads, quieter streets, its own commercial strips — and it suits people who want space and security more than they want to be downtown.",
-    "The stays we run here are the most varied in our portfolio: a compact studio for a solo trip or a short work stay, one and two-bedroom apartments with jacuzzis, projectors and terraces, and a three-bedroom riverview penthouse with a garden and BBQ setup for a family or a group travelling together. Several have Margalla or open city views, and gated security means arriving at an odd hour is not a problem.",
-    "It is a common choice for weekend trips, family visits and small celebrations, precisely because you get more room for the money than in the Islamabad sectors. Everything is booked by the night with real, live availability.",
+    "Bahria Town Phase 7 and 8 sit on the Rawalpindi side of the twin cities, inside a large gated community. It is a different feel from central Islamabad — wider roads, quieter streets, planned blocks and its own commercial strips — and it suits people who want space and security more than they want to be downtown.",
+    "Because land here is less tight than in the Islamabad sectors, the same money tends to buy noticeably more room, which is why families and groups often end up on this side. Security at the gate and easy parking also make it a practical choice if you are arriving late at night or in more than one car. The trade is that you will want a vehicle: this is not an area you walk out of.",
+    "A common pick for weekend trips, family visits and small celebrations, where having somewhere everyone can spread out is the point.",
   ],
 
   "short-stay-gulberg-greens-islamabad": [
-    "Gulberg Greens sits along the Islamabad Expressway side of the city and is known for being green and low-rise — farmhouse plots, gardens and open air, rather than dense blocks. It is a calmer base than the central sectors while still being a straightforward drive into town and convenient for anyone arriving from the airport side.",
-    "Our stays here are a set of two-bedroom apartments finished to a genuinely high standard — each one styled differently rather than four copies of the same flat — with terraces, and Margalla or city views from most. Two bedrooms and a full kitchen make them a comfortable fit for families, two couples travelling together, or a longer stay where you actually want to cook.",
-    "If you are choosing between here and a central sector: pick Gulberg Greens for space, quiet and views, and a city sector if being able to walk to a market matters more.",
+    "Gulberg Greens sits along the Islamabad Expressway side of the city and is known for being green and low-rise — farmhouse plots, gardens and open air, rather than dense blocks. It is a calmer base than the central sectors while still being a straightforward drive into town, and it is convenient for anyone coming in from the airport side.",
+    "Stays here tend to be in newer, well-finished buildings with terraces and views out towards the Margallas or back over the city, which is the reason to choose the area over a central sector: you get the light and the outlook that F-10 or F-11 simply cannot offer.",
+    "If you are weighing this against a city sector, the honest split is that Gulberg Greens wins on space, quiet and views, and a central sector wins if you want to walk to a market. It suits families, longer stays, and anyone who would rather cook and sit out than eat every meal in a restaurant.",
   ],
 
   // ── Category × city ───────────────────────────────────────────────────
   "apartments-islamabad": [
-    "A furnished apartment is usually the better deal in Islamabad once you are staying more than a night or two — you get a kitchen, a living room, laundry and far more space than a hotel room at a similar nightly rate, and there is no restaurant bill for breakfast.",
-    "Ours are spread across the city's residential sectors, from compact one-bedrooms in central F-10 and F-11 to larger two-bedrooms in Gulberg Greens. Every one is furnished and equipped the same way as standard, not as an upsell: a working kitchen, fast WiFi, air conditioning, heating, backup power, free parking and gated security.",
-    "All of them are booked by the night, with the price you see being the price for the whole apartment rather than per person. Listings marked Esker Exclusive are managed directly by our team to a guaranteed standard.",
+    "A furnished apartment is usually the better deal in Islamabad once you are staying more than a night or two. You get a kitchen, a living room and laundry, far more space than a hotel room at a comparable rate, and the price is for the whole apartment rather than per person — which is what makes it work for families and small groups.",
+    "Islamabad's sectors each have their own character: the central ones put you within minutes of markets and restaurants, while the greener areas further out trade that for space, terraces and views towards the Margallas. Whichever you choose, a serviced apartment means you can arrive on your own schedule and live at your own pace instead of around a hotel's.",
+    "Every stay listed here is inspected before guests arrive and managed by a team you can actually reach. Places marked Esker Exclusive are ones we run directly ourselves.",
   ],
 
   "apartments-rawalpindi": [
-    "Rawalpindi's short-stay apartments give you noticeably more space for the money than the equivalent in Islamabad, which is why they work well for families, groups and longer stays. Ours are concentrated in Bahria Town Phases 7 and 8, inside the gated community.",
-    "The range runs from a small studio suited to one or two people up to two-bedroom apartments with jacuzzis, projectors and terraces. All are fully furnished with a proper kitchen, WiFi, air conditioning, heating and backup power, and all sit within gated security with parking.",
-    "Booking is per night with live availability, and the whole apartment is yours — there is no shared space and no per-person charge.",
+    "Rawalpindi's short-stay apartments give you noticeably more space for the money than the equivalent in Islamabad, which is why they work well for families, groups and longer stays. Much of the good short-stay stock sits inside the planned gated communities, where the streets are quieter and arriving late is straightforward.",
+    "Staying on this side means you will want a car — it is a drive to central Islamabad rather than a walk to a market — but in exchange you get room to spread out, easy parking and security at the gate. For a family trip or a group weekend that trade is usually the right one.",
+    "Each apartment is booked whole, so the space is yours: no shared areas, no per-person charge, and no negotiating over who sleeps where.",
   ],
 
   "penthouses-islamabad": [
-    "A penthouse is the top-floor unit of its building, which in practice means the terrace, the light and the views that the flats below don't get. In Islamabad that usually means the Margalla Hills on one side and the city on the other.",
-    "Ours range from a compact studio penthouse with a jacuzzi and a hill view — an easy choice for a couple — up to duplex penthouses with a private pool, an outdoor cinema setup, a BBQ area and room for a group. They are the properties we put forward for occasions: a birthday, an anniversary, a shoot, or simply a weekend where the place itself is the point.",
-    "Each is booked whole and by the night. The larger ones are Esker Exclusive, meaning our own team manages and inspects them rather than a third party.",
+    "A penthouse is the top-floor unit of its building, which in practice means the terrace, the light and the outlook that the flats below do not get. In Islamabad that usually means the Margalla Hills on one side and the city on the other — the view is genuinely the product.",
+    "They are the properties people book when the place itself is part of the occasion rather than just somewhere to sleep: a birthday, an anniversary, a shoot, or a weekend where you want somewhere worth staying in. The outdoor space is what separates them from an ordinary apartment, and it is why they book out earliest in good weather.",
+    "Each is taken whole and privately. If you are travelling as a group, a top-floor terrace is usually the difference between everyone crowding a living room and everyone actually having somewhere to be.",
   ],
 
   // ── Amenity intent ────────────────────────────────────────────────────
   "stays-with-private-pool-islamabad": [
-    "A private pool means exactly that — it belongs to your stay for the duration, not a shared facility with reserved hours and other guests in it. In Islamabad these are rare enough to be worth planning a trip around, and they book out well ahead in summer.",
-    "The options split into two kinds. The penthouses pair a pool with a terrace, an outdoor cinema and a BBQ setup, and suit a group of friends or a family celebration. The farmhouses are larger again — three and five bedrooms on open ground with gardens and hill views — and are the ones people take for a big group, an event or a shoot.",
-    "All are booked whole and by the night. Because these are the properties most in demand for weekends and Eid, it is worth checking dates early and messaging us if the calendar looks tight.",
+    "A private pool means exactly that: it belongs to your booking for the duration. Not a shared facility, not reserved hours, not other guests in it while you are trying to use it. In Islamabad that is rare enough to be worth planning a trip around.",
+    "Places with their own pool are almost always on larger plots towards the city's edges — that is simply where the land is — so booking one usually means a short drive out and, in exchange, proper grounds, outdoor space and somewhere a group can actually spend the day. They are a common choice for family gatherings, birthdays, and shoots that need the outdoors as much as the building.",
+    "Demand here is seasonal and sharp: summer weekends and the days around Eid go first, often well in advance. If your dates are fixed, it is worth checking early and messaging us if the calendar looks tight — we can usually tell you what is genuinely still open.",
   ],
 };
