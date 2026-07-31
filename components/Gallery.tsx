@@ -57,27 +57,11 @@ export function Gallery({
           </button>
         )}
 
-        {/* A play button ON the cover. The video used to be reachable ONLY via
-            the small pill below and then only as the second item inside the
-            lightbox — so a listing with a walkthrough looked exactly like one
-            without, and the founder reported the feature as "not working" when
-            it was in fact delivered and playing. A video is the most convincing
-            thing on the page; it has to be seen, not discovered. Centred, and
-            Centred over the lead photo, above the "Show all photos" row. */}
-        {video && (
-          <button
-            type="button"
-            onClick={showVideo}
-            aria-label="Play walkthrough video"
-            className="absolute inset-x-0 top-0 flex h-[300px] items-center justify-center"
-          >
-            <span className="grid h-16 w-16 place-items-center rounded-full bg-black/55 text-white shadow-lg ring-1 ring-white/25 backdrop-blur-sm transition hover:scale-105 hover:bg-black/75">
-              <Play size={26} fill="currentColor" />
-            </span>
-          </button>
-        )}
-
-        {/* Bottom-left so it never collides with "Show all photos". */}
+        {/* ONE affordance for the video: this pill. A centred play overlay was
+            tried and REVERTED — a transparent button stretched across the cover
+            swallowed the clicks meant for the photos, so tapping any picture
+            opened the video. Never lay an invisible button over the gallery.
+            Bottom-left so it never collides with "Show all photos". */}
         {video && (
           <button
             type="button"
