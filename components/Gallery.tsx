@@ -20,7 +20,12 @@ export function Gallery({
   video?: string | null;
 }) {
   const [open, setOpen] = useState(false);
-  const show = () => setOpen(true);
+  // Which the viewer asked for. Someone who taps a play button wants the VIDEO,
+  // so it leads — landing them on the cover photo and asking them to scroll is
+  // how the feature came across as missing in the first place.
+  const [videoFirst, setVideoFirst] = useState(false);
+  const show = () => { setVideoFirst(false); setOpen(true); };
+  const showVideo = () => { setVideoFirst(true); setOpen(true); };
 
   if (photos.length === 0) {
     return <div className="flex h-[340px] items-center justify-center rounded-2xl bg-surface-2 text-sm text-dim sm:h-[460px]">Photos coming soon</div>;
@@ -52,11 +57,31 @@ export function Gallery({
           </button>
         )}
 
+        {/* A play button ON the cover. The video used to be reachable ONLY via
+            the small pill below and then only as the second item inside the
+            lightbox — so a listing with a walkthrough looked exactly like one
+            without, and the founder reported the feature as "not working" when
+            it was in fact delivered and playing. A video is the most convincing
+            thing on the page; it has to be seen, not discovered. Centred, and
+            Centred over the lead photo, above the "Show all photos" row. */}
+        {video && (
+          <button
+            type="button"
+            onClick={showVideo}
+            aria-label="Play walkthrough video"
+            className="absolute inset-x-0 top-0 flex h-[300px] items-center justify-center"
+          >
+            <span className="grid h-16 w-16 place-items-center rounded-full bg-black/55 text-white shadow-lg ring-1 ring-white/25 backdrop-blur-sm transition hover:scale-105 hover:bg-black/75">
+              <Play size={26} fill="currentColor" />
+            </span>
+          </button>
+        )}
+
         {/* Bottom-left so it never collides with "Show all photos". */}
         {video && (
           <button
             type="button"
-            onClick={show}
+            onClick={showVideo}
             className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-lg border border-line bg-white/95 px-3 py-1.5 text-sm font-medium text-ink shadow-sm transition hover:bg-white"
           >
             <Play size={14} /> Watch video
@@ -83,10 +108,24 @@ export function Gallery({
             </button>
           </div>
           <div className="mx-auto max-w-3xl space-y-3 px-4 pb-12" onClick={(e) => e.stopPropagation()}>
-            {/* Cover first, then the video (high up — it's the most convincing
-                thing here), then the rest of the photos. */}
+            {/* Opened from a play button → the video leads and AUTOPLAYS, because
+                that is precisely what was asked for. Opened from a photo → the
+                cover leads and the video sits second, still high up. Muted so
+                autoplay is actually permitted by browsers; the controls are there
+                to unmute. */}
+            {video && videoFirst && (
+              <video
+                controls
+                autoPlay
+                muted
+                playsInline
+                poster={thumb(photos[0], 1200, 80)}
+                src={video}
+                className="w-full rounded-xl bg-black"
+              />
+            )}
             <img src={thumb(photos[0], 1400, 82)} alt="" loading="eager" decoding="async" className="w-full rounded-xl" />
-            {video && (
+            {video && !videoFirst && (
               <video
                 controls
                 preload="metadata"
