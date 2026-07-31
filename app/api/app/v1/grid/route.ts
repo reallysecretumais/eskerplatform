@@ -45,13 +45,15 @@ const SMALL_TILE = { w: 340, h: 450, q: 62 };
 const BAND = { w: 640, h: 415, q: 60 };
 const MONTAGE_MAX = 5;
 
-function photosFor(listings: PublicListing[], size: "hero" | "sm" = "sm"): string[] {
+function photosFor(listings: PublicListing[], size: "hero" | "sm" = "sm", leadPhoto = 0): string[] {
   const f = size === "hero" ? HERO_TILE : SMALL_TILE;
   const out: string[] = [];
   // One photo per property before a second from any — a montage of one room
-  // photographed five ways is not a montage.
+  // photographed five ways is not a montage. `leadPhoto` shifts only the FIRST
+  // one, for a doorway that had to reuse a property; see spreadLeads.
   for (const l of listings) {
-    const p = l.photos?.[0];
+    const photos = l.photos ?? [];
+    const p = out.length === 0 ? photos[leadPhoto % Math.max(photos.length, 1)] ?? photos[0] : photos[0];
     if (p) out.push(crop(p, f.w, f.h, f.q));
     if (out.length >= MONTAGE_MAX) break;
   }
@@ -74,16 +76,28 @@ function photosFor(listings: PublicListing[], size: "hero" | "sm" = "sm"): strin
  * keeps every one of its own properties — it just starts somewhere else, which
  * also means the montages stay distinct if they ever cycle.
  *
- * If a doorway has nothing unclaimed left it keeps its own first: a true repeat
- * beats an empty tile, and a category with one property in it has no choice.
+ * A NARROW CATEGORY MAY HAVE NO CHOICE. "Sleeps 6+" and "Apartments" overlap,
+ * as do "With a pool" and Exclusive; once the wider doorway has claimed the only
+ * property they share, there is nothing unclaimed left to rotate to. Rather than
+ * repeat the photograph, such a doorway takes a DIFFERENT ROOM in the same
+ * property — every listing carries several. Two cells then lead with the same
+ * home and still look like two places, which is true and also better looking.
+ * The corridor learned this same lesson when 18 tiles had to cover 17 stays.
  */
-function spreadLeads(groups: { listings: PublicListing[] }[]): void {
-  const led = new Set<string>();
+function spreadLeads(groups: { listings: PublicListing[]; leadPhoto?: number }[]): void {
+  const led = new Map<string, number>();
   for (const g of groups) {
     const at = g.listings.findIndex((l) => !led.has(l.id) && l.photos?.length);
     if (at > 0) g.listings = [...g.listings.slice(at), ...g.listings.slice(0, at)];
+
     const lead = g.listings[0];
-    if (lead) led.add(lead.id);
+    if (!lead) continue;
+
+    // How many doorways already lead with this property; that count IS the
+    // photo to take, so the second sighting shows the second room.
+    const taken = led.get(lead.id) ?? 0;
+    g.leadPhoto = taken;
+    led.set(lead.id, taken + 1);
   }
 }
 
@@ -118,10 +132,12 @@ export const GET = guard(async (req: Request) => {
   ];
 
   // A doorway with nothing behind it doesn't render.
-  const live = candidates.filter((t) => t.count > 0);
+  const live: (typeof candidates[number] & { leadPhoto?: number })[] = candidates.filter((t) => t.count > 0);
   // The Exclusive band draws from the same pool, so it takes part in the same
   // spread — it was leading with the identical photograph as "With a pool".
-  const exclusiveGroup = { listings: intentFilter(inv.all, "exclusive") };
+  const exclusiveGroup: { listings: PublicListing[]; leadPhoto?: number } = {
+    listings: intentFilter(inv.all, "exclusive"),
+  };
   spreadLeads([...live, exclusiveGroup]);
 
   const tiles = live
@@ -130,7 +146,7 @@ export const GET = guard(async (req: Request) => {
       label: t.label,
       size: t.size,
       count: t.count,
-      photos: photosFor(t.listings, t.size),
+      photos: photosFor(t.listings, t.size, t.leadPhoto),
       // Only the hero speaks a full sentence (spec §5.2) — every other tile is
       // a name alone, so the app receives no subtitle to be tempted by.
       subtitle:
@@ -154,7 +170,11 @@ export const GET = guard(async (req: Request) => {
           // is the one place a lower quality genuinely cannot be seen.
           photos: exclusiveGroup.listings
             .slice(0, 1)
-            .map((l) => crop(l.photos?.[0] ?? "", BAND.w, BAND.h, BAND.q))
+            .map((l) => {
+              const ph = l.photos ?? [];
+              const pick = ph[(exclusiveGroup.leadPhoto ?? 0) % Math.max(ph.length, 1)] ?? ph[0];
+              return crop(pick ?? "", BAND.w, BAND.h, BAND.q);
+            })
             .filter(Boolean),
         }
       : null;
