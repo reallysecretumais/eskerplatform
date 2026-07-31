@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { bustListings } from "@/lib/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyId } from "@/lib/ai/idcheck";
@@ -289,7 +290,7 @@ export async function updateListing(_prev: ActionResult | null, formData: FormDa
 
   revalidatePath("/host/listings");
   revalidatePath(`/host/listings/${listingId}`);
-  revalidatePath(`/stays/${listingId}`);
+  bustListings(); // listing pages are slugged — bust the data tag, not a path
   return { ok: true, message: "Changes saved — they're live." };
 }
 
@@ -381,7 +382,7 @@ export async function uploadListingPhoto(_prev: ActionResult | null, formData: F
   if (error) return { ok: false, message: "Couldn't save the photo. Please try again." };
 
   revalidatePath(`/host/listings/${listingId}`);
-  revalidatePath(`/stays/${listingId}`);
+  bustListings(); // listing pages are slugged — bust the data tag, not a path
   return { ok: true, message: "Photo added." };
 }
 
@@ -408,7 +409,7 @@ export async function removeListingPhoto(listingId: string, url: string): Promis
   }
 
   revalidatePath(`/host/listings/${listingId}`);
-  revalidatePath(`/stays/${listingId}`);
+  bustListings(); // listing pages are slugged — bust the data tag, not a path
   return { ok: true, message: "Photo removed." };
 }
 
@@ -425,7 +426,7 @@ export async function setListingCover(listingId: string, url: string): Promise<A
   await admin.from("properties").update({ photos: [url, ...photos.filter((p) => p !== url)] }).eq("id", listingId);
 
   revalidatePath(`/host/listings/${listingId}`);
-  revalidatePath(`/stays/${listingId}`);
+  bustListings(); // listing pages are slugged — bust the data tag, not a path
   return { ok: true, message: "Cover photo set." };
 }
 
@@ -446,7 +447,7 @@ export async function reorderListingPhotos(listingId: string, ordered: string[])
 
   await admin.from("properties").update({ photos: ordered }).eq("id", listingId);
   revalidatePath(`/host/listings/${listingId}`);
-  revalidatePath(`/stays/${listingId}`);
+  bustListings(); // listing pages are slugged — bust the data tag, not a path
   return { ok: true, message: "Order saved." };
 }
 
@@ -519,7 +520,7 @@ export async function confirmListingVideo(listingId: string, path: string): Prom
   await sweepListingVideo(admin, prefix, path);
 
   revalidatePath(`/host/listings/${listingId}`);
-  revalidatePath(`/stays/${listingId}`);
+  bustListings(); // listing pages are slugged — bust the data tag, not a path
   return { ok: true, message: "Video added." };
 }
 
@@ -537,7 +538,7 @@ export async function removeListingVideo(listingId: string): Promise<ActionResul
   await sweepListingVideo(admin, listingVideoPrefix(listingId));
 
   revalidatePath(`/host/listings/${listingId}`);
-  revalidatePath(`/stays/${listingId}`);
+  bustListings(); // listing pages are slugged — bust the data tag, not a path
   return { ok: true, message: "Video removed." };
 }
 
@@ -573,7 +574,7 @@ export async function saveGuestInfo(_prev: ActionResult | null, formData: FormDa
   if (e1 || e2) return { ok: false, message: "Could not save guest info. Please try again." };
 
   revalidatePath(`/host/listings/${listingId}`);
-  revalidatePath(`/stays/${listingId}`);
+  bustListings(); // listing pages are slugged — bust the data tag, not a path
   return { ok: true, message: "Guest info saved." };
 }
 
@@ -757,7 +758,7 @@ export async function replyToReview(reviewId: string, text: string): Promise<Act
   if (error) return { ok: false, message: "Could not save your reply. Please try again." };
 
   revalidatePath("/host/reviews");
-  revalidatePath(`/stays/${rev.property_id}`);
+  bustListings(); // listing pages are slugged — bust the data tag, not a path
   return { ok: true, message: reply ? "Reply posted." : "Reply removed." };
 }
 

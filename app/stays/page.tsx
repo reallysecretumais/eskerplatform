@@ -9,6 +9,8 @@ import { getAccount } from "@/lib/auth";
 import { getWebsiteAi } from "@/lib/settings";
 import { normalizeCategory } from "@/lib/listings";
 import { activeMarkets, citiesText, liveCities } from "@/lib/geo";
+import { landingPages } from "@/lib/landings";
+import { stayPath } from "@/lib/slug";
 import { brand } from "@/lib/brand";
 
 type SP = { q?: string; area?: string; category?: string; amenity?: string; tier?: string; market?: string };
@@ -102,6 +104,12 @@ export default async function StaysPage({ searchParams }: { searchParams: Promis
     byCity.set(key, arr);
   }
   const cityGroups = Array.from(byCity.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+
+  // area|city → landing slug, for the pills below.
+  const areaLanding = new Map<string, string>();
+  for (const p of landingPages(all)) {
+    if (p.kind === "area" && p.area && p.city) areaLanding.set(`${p.area}|${p.city}`, p.slug);
+  }
   const categories = Array.from(new Set(scoped.map((l) => l.category).filter(Boolean))) as string[];
   const noFilter = !sp.category && !sp.area && !sp.tier;
   const heading =
@@ -146,9 +154,21 @@ export default async function StaysPage({ searchParams }: { searchParams: Promis
           <div key={city || "unknown"} className="mt-4">
             {city && <div className="mb-2 text-[11px] uppercase tracking-[0.18em] text-dim">{city}</div>}
             <div className="flex flex-wrap gap-2">
-              {areas.map((a) => (
-                <Pill key={a} label={a} href={withMarket({ market: selectedMarket?.slug, area: a })} active={(sp.area ?? "").toLowerCase() === a.toLowerCase()} />
-              ))}
+              {areas.map((a) => {
+                // Where a real landing page exists for this area, the pill links
+                // there instead of to a ?area= filter: the landing page is the
+                // indexable, linkable version of the same result set, and this
+                // is how Google reaches it. Falls back to the filter otherwise.
+                const lp = areaLanding.get(`${a}|${city}`);
+                return (
+                  <Pill
+                    key={a}
+                    label={a}
+                    href={lp ? `/${lp}` : withMarket({ market: selectedMarket?.slug, area: a })}
+                    active={(sp.area ?? "").toLowerCase() === a.toLowerCase()}
+                  />
+                );
+              })}
             </div>
           </div>
         ))}
@@ -208,7 +228,7 @@ function StaysGrid({ listings }: { listings: Awaited<ReturnType<typeof getListin
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
       {listings.map((l) => (
-        <StayCard key={l.id} title={l.title} category={l.category ?? "Stay"} area={l.area ?? ""} city={l.city} price={l.price} priceUnit={l.price_unit} exclusive={l.esker_exclusive} photo={l.photos?.[0] ?? undefined} href={`/stays/${l.id}`} />
+        <StayCard key={l.id} title={l.title} category={l.category ?? "Stay"} area={l.area ?? ""} city={l.city} price={l.price} priceUnit={l.price_unit} exclusive={l.esker_exclusive} photo={l.photos?.[0] ?? undefined} href={stayPath(l)} />
       ))}
     </div>
   );

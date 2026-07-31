@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { unitForCategory } from "@/lib/listings";
 import type { MarketRow } from "@/lib/geo";
+import { parseStayKey, matchesKey } from "@/lib/slug";
 
 // Cookieless anon client for cacheable public reads (no per-request cookies, so
 // the result can be cached + shared). Public listing data is the same for
@@ -207,6 +208,20 @@ const cachedListing = unstable_cache(
 
 export async function getListing(id: string): Promise<PublicListing | null> {
   return cachedListing(id);
+}
+
+/**
+ * Resolve a `/stays/[id]` route param, which is either a legacy bare uuid or a
+ * slug ending in the listing's 8-char key (see lib/slug.ts). The key branch
+ * matches in memory over the already-cached list, so it costs no extra query.
+ * Returns null for a param that can't be parsed OR a listing that isn't public.
+ */
+export async function findListingByParam(param: string): Promise<PublicListing | null> {
+  const parsed = parseStayKey(param);
+  if (!parsed) return null;
+  if (parsed.kind === "uuid") return getListing(parsed.id);
+  const all = await getListings();
+  return all.find((l) => matchesKey(l.id, parsed.key)) ?? null;
 }
 
 export type BusyRange = { start_date: string; end_date: string };

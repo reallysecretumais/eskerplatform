@@ -11,10 +11,14 @@ import { thumb } from "@/lib/img";
 export function Gallery({
   photos,
   title,
+  where,
   video,
 }: {
   photos: string[];
   title: string;
+  /** "Bahria Phase 7, Rawalpindi" — folded into the alt text so each photo
+   *  describes a real place for screen readers and image search. */
+  where?: string | null;
   /** Optional walkthrough video. Never mixed into `photos` — thumb() is the
    *  IMAGE transform CDN and errors on a video URL. */
   video?: string | null;
@@ -33,6 +37,12 @@ export function Gallery({
 
   const grid = photos.length >= 5;
 
+  // Alt text that describes the actual place. The lead photo carries the plain
+  // name (it IS the page's subject); the rest are numbered so they're
+  // distinguishable without inventing what each room is.
+  const place = [title, where].filter(Boolean).join(" — ");
+  const alt = (i: number) => (i === 0 ? place : `${place}, photo ${i + 1}`);
+
   return (
     <>
       <div className="relative overflow-hidden rounded-2xl">
@@ -43,17 +53,17 @@ export function Gallery({
           // rest — most never did. Desktop keeps the 4-col side-by-side layout.
           <div className="grid h-[520px] grid-cols-2 grid-rows-[2.2fr_1fr_1fr] gap-2 sm:h-[460px] sm:grid-cols-4 sm:grid-rows-2">
             <button type="button" onClick={show} className="col-span-2 row-span-1 overflow-hidden sm:row-span-2">
-              <img src={thumb(photos[0], 1200, 80)} alt={title} className="h-full w-full object-cover transition hover:opacity-95" />
+              <img src={thumb(photos[0], 1200, 80)} alt={alt(0)} fetchPriority="high" decoding="async" className="h-full w-full object-cover transition hover:opacity-95" />
             </button>
             {photos.slice(1, 5).map((p, i) => (
               <button key={i} type="button" onClick={show} className="overflow-hidden">
-                <img src={thumb(p, 640, 72)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition hover:opacity-95" />
+                <img src={thumb(p, 640, 72)} alt={alt(i + 1)} loading="lazy" decoding="async" className="h-full w-full object-cover transition hover:opacity-95" />
               </button>
             ))}
           </div>
         ) : (
           <button type="button" onClick={show} className="block h-[340px] w-full overflow-hidden sm:h-[460px]">
-            <img src={thumb(photos[0], 1400, 80)} alt={title} className="h-full w-full object-cover" />
+            <img src={thumb(photos[0], 1400, 80)} alt={alt(0)} fetchPriority="high" decoding="async" className="h-full w-full object-cover" />
           </button>
         )}
 
@@ -108,7 +118,7 @@ export function Gallery({
                 className="w-full rounded-xl bg-black"
               />
             )}
-            <img src={thumb(photos[0], 1400, 82)} alt="" loading="eager" decoding="async" className="w-full rounded-xl" />
+            <img src={thumb(photos[0], 1400, 82)} alt={alt(0)} loading="eager" decoding="async" className="w-full rounded-xl" />
             {video && !videoFirst && (
               <video
                 controls
@@ -120,7 +130,7 @@ export function Gallery({
               />
             )}
             {photos.slice(1).map((p, i) => (
-              <img key={i} src={thumb(p, 1400, 82)} alt="" loading={i < 1 ? "eager" : "lazy"} decoding="async" className="w-full rounded-xl" />
+              <img key={i} src={thumb(p, 1400, 82)} alt={alt(i)} loading={i < 1 ? "eager" : "lazy"} decoding="async" className="w-full rounded-xl" />
             ))}
           </div>
         </div>

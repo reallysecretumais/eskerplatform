@@ -1,5 +1,7 @@
 "use client";
 
+import { stayPath } from "@/lib/slug";
+
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { X, Volume2, VolumeX, Send, Keyboard } from "lucide-react";
@@ -509,7 +511,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: SlimListing[];
               return (
                 <Link
                   key={l.id}
-                  href={`/stays/${l.id}`}
+                  href={stayPath(l)}
                   onClick={end}
                   style={{ animationDelay: `${i * 90}ms` }}
                   className="card-float group w-36 shrink-0 overflow-hidden rounded-2xl border border-white/15 bg-white/[0.08] shadow-[0_16px_36px_-12px_rgba(0,0,0,0.6)] transition hover:border-gold/50 hover:bg-white/15 sm:w-44"

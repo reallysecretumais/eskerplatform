@@ -19,6 +19,20 @@ export function thumb(url: string, size = 460, quality = 66): string {
 }
 
 /**
+ * Social-share (Open Graph) crop — the ONE case where cropping is right: a
+ * share card is a fixed 1200×630 frame, so a centred cover crop beats a
+ * letterboxed or mismatched image. Both edges are bounded, so this can't hit
+ * the width-only sliver trap described above.
+ */
+export function ogCrop(url: string, quality = 75): string {
+  if (!url || !url.includes("/object/public/")) return url;
+  return (
+    url.replace("/object/public/", "/render/image/public/") +
+    `?width=1200&height=630&quality=${quality}&resize=cover`
+  );
+}
+
+/**
  * The same endpoint, cropped to an EXACT frame rather than fitted inside a box.
  *
  * `thumb()` is right when the whole photograph has to survive. It is wrong when

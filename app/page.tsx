@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { stayPath } from "@/lib/slug";
 import { Sparkles, ShieldCheck, Star, Clock, Wallet, Headphones, ArrowRight, ChevronDown, MessageCircle } from "lucide-react";
 import { brand } from "@/lib/brand";
 import { SiteNav } from "@/components/SiteNav";
@@ -241,7 +242,7 @@ function StayGrid({ listings }: { listings: PublicListing[] }) {
           priceUnit={l.price_unit}
           exclusive={l.esker_exclusive}
           photo={l.photos?.[0] ?? undefined}
-          href={`/stays/${l.id}`}
+          href={stayPath(l)}
         />
       ))}
     </div>

@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { bustListings } from "@/lib/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cancellationQuote } from "@/lib/payments";
@@ -395,6 +396,6 @@ export async function submitReview(input: ReviewInput): Promise<ActionResult> {
   if (res.error) return { ok: false, message: "Could not save your review. Please try again." };
 
   revalidatePath(`/account/bookings/${b.id}`);
-  revalidatePath(`/stays/${b.property_id}`);
+  bustListings(); // listing pages are slugged — bust the data tag, not a path
   return { ok: true, message: existing?.id ? "Your review is updated." : "Thanks — your review is live!" };
 }

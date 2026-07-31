@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { ArrowLeft, MapPin, Users, BedDouble, ShieldCheck } from "lucide-react";
+import { notFound, redirect, permanentRedirect } from "next/navigation";
+import { ArrowLeft, ArrowRight, MapPin, Users, BedDouble, ShieldCheck } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
+import { StayCard } from "@/components/StayCard";
+import { areaLandingFor } from "@/lib/landings";
 import { JsonLd } from "@/components/JsonLd";
-import { listingLd, breadcrumbLd, listingOgImage } from "@/lib/seo";
+import { listingLd, breadcrumbLd, listingOgImage, listingSummary } from "@/lib/seo";
+import { stayPath, parseStayKey } from "@/lib/slug";
 import { Gallery } from "@/components/Gallery";
 import { BookingWidget } from "@/components/BookingWidget";
 import { AmenityList } from "@/components/AmenityList";
@@ -15,7 +18,7 @@ import { LocationSection } from "@/components/LocationSection";
 import { Reviews } from "@/components/Reviews";
 import { TrackEvent } from "@/components/TrackEvent";
 import { TrackListingView } from "@/components/TrackListingView";
-import { getListing, getListings, getAvailability, slimListings, getListingHost } from "@/lib/data/listings";
+import { findListingByParam, getListings, getAvailability, slimListings, getListingHost } from "@/lib/data/listings";
 import { getExternalBookability } from "@/lib/data/externalBooking";
 import { getWebsiteAi } from "@/lib/settings";
 import { HostCard } from "@/components/HostCard";
@@ -26,17 +29,17 @@ import { brand } from "@/lib/brand";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const listing = await getListing(id);
+  const listing = await findListingByParam(id);
   if (!listing) return { title: "Stay not found" };
   // The listing's REAL geography (area, city) — never a hardcoded launch city,
   // or a Murree stay would be titled "…, Islamabad".
   const where = [listing.area, listing.city].filter(Boolean).join(", ") || "Pakistan";
   const title = `${listing.title} — ${listing.area ?? listing.city ?? brand.name}`;
-  const description =
-    (listing.description?.trim().slice(0, 200)) ||
-    `${listing.category ?? "Premium stay"} in ${where}. ${listing.esker_exclusive ? `${brand.exclusiveTier} — professionally managed. ` : ""}Book with ${brand.name}.`;
+  const description = (listing.description?.trim().slice(0, 200)) || listingSummary(listing);
   const img = listingOgImage(listing);
-  const url = `/stays/${id}`;
+  // Always the slug path, never the requested one — a uuid link and a stale
+  // slug must both point Google at the one canonical URL.
+  const url = stayPath(listing);
   return {
     title,
     description,
@@ -47,10 +50,24 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 }
 
 export default async function StayPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const listing = await getListing(id);
-  if (!listing) notFound();
+  const { id: param } = await params;
+  const listing = await findListingByParam(param);
 
+  // A key we can read but no longer have a public listing for is almost always
+  // a real listing that was unpublished or delisted — those URLs are shared on
+  // WhatsApp and linked from ads, so send them somewhere useful instead of
+  // dead-ending. A param we can't even parse is genuine junk: a true 404.
+  if (!listing) {
+    if (parseStayKey(param)) redirect("/stays");
+    notFound();
+  }
+
+  // One canonical URL per listing. A legacy uuid link, or a slug left over from
+  // an older title, permanently redirects to the current spelling.
+  const canonical = stayPath(listing);
+  if (`/stays/${param}` !== canonical) permanentRedirect(canonical);
+
+  const id = listing.id;
   const busy = await getAvailability(id);
   const all = await getListings();
   const account = await getAccount();
@@ -66,9 +83,27 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
   const conciergeOn = (await getWebsiteAi()).concierge.enabled;
   const { amount, unit } = formatPrice(listing.price, listing.price_unit);
 
+  // Related stays: same area first (the most useful comparison a guest can
+  // make), then same category, closest in price. Pure over the cached list.
+  const others = all.filter((l) => l.id !== id);
+  const sameArea = others.filter((l) => l.area && l.area === listing.area);
+  const sameCategory = others.filter((l) => !sameArea.includes(l) && l.category === listing.category);
+  const byPrice = (a: typeof listing, b: typeof listing) =>
+    Math.abs(a.price - listing.price) - Math.abs(b.price - listing.price);
+  const related = [...sameArea.sort(byPrice), ...sameCategory.sort(byPrice)].slice(0, 3);
+  const areaPage = areaLandingFor(listing, all);
+
+  // Breadcrumb: Home › Stays › [area page, when one exists] › this listing.
+  const breadcrumbTrail = [
+    { name: "Home", path: "/" },
+    { name: "Stays", path: "/stays" },
+    ...(areaPage ? [{ name: areaPage.heading, path: `/${areaPage.slug}` }] : []),
+    { name: listing.title, path: canonical },
+  ];
+
   return (
     <main className="min-h-full pb-28 lg:pb-16">
-      <JsonLd data={[listingLd(listing, summary), breadcrumbLd([{ name: "Home", path: "/" }, { name: "Stays", path: "/stays" }, { name: listing.title, path: `/stays/${id}` }])]} />
+      <JsonLd data={[listingLd(listing, summary), breadcrumbLd(breadcrumbTrail)]} />
       <TrackEvent event="ViewContent" params={{ content_ids: [id], content_type: "product", value: listing.price, currency: "PKR" }} />
       {/* Esker-run only: listing_views.property_id references `properties`, so a
           beacon for an EXTERNAL (resale) id would fail the FK. Those view counts
@@ -103,7 +138,12 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
 
         {/* Gallery */}
         <div className="mt-5">
-          <Gallery photos={listing.photos ?? []} title={listing.title} video={listing.video_url} />
+          <Gallery
+            photos={listing.photos ?? []}
+            title={listing.title}
+            where={[listing.area, listing.city].filter(Boolean).join(", ")}
+            video={listing.video_url}
+          />
         </div>
 
         {/* Ask about this place — contextual concierge (slim props — the AI
@@ -172,6 +212,40 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
 
             {/* Reviews (curated now; post-stay later) */}
             <Reviews reviews={reviews} summary={summary} exclusive={listing.esker_exclusive} />
+
+            {/* Related stays — the internal-linking layer. Every listing now
+                links out to comparable ones and up to its area page, so no
+                listing is a dead end for a guest OR a crawler. */}
+            {related.length > 0 && (
+              <section>
+                <div className="mb-3 flex items-baseline justify-between">
+                  <h2 className="font-display text-lg font-semibold tracking-tight text-ink">
+                    {listing.area ? `More stays in ${listing.area}` : "More stays"}
+                  </h2>
+                  {areaPage && (
+                    <Link href={`/${areaPage.slug}`} className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink">
+                      See all <ArrowRight size={14} />
+                    </Link>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                  {related.map((r) => (
+                    <StayCard
+                      key={r.id}
+                      title={r.title}
+                      category={r.category ?? "Stay"}
+                      area={r.area ?? ""}
+                      city={r.city}
+                      price={r.price}
+                      priceUnit={r.price_unit}
+                      exclusive={r.esker_exclusive}
+                      photo={r.photos?.[0] ?? undefined}
+                      href={stayPath(r)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
 
           {/* Booking widget */}

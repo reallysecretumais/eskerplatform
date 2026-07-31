@@ -1,5 +1,7 @@
 "use client";
 
+import { stayPath } from "@/lib/slug";
+
 import { useState, type FormEvent } from "react";
 import { Sparkles } from "lucide-react";
 import type { SlimListing } from "@/lib/data/listings";
@@ -94,7 +96,7 @@ export function PropertyConcierge({ property, listings }: { property: SlimListin
               {t.matches.length > 0 && (
                 <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {t.matches.map((l) => (
-                    <StayCard key={l.id} title={l.title} category={l.category ?? "Stay"} area={l.area ?? ""} city={l.city} price={l.price} priceUnit={l.price_unit} exclusive={l.esker_exclusive} photo={l.photo ?? undefined} href={`/stays/${l.id}`} />
+                    <StayCard key={l.id} title={l.title} category={l.category ?? "Stay"} area={l.area ?? ""} city={l.city} price={l.price} priceUnit={l.price_unit} exclusive={l.esker_exclusive} photo={l.photo ?? undefined} href={stayPath(l)} />
                   ))}
                 </div>
               )}

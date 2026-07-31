@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { revalidateTag } from "next/cache";
+import { bustListings } from "@/lib/cache";
 
 export const runtime = "nodejs";
 
@@ -12,9 +12,6 @@ export async function POST(req: NextRequest) {
   if (!process.env.REVALIDATE_SECRET || secret !== process.env.REVALIDATE_SECRET) {
     return new Response("Unauthorized", { status: 401 });
   }
-  // Legacy 1-arg tag bust (busts the unstable_cache "listings" entries). Next 16's
-  // type adds a 2nd cache-life arg for the new model; the runtime still accepts a
-  // lone tag, and the 10-min TTL is the backstop either way.
-  (revalidateTag as unknown as (tag: string) => void)("listings");
+  bustListings();
   return Response.json({ revalidated: true, at: new Date().toISOString() });
 }
