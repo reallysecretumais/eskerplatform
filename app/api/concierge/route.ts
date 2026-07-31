@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
-import { getListings, getBusyByProperty } from "@/lib/data/listings";
-import { catalog, CONCIERGE_SYSTEM, VOICE_SYSTEM, MODEL, todayPK } from "@/lib/ai/concierge";
+import { getListings, getMarkets, getBusyByProperty } from "@/lib/data/listings";
+import { catalog, conciergeSystem, voiceSystem, MODEL, todayPK } from "@/lib/ai/concierge";
+import { describeMarkets } from "@/lib/geo";
 import { getAiSurface, type AiSurface } from "@/lib/settings";
 
 export const runtime = "nodejs";
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
   }
 
   const apiKey = process.env.OPENAI_API_KEY;
-  const [listings, busy] = await Promise.all([getListings(), getBusyByProperty()]);
+  const [listings, busy, markets] = await Promise.all([getListings(), getBusyByProperty(), getMarkets()]);
 
   if (!apiKey) {
     return new Response("The concierge isn't configured yet.\nSTAYS:", {
@@ -54,7 +55,9 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const base = voice ? VOICE_SYSTEM : CONCIERGE_SYSTEM;
+  // Live market geography → the prompt learns a new market with its first listing.
+  const marketsLine = describeMarkets(listings, markets);
+  const base = voice ? voiceSystem(marketsLine) : conciergeSystem(marketsLine);
   // The founder's prompt is LAYERED ON TOP — house rules, the retrieval-only
   // contract and the STAYS: output format above it always win.
   const system =

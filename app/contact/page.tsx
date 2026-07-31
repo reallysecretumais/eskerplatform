@@ -3,6 +3,8 @@ import { Phone, Mail, MessageCircle, MapPin, Clock } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { EskerLogo } from "@/components/EskerLogo";
 import { getAccount } from "@/lib/auth";
+import { getListings, getMarkets } from "@/lib/data/listings";
+import { citiesText, liveCities } from "@/lib/geo";
 import { brand } from "@/lib/brand";
 import { company } from "@/lib/contact";
 import { support } from "@/lib/payments";
@@ -17,6 +19,11 @@ export const metadata = {
 // number that payment gateways require to be visible on the site.
 export default async function ContactPage() {
   const account = await getAccount();
+
+  // Live operating cities (launch-cities fallback) — updates itself when a new
+  // market's first listing publishes.
+  const operatingCities =
+    citiesText(liveCities(await getListings(), await getMarkets())) || brand.launchCities.join(" and ");
 
   // Pretty-printed for display; the tel: link uses the raw E.164 value.
   const phoneDisplay = "+92 332 5977626";
@@ -116,7 +123,7 @@ export default async function ContactPage() {
           </h2>
           <p className="mt-2 text-[15px] leading-relaxed text-muted">
             We manage premium short-stay properties across{" "}
-            <strong className="text-ink">{brand.launchCities.join(" and ")}</strong>, with{" "}
+            <strong className="text-ink">{operatingCities}</strong>, with{" "}
             {brand.expansionNote}.{" "}
             <Link href="/stays" className="text-gold-deep underline hover:no-underline">
               Browse all stays

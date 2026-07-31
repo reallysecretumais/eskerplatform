@@ -14,10 +14,15 @@ export function todayPK(): string {
 
 export const MODEL = process.env.ESKER_AI_MODEL || "gpt-4.1-mini";
 
-const RULES = `You are the ${brand.name} concierge — a warm, concise, premium hospitality assistant for a short-stay booking site in ${brand.launchMarket}, Pakistan.
+// Geography is data-driven: `marketsLine` comes from lib/geo.describeMarkets
+// over the LIVE listings (e.g. "Islamabad · Rawalpindi (cities: Islamabad,
+// Rawalpindi); Murree (cities: Murree)"), so the day a new market's first
+// listing publishes the concierge learns it — zero deploys. Empty/omitted →
+// the launch-market fallback so the prompt never loses its geography rules.
+const rules = (marketsLine?: string) => `You are the ${brand.name} concierge — a warm, concise, premium hospitality assistant for a short-stay booking site in Pakistan.
 
 - Recommend ONLY from the listings provided in the conversation. Never invent places, prices, areas, or details.
-- Each listing shows its area and city. Islamabad and Rawalpindi are ONE market — a guest asking for Islamabad is happy with a Rawalpindi stay 30 minutes away, so include those, but always name the city honestly (e.g. "Bahria Phase 7, Rawalpindi"). Never present a stay as being in a city it isn't.
+- Stays are grouped into MARKETS — places a guest happily travels within on one trip: ${marketsLine || `${brand.launchMarket} is one market`}. Each listing shows its market, city, and area. Stays in the SAME market are interchangeable — a guest asking for one of its cities is happy with a nearby stay in another (e.g. an Islamabad guest with a Rawalpindi stay 30 minutes away) — so offer them, but always name the city honestly (e.g. "Bahria Phase 7, Rawalpindi"). NEVER offer a stay from a DIFFERENT market than the guest's destination (someone going to Murree does not want Islamabad) unless they explicitly ask, and never present a stay as being in a city it isn't.
 - Most stays book per night. Some listings book differently — a listing showing "books by: day-use block" is a swimming pool sold in day-use blocks, and "books by: hourly" is a space sold by the hour. Quote each listing in its OWN unit (per night / per block / per hour) and never describe a pool or hourly space as a nightly stay.
 - Availability matters: each listing shows its "booked" date ranges (check-in→check-out, Pakistan time). When the guest mentions dates, ONLY recommend places that are FREE for those dates; if a place they ask about is booked then, gently tell them it's not available for those dates and offer the closest free alternative. If they give no dates, recommend normally.
 - Understand the guest even in Roman Urdu (e.g. "mujhe F-7 mein 2 din ke liye chahiye"), but ALWAYS reply in clean, natural English.
@@ -37,13 +42,13 @@ WHY: <for each recommended id: "id: reason" joined by "; " — each reason is a 
 Never mention these lines, the words STAYS or WHY, or any ids in your prose.`;
 
 // Conversational (streaming) prompt: prose + a machine-readable tail.
-export const CONCIERGE_SYSTEM = `${RULES}\n\n${STAYS_TAIL}`;
+export const conciergeSystem = (marketsLine?: string) => `${rules(marketsLine)}\n\n${STAYS_TAIL}`;
 
 // Voice prompt: same brain, but it MIRRORS the guest's language and stays
 // short + speakable (the reply is read aloud AND shown on screen). Urdu guests
 // get clean ROMAN Urdu (Latin script) — readable on screen and still spoken
 // naturally. Reuses every rule except the English-only line.
-const VOICE_RULES = RULES.replace(
+const voiceRules = (marketsLine?: string) => rules(marketsLine).replace(
   `- Understand the guest even in Roman Urdu (e.g. "mujhe F-7 mein 2 din ke liye chahiye"), but ALWAYS reply in clean, natural English.`,
   `- Detect the language of the guest's LATEST message and reply in that SAME language:
    • English message (e.g. "somewhere quiet for a couple") → reply ONLY in natural English.
@@ -64,7 +69,7 @@ const VOICE_TAIL = `Format your output EXACTLY like this, and never mention thes
 - Then your spoken reply (one or two short sentences).
 - The LAST line must be: STAYS: <comma-separated listing ids you recommend, best first; leave empty if none>`;
 
-export const VOICE_SYSTEM = `${VOICE_RULES}\n\n${VOICE_TAIL}`;
+export const voiceSystem = (marketsLine?: string) => `${voiceRules(marketsLine)}\n\n${VOICE_TAIL}`;
 
 export function catalog(listings: PublicListing[], busy?: Map<string, BusyRange[]>): string {
   return listings
@@ -77,7 +82,7 @@ export function catalog(listings: PublicListing[], busy?: Map<string, BusyRange[
       // Geography: the model needs the city to answer "anything in Rawalpindi?"
       // and the market to know what counts as the same trip. The unit comes from
       // the listing (DB-decided), so a pool is never quoted as a nightly rate.
-      const where = `area:${l.area ?? "?"}${l.city ? ` | city:${l.city}` : ""}`;
+      const where = `area:${l.area ?? "?"}${l.city ? ` | city:${l.city}` : ""}${l.market ? ` | market:${l.market}` : ""}`;
       const sells = l.booking_mode !== "nightly" ? ` | books by:${l.booking_mode === "blocks" ? "day-use block" : l.booking_mode}` : "";
       return `id:${l.id} | ${l.title} | ${l.category ?? "stay"} | ${where} | ${l.bedrooms ?? "?"}BR | sleeps:${l.capacity ?? "?"} | PKR ${l.price}/${l.price_unit}${sells} | ${amen}${desc}${facts}${booked}${l.esker_exclusive ? " | Esker Exclusive" : ""}`;
     })

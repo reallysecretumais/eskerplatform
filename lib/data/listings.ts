@@ -4,6 +4,7 @@ import { createClient as createAnonClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { unitForCategory } from "@/lib/listings";
+import type { MarketRow } from "@/lib/geo";
 
 // Cookieless anon client for cacheable public reads (no per-request cookies, so
 // the result can be cached + shared). Public listing data is the same for
@@ -163,6 +164,31 @@ const cachedListings = unstable_cache(
 
 export async function getListings(): Promise<PublicListing[]> {
   return cachedListings();
+}
+
+// Markets (market → city → area; see supabase/18_geography.sql). Public
+// catalogue data like listings: cached, shared, busted by the same "listings"
+// tag when the CRM pings /api/revalidate. Pair with lib/geo.ts (activeMarkets,
+// liveCities…) which reduce these to the ones that actually have live listings.
+const cachedMarkets = unstable_cache(
+  async (): Promise<MarketRow[]> => {
+    const { data, error } = await anon()
+      .from("markets")
+      .select("slug,name,sort_order")
+      .eq("active", true)
+      .order("sort_order");
+    if (error) {
+      console.error("[markets] read failed:", error.message);
+      return [];
+    }
+    return (data ?? []) as MarketRow[];
+  },
+  ["public-markets"],
+  { tags: ["listings"], revalidate: 600 },
+);
+
+export async function getMarkets(): Promise<MarketRow[]> {
+  return cachedMarkets();
 }
 
 /** A single public listing by id, or null if it isn't public / doesn't exist. */

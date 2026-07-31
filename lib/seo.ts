@@ -1,5 +1,6 @@
 import { brand } from "@/lib/brand";
 import { company } from "@/lib/contact";
+import { citiesText as joinCities } from "@/lib/geo";
 import { support } from "@/lib/payments";
 import { thumb } from "@/lib/img";
 import type { PublicListing } from "@/lib/data/listings";
@@ -10,20 +11,37 @@ export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://eskerrenta
 export const SITE_NAME = brand.name;
 const CITIES = brand.launchCities.join(" & ");
 
-export const DEFAULT_TITLE = `${brand.name} — Premium short stays in ${CITIES}`;
-export const DEFAULT_DESC =
-  `Book premium, professionally managed short-stay apartments, penthouses and villas in ${CITIES}. ` +
-  `${brand.name}'s AI concierge understands English and Roman Urdu — describe your trip and book a verified, ${brand.exclusiveTier} stay in minutes. Local payments: ${brand.payments.join(", ")}.`;
-
-export const KEYWORDS = [
-  `short stay ${brand.launchCities[0]}`,
-  `serviced apartments ${brand.launchCities[0]}`,
-  `daily rental apartments ${CITIES}`,
-  `penthouse for rent ${brand.launchCities[0]}`,
-  `vacation rental ${brand.launchCities[1] ?? ""}`.trim(),
-  `${brand.name}`,
-  `${brand.exclusiveTier}`,
-];
+// Site-wide title/description/keywords, parameterised on the LIVE cities (from
+// lib/geo.liveCities over the live listings) so launching a market updates the
+// SEO with zero deploys. No-arg = the static brand fallback — used only where
+// listing data genuinely can't be loaded, and by the constants below.
+export function defaultTitle(cities?: string[]): string {
+  const where = cities?.length ? joinCities(cities) : CITIES;
+  return `${brand.name} — Premium short stays in ${where}`;
+}
+export function defaultDesc(cities?: string[]): string {
+  const where = cities?.length ? joinCities(cities) : CITIES;
+  return (
+    `Book premium, professionally managed short-stay apartments, penthouses and villas in ${where}. ` +
+    `${brand.name}'s AI concierge understands English and Roman Urdu — describe your trip and book a verified, ${brand.exclusiveTier} stay in minutes. Local payments: ${brand.payments.join(", ")}.`
+  );
+}
+export function keywords(cities?: string[]): string[] {
+  const list = cities?.length ? cities : [...brand.launchCities];
+  return [
+    `short stay ${list[0]}`,
+    `serviced apartments ${list[0]}`,
+    `daily rental apartments ${joinCities(list)}`,
+    `penthouse for rent ${list[0]}`,
+    ...list.slice(1).map((c) => `vacation rental ${c}`),
+    `${brand.name}`,
+    `${brand.exclusiveTier}`,
+  ];
+}
+// Static fallbacks (brand cities) — for surfaces with no data in reach.
+export const DEFAULT_TITLE = defaultTitle();
+export const DEFAULT_DESC = defaultDesc();
+export const KEYWORDS = keywords();
 
 export const absoluteUrl = (p: string) => `${SITE_URL}${p.startsWith("/") ? p : `/${p}`}`;
 
@@ -34,16 +52,17 @@ export function listingOgImage(listing: PublicListing): string {
 }
 
 // ── JSON-LD builders ─────────────────────────────────────────────────────────
-export function organizationLd() {
+export function organizationLd(cities?: string[]) {
+  const served = cities?.length ? cities : [...brand.launchCities];
   return {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
     name: brand.name,
-    description: DEFAULT_DESC,
+    description: defaultDesc(cities),
     url: SITE_URL,
     image: absoluteUrl("/opengraph-image"),
     priceRange: "₨₨",
-    areaServed: brand.launchCities.map((c) => ({ "@type": "City", name: c })),
+    areaServed: served.map((c) => ({ "@type": "City", name: c })),
     // Real registered address + callable number (lib/contact.ts) — machine
     // readable so the business identity is verifiable, not just rendered text.
     address: {
@@ -79,7 +98,11 @@ export function listingLd(listing: PublicListing, rating?: { average: number; co
     "@context": "https://schema.org",
     "@type": "Product",
     name: listing.title,
-    description: listing.description || `${listing.category ?? "Stay"} in ${listing.area ?? brand.launchCities[0]}, ${brand.launchCities[0]}.`,
+    // The listing's REAL geography — never a hardcoded city. A Murree listing
+    // must say "in Mall Road, Murree", not ", Islamabad".
+    description:
+      listing.description ||
+      `${listing.category ?? "Stay"} in ${[listing.area, listing.city].filter(Boolean).join(", ") || "Pakistan"}.`,
     image: (listing.photos ?? []).slice(0, 6).map((p) => thumb(p, 1200, 75)),
     category: listing.category ?? "Short stay",
     brand: { "@type": "Brand", name: brand.name },

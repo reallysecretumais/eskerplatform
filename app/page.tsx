@@ -6,8 +6,9 @@ import { ConciergeSearch } from "@/components/ConciergeSearch";
 import { CategoryShowcase } from "@/components/CategoryShowcase";
 import { StayCard } from "@/components/StayCard";
 import { HeroCollage } from "@/components/HeroCollage";
-import { getListings, pickCollagePhotos, slimListings, type PublicListing } from "@/lib/data/listings";
+import { getListings, getMarkets, pickCollagePhotos, slimListings, type PublicListing } from "@/lib/data/listings";
 import { homeSections, categoryCounts, MORE_SECTION_MAX } from "@/lib/listings";
+import { activeMarkets, byMarket, citiesText, liveCities } from "@/lib/geo";
 import { getAccount } from "@/lib/auth";
 import { getWebsiteAi } from "@/lib/settings";
 import { JsonLd } from "@/components/JsonLd";
@@ -43,11 +44,20 @@ export default async function HomePage() {
   // lib/listings.ts homeSections.
   const sections = homeSections(listings);
   const counts = categoryCounts(listings);
-  const cities = brand.launchCities.join(" & ");
+
+  // Geography is DATA: the cities line and the section layout derive from the
+  // markets that actually have live listings. Publishing the first listing in a
+  // new market (e.g. Murree) re-writes the copy and switches the grid to one
+  // section per market — zero deploys. With one market, nothing changes.
+  const markets = await getMarkets();
+  const liveCityNames = liveCities(listings, markets);
+  const cities = citiesText(liveCityNames) || brand.launchCities.join(" & ");
+  const activeMkts = activeMarkets(listings, markets);
+  const marketGroups = activeMkts.length >= 2 ? byMarket(sections.all, markets) : [];
 
   return (
     <main className="min-h-full">
-      <JsonLd data={[organizationLd(), websiteLd()]} />
+      <JsonLd data={[organizationLd(liveCityNames.length ? liveCityNames : undefined), websiteLd()]} />
       {/* ── Hero: concierge fused with cross-fading real photography ── */}
       <section className="relative isolate flex min-h-[92vh] flex-col overflow-hidden bg-ink text-white">
         {/* Living photo-wall of the property's top photos */}
@@ -82,7 +92,7 @@ export default async function HomePage() {
             </div>
 
             <p className="rise rise-6 mt-5 text-xs text-white/65">
-              Now in {brand.launchCities.join(" & ")} · {brand.expansionNote}
+              Now in {cities} · {brand.expansionNote}
             </p>
           </div>
 
@@ -94,7 +104,28 @@ export default async function HomePage() {
       </section>
 
       {/* ── Our stays — every live listing from the DB ────────────── */}
-      {sections.mode === "unified"
+      {marketGroups.length >= 2 ? (
+        // Multi-market: one section per market, in market order — a guest
+        // planning Murree never wades through Islamabad stays (and vice versa).
+        // Each section's listings keep the same strength sort as the one-grid
+        // layout; the Exclusive badge still marks the tier on every card.
+        marketGroups.map(({ market, listings: mls }, i) => (
+          <section key={market.slug} className={`mx-auto max-w-6xl px-6 pb-12 ${i === 0 ? "pt-16" : ""}`}>
+            <div className="mb-1 flex items-baseline justify-between">
+              <h2 className="font-display text-2xl font-semibold tracking-tight text-ink">Stays in {market.name}</h2>
+              <Link href={`/stays?market=${encodeURIComponent(market.slug)}`} className="flex items-center gap-1 text-sm text-muted hover:text-ink">
+                See all {market.count} <ArrowRight size={15} />
+              </Link>
+            </div>
+            {i === 0 && (
+              <p className="mb-5 text-sm text-muted">
+                <span className="text-gold-deep">{brand.exclusiveTier}</span> marked in gold.
+              </p>
+            )}
+            <StayGrid listings={mls.slice(0, MORE_SECTION_MAX)} />
+          </section>
+        ))
+      ) : sections.mode === "unified"
         ? sections.all.length > 0 && (
             <section className="mx-auto max-w-6xl px-6 pb-12 pt-16">
               <div className="mb-1 flex items-baseline justify-between">

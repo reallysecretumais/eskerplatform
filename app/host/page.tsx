@@ -9,6 +9,8 @@ import { PayoutCard } from "@/components/host/PayoutCard";
 import { ListingStatusBadge } from "@/components/host/ListingStatus";
 import { StatusBadge } from "@/components/account/StatusBadge";
 import { brand } from "@/lib/brand";
+import { getListings, getMarkets } from "@/lib/data/listings";
+import { citiesText, liveCities } from "@/lib/geo";
 import { becomeHost } from "@/app/account/actions";
 
 export const metadata = { title: "Hosting — Esker" };
@@ -18,7 +20,12 @@ const fmt = (d: string | null) => (d ? new Date(`${d}T00:00:00`).toLocaleDateStr
 
 export default async function HostHome() {
   const account = await requireAccount();
-  if (!account.roles.includes("owner")) return <BecomeHost />;
+  if (!account.roles.includes("owner")) {
+    // Live operating cities (launch fallback) — the pitch keeps itself current.
+    const cities =
+      citiesText(liveCities(await getListings(), await getMarkets())) || brand.launchCities.join(" & ");
+    return <BecomeHost cities={cities} />;
+  }
 
   const [stats, idVerified, listings, payout, bio, analytics] = await Promise.all([
     getHostStats(), getHostIdVerified(), getMyListings(), getPayoutDetails(), getHostBio(), getHostAnalytics(),
@@ -172,12 +179,12 @@ function StayRow({ s }: { s: HostStay }) {
   );
 }
 
-function BecomeHost() {
+function BecomeHost({ cities }: { cities: string }) {
   return (
     <div>
       <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Become an Esker host</h1>
       <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-muted">
-        List your place with {brand.short} — free — and reach premium short-stay guests across {brand.launchCities.join(" & ")}.
+        List your place with {brand.short} — free — and reach premium short-stay guests across {cities}.
         Same login you use now; switch between guest and host any time.
       </p>
 

@@ -2,7 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Sora } from "next/font/google";
 import "./globals.css";
 import { brand } from "@/lib/brand";
-import { SITE_URL, SITE_NAME, DEFAULT_TITLE, DEFAULT_DESC, KEYWORDS } from "@/lib/seo";
+import { SITE_URL, SITE_NAME, defaultTitle, defaultDesc, keywords } from "@/lib/seo";
+import { getListings, getMarkets } from "@/lib/data/listings";
+import { liveCities } from "@/lib/geo";
 import { MetaPixel } from "@/components/MetaPixel";
 import { ChatDock } from "@/components/chat/ChatDock";
 import { Suspense } from "react";
@@ -38,35 +40,45 @@ export const viewport: Viewport = {
   themeColor: "#0c0a07", // Esker near-black — matches the hero + PWA chrome
 };
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: {
-    default: DEFAULT_TITLE,
-    template: `%s · ${brand.name}`,
-  },
-  description: DEFAULT_DESC,
-  keywords: KEYWORDS,
-  applicationName: SITE_NAME,
-  alternates: { canonical: "/" },
-  openGraph: {
-    type: "website",
-    siteName: SITE_NAME,
-    locale: "en_PK",
-    url: SITE_URL,
-    title: DEFAULT_TITLE,
-    description: DEFAULT_DESC,
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: DEFAULT_TITLE,
-    description: DEFAULT_DESC,
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
-  },
-};
+// Site-wide metadata derives from the cities that actually have LIVE listings
+// (cached reads — near-free), so launching a market updates every title with
+// zero deploys. Falls back to the static brand copy if the reads ever fail.
+export async function generateMetadata(): Promise<Metadata> {
+  const cities = await getListings()
+    .then(async (listings) => liveCities(listings, await getMarkets()))
+    .catch(() => [] as string[]);
+  const title = defaultTitle(cities.length ? cities : undefined);
+  const description = defaultDesc(cities.length ? cities : undefined);
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: {
+      default: title,
+      template: `%s · ${brand.name}`,
+    },
+    description,
+    keywords: keywords(cities.length ? cities : undefined),
+    applicationName: SITE_NAME,
+    alternates: { canonical: "/" },
+    openGraph: {
+      type: "website",
+      siteName: SITE_NAME,
+      locale: "en_PK",
+      url: SITE_URL,
+      title,
+      description,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
+    },
+  };
+}
 
 export default function RootLayout({
   children,

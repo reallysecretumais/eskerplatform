@@ -1,5 +1,7 @@
 import { ImageResponse } from "next/og";
 import { brand } from "@/lib/brand";
+import { getListings, getMarkets } from "@/lib/data/listings";
+import { liveCities } from "@/lib/geo";
 
 // Branded social-share card for the homepage (and any route without its own
 // OG image). Property pages override this with their real photo.
@@ -7,7 +9,13 @@ export const alt = `${brand.name} — premium short stays in ${brand.launchCitie
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default function OpengraphImage() {
+export default async function OpengraphImage() {
+  // Cities line from the LIVE listings (launch-cities fallback) — the share
+  // card learns a new market with its first published listing.
+  const cities = await getListings()
+    .then(async (listings) => liveCities(listings, await getMarkets()))
+    .catch(() => [] as string[]);
+  const citiesLine = (cities.length ? cities : [...brand.launchCities]).join("  ·  ");
   return new ImageResponse(
     (
       <div
@@ -37,7 +45,7 @@ export default function OpengraphImage() {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "28px", color: "rgba(255,255,255,0.7)" }}>
-          <div style={{ display: "flex" }}>{brand.launchCities.join("  ·  ")}</div>
+          <div style={{ display: "flex" }}>{citiesLine}</div>
           <div style={{ display: "flex" }}>eskerrentals.com</div>
         </div>
       </div>

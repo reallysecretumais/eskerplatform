@@ -28,11 +28,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const listing = await getListing(id);
   if (!listing) return { title: "Stay not found" };
-  const where = listing.area ?? brand.launchCities[0];
-  const title = `${listing.title} — ${where}`;
+  // The listing's REAL geography (area, city) — never a hardcoded launch city,
+  // or a Murree stay would be titled "…, Islamabad".
+  const where = [listing.area, listing.city].filter(Boolean).join(", ") || "Pakistan";
+  const title = `${listing.title} — ${listing.area ?? listing.city ?? brand.name}`;
   const description =
     (listing.description?.trim().slice(0, 200)) ||
-    `${listing.category ?? "Premium stay"} in ${where}, ${brand.launchCities[0]}. ${listing.esker_exclusive ? `${brand.exclusiveTier} — professionally managed. ` : ""}Book with ${brand.name}.`;
+    `${listing.category ?? "Premium stay"} in ${where}. ${listing.esker_exclusive ? `${brand.exclusiveTier} — professionally managed. ` : ""}Book with ${brand.name}.`;
   const img = listingOgImage(listing);
   const url = `/stays/${id}`;
   return {
