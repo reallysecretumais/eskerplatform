@@ -223,6 +223,62 @@ with more than one apartment, and a revocation could land on the wrong one:
 the exact class of silent wrongness this whole system exists to remove. (Row
 ids allow 200 chars; uuid + two dates fits easily.)
 
+### The multi-range message, exactly (final wording + field limits)
+
+The ledger message is the multi-property owner's little dashboard — "everything
+you have live with us" — so it has to read as a benefit, not an audit. Body
+(WhatsApp interactive-list body, 1024-char cap):
+
+```
+JazakAllah for the quick reply, {{name}}.
+
+{{property}} is now marked available for {{dates}} on our website and app.
+Any guest can book those nights on the spot, without us checking with you
+again — which is exactly why they fill fast. The moment someone books, we'll
+message you right away with all the details.
+
+Everything you have live with us right now:
+
+• Apartment 51 — 3–6 Aug
+• Gulberg 2BHK — 9–11 Aug · 14–16 Aug
+
+If any of these nights get booked anywhere else, tap the button below and
+pick the dates — it takes a second, and it makes sure no guest is ever sent
+to a room that's already taken.
+```
+
+Rules carried over from the founder-approved single-range notice: no
+salutation (it replies inside an open thread), the consent line ("without us
+checking with you again") stays verbatim, dates inline, no `Check-in:` block,
+no rates.
+
+Why the bullet summary is IN the body even though the menu repeats it: the
+menu is hidden behind a tap, and an owner should see their whole exposure at a
+glance without opening anything. **Fallback:** if the assembled body would
+exceed 1024 chars, drop the bullets (keep both paragraphs) and add "Open the
+menu below to see and manage every date." — the menu remains complete.
+
+The menu (Cloud API interactive `list`):
+
+| Element | Value | Limit |
+|---|---|---|
+| Opener button | `Mark unavailable` | 20 chars (16 ✓) |
+| Section title | property name; if >24 chars, cut at 23 + `…` | 24 |
+| Row title | the run, e.g. `3 – 6 Aug` | 24 |
+| Row description | `{{n}} nights · tap to remove` | 72 |
+| Row id | `unlist:<propertyId>:<start>:<end>` | 200 (~65 ✓) |
+| Rows total | 10 across all sections | 10 |
+
+Ordering: sections by their soonest night, ascending; rows within a section
+ascending. Overflow past ten runs: a second list message, soonest-first —
+never drop the tail. If two truncated section titles collide (two properties
+sharing a 23-char prefix), disambiguate with a trailing digit rather than
+shipping two identical headings.
+
+The single-button shortcut (`No longer available`) applies only when the owner
+has exactly ONE live run across ALL properties — one thing to remove needs no
+menu. Its body is the founder's original single-range notice, unchanged.
+
 **Revocation needs no new table.** Removing a run inserts an
 `external_availability_checks` row with `status = 'unavailable'` spanning it.
 Because confidence takes the owner's *latest* answer per night, those nights
