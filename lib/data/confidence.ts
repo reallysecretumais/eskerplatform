@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isExternal, type PublicListing } from "@/lib/data/listings";
 
@@ -111,48 +112,77 @@ type Signals = {
   answer: Map<string, { available: boolean; ageMs: number }>;
 };
 
-/**
- * One round trip for both external signals, for every listing at once.
- *
- * Deliberately NOT per-listing: the grid asks about twenty listings on every
- * render, and a per-listing call is how a home screen turns into forty queries.
- */
-async function loadSignals(dateIso: string, leadDays: number): Promise<Signals> {
-  const admin = createAdminClient();
-  const now = Date.now();
-  // Fetch at the widest window, then apply this night's own window below —
-  // one query rather than one per rung.
-  const tapCutoff = new Date(now - MAX_TRUST_HOURS * 3600_000).toISOString();
-  const trustMs = trustHoursFor(leadDays) * 3600_000;
-
-  const [props, checks] = await Promise.all([
-    admin.from("external_properties").select("id, ical_synced_at"),
-    // BOTH answers, not just the yeses. A "no" is a stronger signal than a
-    // "yes" and has to be read, or revocation silently does nothing.
-    admin
-      .from("external_availability_checks")
-      .select("external_property_id, status, responded_at, checkin, checkout")
-      .in("status", ["available", "unavailable"])
-      .gte("responded_at", tapCutoff)
-      .order("responded_at", { ascending: false }),
-  ]);
-
-  const icalFresh = new Map<string, number>();
-  for (const r of (props.data ?? []) as { id: string; ical_synced_at: string | null }[]) {
-    if (!r.ical_synced_at) continue;
-    const age = now - new Date(r.ical_synced_at).getTime();
-    if (Number.isFinite(age) && age >= 0 && age < ICAL_FRESH_HOURS * 3600_000) icalFresh.set(r.id, age);
-  }
-
-  const answer = new Map<string, { available: boolean; ageMs: number }>();
-  type Row = {
+/** Raw signal rows, cacheable: plain JSON, no ages baked in, no date resolved. */
+type SignalRows = {
+  icalSynced: { id: string; at: string }[];
+  checks: {
     external_property_id: string;
     status: string;
     responded_at: string;
     checkin: string | null;
     checkout: string | null;
-  };
-  for (const r of (checks.data ?? []) as Row[]) {
+  }[];
+};
+
+/** Busted by lib/cache.ts bustAvailabilitySignals() — keep the literal in step. */
+
+/**
+ * The two signal queries, cached for a minute and busted the moment an owner
+ * answers.
+ *
+ * Uncached, every surface that calls getInventory — the grid, the greeting,
+ * the corridor, the tonight world — ran both queries per request, so a single
+ * app open paid for the same two queries four times over. The rows are cached
+ * RAW: date-independent (constant key, widest trust window) with ages and
+ * per-night trust applied afterwards, so one entry serves every date callers
+ * ask about and never serves a stale clock.
+ *
+ * Sixty seconds is the CEILING on staleness, not the norm. The CRM already
+ * pings `/api/platform/availability-replied` on every owner reply, and that
+ * handler busts this tag — an owner's tap reaches every public surface within
+ * seconds, and the cache only absorbs the traffic in between.
+ */
+const cachedSignalRows = unstable_cache(
+  async (): Promise<SignalRows> => {
+    const admin = createAdminClient();
+    const tapCutoff = new Date(Date.now() - MAX_TRUST_HOURS * 3600_000).toISOString();
+
+    const [props, checks] = await Promise.all([
+      admin.from("external_properties").select("id, ical_synced_at"),
+      // BOTH answers, not just the yeses. A "no" is a stronger signal than a
+      // "yes" and has to be read, or revocation silently does nothing.
+      admin
+        .from("external_availability_checks")
+        .select("external_property_id, status, responded_at, checkin, checkout")
+        .in("status", ["available", "unavailable"])
+        .gte("responded_at", tapCutoff)
+        .order("responded_at", { ascending: false }),
+    ]);
+
+    return {
+      icalSynced: ((props.data ?? []) as { id: string; ical_synced_at: string | null }[])
+        .filter((r) => r.ical_synced_at)
+        .map((r) => ({ id: r.id, at: r.ical_synced_at as string })),
+      checks: (checks.data ?? []) as SignalRows["checks"],
+    };
+  },
+  ["availability-signals"],
+  { tags: ["availability-signals"], revalidate: 60 },
+);
+
+async function loadSignals(dateIso: string, leadDays: number): Promise<Signals> {
+  const now = Date.now();
+  const trustMs = trustHoursFor(leadDays) * 3600_000;
+  const { icalSynced, checks } = await cachedSignalRows();
+
+  const icalFresh = new Map<string, number>();
+  for (const r of icalSynced) {
+    const age = now - new Date(r.at).getTime();
+    if (Number.isFinite(age) && age >= 0 && age < ICAL_FRESH_HOURS * 3600_000) icalFresh.set(r.id, age);
+  }
+
+  const answer = new Map<string, { available: boolean; ageMs: number }>();
+  for (const r of checks) {
     // An answer speaks for the dates it was ASKED about and nothing else. An
     // owner who said "free this weekend" has said nothing whatsoever about next
     // Tuesday, and treating the answer as general is the same error this file

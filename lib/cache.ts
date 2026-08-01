@@ -15,3 +15,13 @@ import { revalidateTag } from "next/cache";
 export function bustListings(): void {
   (revalidateTag as unknown as (tag: string) => void)("listings");
 }
+
+/**
+ * Bust the cached availability signals (owner taps + iCal freshness — see
+ * `lib/data/confidence.ts`). Called from the CRM's reply webhook, so an owner's
+ * answer reaches every public surface in seconds; the 60s revalidate on the
+ * cache is only the ceiling for anything this misses.
+ */
+export function bustAvailabilitySignals(): void {
+  (revalidateTag as unknown as (tag: string) => void)("availability-signals");
+}

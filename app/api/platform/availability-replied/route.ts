@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { bustAvailabilitySignals } from "@/lib/cache";
 import { notifyChatEmail } from "@/lib/notifyChat";
 import { sendWhatsappTemplate } from "@/lib/whatsapp";
 import { sendPush } from "@/lib/push";
@@ -46,6 +47,14 @@ export async function POST(req: NextRequest) {
   if (!checkId || (status !== "available" && status !== "unavailable")) {
     return Response.json({ ok: false, message: "checkId and a valid status are required." }, { status: 400 });
   }
+
+  // The owner has spoken, so the cached availability signals are stale RIGHT
+  // NOW — bust them before anything else, and unconditionally. This must not
+  // sit below the guest-matching early-returns: a staff-origin reply has no
+  // `external_date_requests` row and exits at "matched: false", but it changes
+  // public availability exactly as much as a guest-origin one. Busting first is
+  // what makes a rep's ask update the website, which is half the point.
+  bustAvailabilitySignals();
 
   const admin = createAdminClient();
 
