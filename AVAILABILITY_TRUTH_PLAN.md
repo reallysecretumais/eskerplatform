@@ -112,15 +112,33 @@ Button: `No longer available` (19 chars, under Meta's 20 limit).
 ```
 JazakAllah for the quick reply, {{name}}.
 
-{{property}} is now live on our website and app for {{dates}} — guests can
-book it directly, which is the fastest way to fill those nights. The moment
-someone books, we'll message you right away with all the details.
+{{property}} is now marked available for {{dates}} on our website and app.
+That means any guest can book those nights on the spot, without us checking
+with you again — which is exactly why they fill fast. The moment someone does,
+we'll message you right away with all the details.
 
 Just one thing we'd ask: if these nights get booked anywhere else, tap below
 straight away. It takes a second, and it makes sure no guest is ever sent to a
 room that's already taken. The button stays in this chat, so you can tap it
 whenever it happens.
 ```
+
+**The load-bearing sentence is "without us checking with you again."**
+
+Everything in Phase 3 stands on the owner having genuinely understood what
+their tap did. "Guests can book it directly" is soft enough that an owner could
+still assume a human will call before anything is confirmed — and if they
+believe that, a double booking is our fault however many buttons we gave them.
+Saying plainly that we will NOT ask again is what converts the tap from a
+casual reply into informed consent, and it is the difference between a
+mechanism that is defensible and one that merely looks careful.
+
+It also does the persuasive work for free. The removed step IS the benefit —
+no waiting on a reply is precisely why the nights fill — so the honest
+disclosure and the uplifting framing turn out to be the same sentence. And it
+makes the paragraph that follows logically necessary rather than a bolted-on
+warning: if nobody checks with you first, then telling us the moment it sells
+elsewhere is obviously your half of the arrangement.
 
 **Why that last paragraph is shaped the way it is.** The whole system rests on
 the owner remembering to revoke, so the wording has to earn the tap rather than
