@@ -1,6 +1,20 @@
 # SESSION HANDOFF — Esker Stays
 
-> Read this first to resume. Pairs with `CLAUDE.md` (rules), `PROJECT_ARCHITECTURE.md` (how it's built), `ROADMAP.md`, `PHASE1_LAUNCH_CHECKLIST.md` (status + founder actions), `DEPLOYMENT.md`, and `Esker_Platform_AI_First_Master_Plan.md` (vision). Last updated: **2026‑07‑31**.
+> Read this first to resume. Pairs with `CLAUDE.md` (rules), `PROJECT_ARCHITECTURE.md` (how it's built), `ROADMAP.md`, `PHASE1_LAUNCH_CHECKLIST.md` (status + founder actions), `DEPLOYMENT.md`, and `Esker_Platform_AI_First_Master_Plan.md` (vision). Last updated: **2026‑08‑02**.
+
+## NEW 2026‑08‑02 — AVAILABILITY IS THREE‑VALUED (deployed) → read `AVAILABILITY_TRUTH_PLAN.md`
+
+**"Open tonight" was lying: 17 of 20, now 3.** `freeTonight` meant "no busy row covers tonight" — true for stock Esker runs (we hold the calendar, silence = free) and a **guess** for a resold unit whose owner never linked one. Unknown was being flattened into yes. Availability is now `confirmed | busy | unknown`.
+
+- **`lib/data/confidence.ts` (new)** — confirmed = ours · iCal synced <12h · owner tap inside the trust window **covering that specific night**. **Latest answer wins per night** (a fresh "no" beats even a fresh iCal; a later "yes" reopens). **Trust ladder by lead time:** ≤7d out → 48h · 8–30d → 4d · >30d → 7d. Dates read in **Asia/Karachi** (slicing an ISO string reads the UTC day — a 00:30 check‑in resolved a day early). `INSTANT_HOURS = 12` separates instant‑book from show‑but‑request.
+- **`lib/data/inventory.ts`** — `freeTonight` is CONFIRMED ONLY; adds `onRequestTonight`, a `confidence` map and `counts.onRequest`. Split at source so no caller can quietly re‑merge the guess into the headline.
+- **Owner answers are SHARED.** The seam the founder suspected: the CRM pings `/api/platform/availability-replied`, which matched replies to `external_date_requests` and **no‑opped when there was no guest row** — so every *staff* ask improved nothing a visitor could see. We now read `external_availability_checks` **directly** (one shared Postgres; a second copy of a fact is a second chance to disagree), and the webhook busts the cache **before** its guest‑matching early‑returns. **A rep's ask now updates the public site in seconds.**
+- **Signals cached 60s** (`lib/cache.ts → bustAvailabilitySignals()`) — grid/greeting/corridor/tonight each call `getInventory`, so the two queries were being paid ~4× per app open. Raw + date‑independent rows cached; ages and per‑night trust applied after, so one entry serves every date and never a stale clock.
+- **`/api/app/v1/listings?openTonight=1`** returns `onRequest` as its own list (same filter/sort/card pipeline, so the two shelves can't drift). The app's tonight world renders confirmed → **"N more on request"** divider → unknowns. That shelf is the demand engine: a guest opening one triggers the owner ask that turns unknown into confirmed.
+- **Booking auth untouched** — `hasAuthorizedRequest` stays per‑account + exact‑dates. Money rule, not a display rule.
+- Verified live: hero `3 open tonight`; tonight feed **2 confirmed + 13 on‑request, zero overlap**.
+
+**The CRM half is NOT built** (owner live‑notice, the night‑set ledger, revocation, booked notice). Handed to the *Esker OS Web vStardom 2* session 2026‑08‑02 with a full brief; spec + final message wording in `AVAILABILITY_TRUTH_PLAN.md`. **Founder action: submit the `booking_confirmed_owner` template** (submission‑ready spec is in that doc).
 
 ## NEW 2026‑07‑31 — Multi‑market readiness (`117a6ed`, DEPLOYED) + PayFast compliance pages
 

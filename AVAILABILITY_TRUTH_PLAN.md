@@ -239,6 +239,23 @@ guest is waiting; the ledger re-listing every live night doubles as a recurring
 "Esker is actively selling for you" touchpoint. No gamification needed — the
 product's own activity is the retention message.
 
+## STATUS (2026-08-02)
+
+**LIVE on the Platform + app.** All verified against production, not assumed:
+
+| | |
+|---|---|
+| `lib/data/confidence.ts` | three-valued verdict, trust ladder, latest-answer-wins, Karachi dates |
+| `lib/data/inventory.ts` | `freeTonight` = confirmed only · `onRequestTonight` · `confidence` map · `counts.onRequest` |
+| `/api/app/v1/listings?openTonight=1` | returns `onRequest` as its own list |
+| `/api/platform/availability-replied` | busts the signal cache **before** guest-matching → a rep's ask updates the site in seconds |
+| `lib/cache.ts` | `bustAvailabilitySignals()` |
+| app tonight world | confirmed, then "N more on request" divider, then unknowns |
+| Measured | hero line went `17 open tonight` → **`3 open tonight`**; tonight feed 2 confirmed + 13 on-request, zero overlap |
+
+**NOT BUILT — the CRM half**, handed to the *Esker OS Web vStardom 2* session
+on 2026-08-02 with a full brief. Nothing in that handoff exists in code yet.
+
 ### Still to build
 
 1. SQL function for the night-set, so the CRM (sends the ledger) and the
@@ -269,6 +286,28 @@ labels the ask already produces.
 
 **B. Booked notice** — template `booking_confirmed_owner`, 4 body variables to
 mirror the existing pair. Button: `Something's wrong` (17 chars).
+
+> **SUBMISSION-READY SPEC — copy into WhatsApp Manager → Templates → Create.**
+> Meta rules already satisfied: no variable at the very start or end of the
+> body, no two variables adjacent, body well under 1024 chars.
+>
+> | Field | Value |
+> |---|---|
+> | Name | `booking_confirmed_owner` |
+> | Category | **Utility** |
+> | Language | **English (en)** — `sendTemplate` defaults to `"en"`; a mismatch fails at send |
+> | Header | *none* |
+> | Footer | *none* |
+> | Buttons | **Quick reply** × 1 → `Something's wrong` |
+>
+> Sample values Meta asks for when submitting:
+> `{{1}}` Ahmed · `{{2}}` Apartment 51 · `{{3}}` 3 Aug, 4:00 PM · `{{4}}` 5 Aug, 12:00 PM
+>
+> Variable meanings (must match the send-side order in the CRM):
+> `{{1}}` owner name · `{{2}}` property name · `{{3}}` check-in (date + time)
+> · `{{4}}` check-out (date + time). Times are included deliberately — the ask
+> template already carries them because a bare "3 Aug to 5 Aug" hides whether we
+> need the place from the morning or the afternoon.
 
 ```
 Assalam o Alaikum {{1}}, this is an automated message from Esker Rentals.
