@@ -110,22 +110,31 @@ own line, `Check-in:` / `Check-out:`, one line of motivation, `JazakAllah.`
 Button: `No longer available` (19 chars, under Meta's 20 limit).
 
 ```
-Assalam o Alaikum {{name}}, this is an automated message from Esker Rentals.
+JazakAllah for the quick reply, {{name}}.
 
-JazakAllah for confirming. {{property}} is now live on our website and app:
+{{property}} is now live on our website and app for {{dates}} — guests can
+book it directly, which is the fastest way to fill those nights. The moment
+someone books, we'll message you right away with all the details.
 
-Check-in: {{checkin}}
-Check-out: {{checkout}}
-
-Guests can book these dates directly now, which is the fastest way to fill
-them — and the moment someone does, we'll message you straight away with the
-details.
-
-You stay in control: if the dates get taken elsewhere before then, one tap
-below removes it immediately.
-
-JazakAllah.
+You stay in control: if those nights get taken elsewhere, one tap below
+removes it immediately.
 ```
+
+**Two rules this message follows, and the ask template does not:**
+
+*No salutation.* It arrives seconds after the owner's own tap, in a thread
+they are already reading. `Assalam o Alaikum … this is an automated message`
+belongs on a message that OPENS a conversation; repeated as a reply inside one
+it reads like a machine that has forgotten it was already talking. Same reason
+it closes without a second `JazakAllah` — it opened with one.
+
+*Dates INLINE, never as a `Check-in:` / `Check-out:` block.* That block is the
+visual grammar of a confirmation. On the ask it is correct — we're asking about
+exactly those dates. On this message nothing is booked, and stacking the dates
+that way made it read as though something had been. Inline inside the sentence
+(`live … for 3 Aug, 4pm – 5 Aug, 12pm`) says *window of availability*, which is
+what it is. One `{{dates}}` variable, built from the same `formatDateTime`
+labels the ask already produces.
 
 **B. Booked notice** — template `booking_confirmed_owner`, 4 body variables to
 mirror the existing pair. Button: `Something's wrong` (17 chars).
