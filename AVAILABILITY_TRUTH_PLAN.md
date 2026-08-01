@@ -70,13 +70,47 @@ nights populate themselves because busy nights generate taps. Optional garnish:
 the "Open tonight" world shows a quiet "N more on request" section — which is
 exactly where guest demand converts unknowns.
 
-## Open questions (founder)
+## Decisions (founder, 2026-08-01)
 
-1. **Publish the owner's tap as public truth?** A "yes" tap already authorises
-   real money within 48h — I recommend the same trust for display. Confirm.
-2. **One trust window everywhere?** 48h tap / 12h iCal for both display and
-   booking, or a tighter display window? I recommend one rule (48/12) so no
-   two surfaces can disagree.
-3. **Unknowns in the "Open tonight" world:** excluded entirely, or shown under
-   a quiet "available on request" divider? I recommend shown — that section is
-   the demand engine for Phase 3/4.
+**1. Shared truth: YES — with the founder's revocation mechanism.** He caught
+the hole in the plain version: an owner taps "Available", sells the night to
+their own guest 30 minutes later, and our display still says free → double
+booking. His fix, adopted: the tap triggers a follow-up message that (a) tells
+the owner the property is now live and bookable by anyone, (b) promises we'll
+notify them the moment it books, and (c) gives them a one-tap **"Mark
+unavailable"** button. That message is what makes shared truth legitimate — the
+owner has been told, in writing, exactly what their tap now means, and holds a
+one-tap kill switch the whole time.
+
+Two companions that close the loop:
+- **Consumption** — the moment any Esker booking lands it writes a busy row, so
+  the display flips itself; nothing to build.
+- **Booking-moment notice** — when a guest books, the owner instantly gets
+  "Booked: [dates]. Anything wrong? tap here / call us", so a race that slipped
+  through is caught in minutes, not at check-in.
+
+Needs one new Meta template (`availability_live_notice`, body + 1 quick-reply)
+— submit early, approval has lead time. The revocation tap lands on the same
+webhook/button plumbing as `avail:<id>:yes|no`.
+
+**2. Trust window, rethought (he asked for better than a flat 48h):** time is
+the wrong primary axis — the risk is *intervening events*, which the revocation
+button now covers when the owner remembers and a window must cover when they
+forget. So, a **freshness ladder** instead of one number:
+
+| Signal age | Display | Booking |
+|---|---|---|
+| Tap or iCal ≤ 12h | shows available | **instant book** |
+| Tap 12–48h (covering the dates) | shows available | **fast-request** — "we're confirming with the owner", auto re-ask fires |
+| Older / nothing | "on request" | request-to-book |
+
+One ladder, three rungs, used by every surface. A tap is also bounded by the
+dates it was about (a tap about tonight dies at checkout regardless), and dies
+early on revocation or consumption. 12h for money mirrors the iCal freshness
+rule that already exists — two signal types, one standard.
+
+**3. Unknowns in the tonight world: SHOW, under a quiet "N more on request"
+divider.** Approved as proposed — that section is the demand engine.
+
+**Status: decisions taken; build order is Phase 1 → 2 → 3 with the revocation
+template submitted to Meta first (longest lead time). Not yet started.**
