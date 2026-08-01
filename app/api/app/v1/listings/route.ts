@@ -35,53 +35,73 @@ export const GET = guard(async (req: Request) => {
   const minSleeps = Number(sp.get("minSleeps")) || 0;
   const amenityPool = sp.get("intent") === "pool";
 
-  let rows = openTonight ? (await getInventory(market ?? null)).freeTonight : await getListings();
-
-  if (market) rows = rows.filter((l) => l.market_slug === market);
-  if (city) rows = rows.filter((l) => (l.city ?? "").toLowerCase() === city);
-  if (area) rows = rows.filter((l) => (l.area ?? "").toLowerCase() === area);
-  if (category) rows = rows.filter((l) => l.category && normalizeCategory(l.category) === normalizeCategory(category));
-  if (mode) rows = rows.filter((l) => l.booking_mode === mode);
-  if (exclusiveOnly) rows = rows.filter((l) => l.esker_exclusive);
-  if (minSleeps) rows = rows.filter((l) => (l.capacity ?? 0) >= minSleeps);
-  if (amenityPool) rows = rows.filter((l) => (l.amenities ?? []).some((a) => a.toLowerCase().includes("pool")));
-  if (amenity) rows = rows.filter((l) => (l.amenities ?? []).some((a) => a.toLowerCase().includes(amenity)));
-  if (q) {
-    rows = rows.filter((l) =>
-      [l.title, l.area, l.city, l.category, l.description].some((v) => (v ?? "").toLowerCase().includes(q)),
+  // One pipeline for filters, ordering and card shape — the tonight world runs
+  // it twice (confirmed and on-request) and the two sections must never drift.
+  const refine = (input: typeof rows0) => {
+    let rows = input;
+    if (market) rows = rows.filter((l) => l.market_slug === market);
+    if (city) rows = rows.filter((l) => (l.city ?? "").toLowerCase() === city);
+    if (area) rows = rows.filter((l) => (l.area ?? "").toLowerCase() === area);
+    if (category) rows = rows.filter((l) => l.category && normalizeCategory(l.category) === normalizeCategory(category));
+    if (mode) rows = rows.filter((l) => l.booking_mode === mode);
+    if (exclusiveOnly) rows = rows.filter((l) => l.esker_exclusive);
+    if (minSleeps) rows = rows.filter((l) => (l.capacity ?? 0) >= minSleeps);
+    if (amenityPool) rows = rows.filter((l) => (l.amenities ?? []).some((a) => a.toLowerCase().includes("pool")));
+    if (amenity) rows = rows.filter((l) => (l.amenities ?? []).some((a) => a.toLowerCase().includes(amenity)));
+    if (q) {
+      rows = rows.filter((l) =>
+        [l.title, l.area, l.city, l.category, l.description].some((v) => (v ?? "").toLowerCase().includes(q)),
+      );
+    }
+    // Strongest first — identical rule to the website's homepage ordering.
+    return [...rows].sort(
+      (a, b) =>
+        Number(b.esker_exclusive) - Number(a.esker_exclusive) ||
+        (b.photos?.length ? 1 : 0) - (a.photos?.length ? 1 : 0) ||
+        b.price - a.price,
     );
-  }
+  };
 
-  // Strongest first — identical rule to the website's homepage ordering.
-  const sorted = [...rows].sort(
-    (a, b) =>
-      Number(b.esker_exclusive) - Number(a.esker_exclusive) ||
-      (b.photos?.length ? 1 : 0) - (a.photos?.length ? 1 : 0) ||
-      b.price - a.price,
-  );
+  // Cards only need this much; detail comes from /listings/:id. Keeping the
+  // feed lean is what makes browsing fast on Pakistani mobile data.
+  const card = (l: (typeof rows0)[number]) => ({
+    id: l.id,
+    title: l.title,
+    // What the place IS — generated once here so the app and the website can
+    // never describe the same listing differently.
+    caption: describeListing(l),
+    area: l.area,
+    city: l.city,
+    market: l.market,
+    marketSlug: l.market_slug,
+    category: l.category,
+    bookingMode: l.booking_mode,
+    price: l.price,
+    priceUnit: l.price_unit,
+    bedrooms: l.bedrooms,
+    capacity: l.capacity,
+    exclusive: l.esker_exclusive,
+    photos: (l.photos ?? []).slice(0, 6),
+  });
+
+  const inv = openTonight ? await getInventory(market ?? null) : null;
+  const rows0 = inv ? inv.freeTonight : await getListings();
+  const sorted = refine(rows0);
+
+  /**
+   * The tonight world's second shelf: not booked as far as we know, but nobody
+   * has confirmed it — externals with no synced calendar and no fresh owner
+   * answer. Sent as its OWN list rather than mixed in, because the two mean
+   * different things and the app draws a divider between them ("N more on
+   * request"). A guest asking about one of these is what triggers the owner ask
+   * that turns unknown into confirmed — this section is the demand engine, not
+   * an apology.
+   */
+  const onRequest = inv ? refine(inv.onRequestTonight) : [];
 
   return ok({
     total: sorted.length,
-    // Cards only need this much; detail comes from /listings/:id. Keeping the
-    // feed lean is what makes Explore fast on Pakistani mobile data.
-    listings: sorted.slice(0, limit).map((l) => ({
-      id: l.id,
-      title: l.title,
-      // What the place IS — generated once here so the app and the website can
-      // never describe the same listing differently.
-      caption: describeListing(l),
-      area: l.area,
-      city: l.city,
-      market: l.market,
-      marketSlug: l.market_slug,
-      category: l.category,
-      bookingMode: l.booking_mode,
-      price: l.price,
-      priceUnit: l.price_unit,
-      bedrooms: l.bedrooms,
-      capacity: l.capacity,
-      exclusive: l.esker_exclusive,
-      photos: (l.photos ?? []).slice(0, 6),
-    })),
+    listings: sorted.slice(0, limit).map(card),
+    ...(openTonight ? { onRequest: onRequest.slice(0, limit).map(card) } : {}),
   });
 });
