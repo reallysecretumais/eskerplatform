@@ -169,6 +169,59 @@ pre-build): a single quiet reminder at ~18h — *"{{property}} is still live for
 {{dates}}. Still free?"* with the same two buttons. One message, once, only
 while a listing is actually live.
 
+## The ledger (founder, 2026-08-01) — every live night, every time
+
+**The idea:** the live notice should not describe only the range just
+confirmed. It should list **every** date range currently live for that
+property, each individually removable. A WhatsApp thread scrolls; the first
+notice is gone by the third. Re-stating the whole exposure in the newest
+message means the owner's most recent view is always complete, and forgetting
+an older promise stops being possible.
+
+**It is a set of NIGHTS, not a list of checks.** This is the part that reframes
+the design. A "check" is a question we happened to ask; overlapping questions
+(3–5 Aug, then 4–6 Aug) are two rows describing one commitment. Worse, once a
+guest books 4–5 Aug out of that span, neither check describes what remains. The
+ledger is therefore computed:
+
+```
+live nights = ⋃ nights from answers that are still yes and in trust window
+            − nights the owner has since refused
+            − nights we have already booked
+```
+
+then re-expressed as contiguous runs. Merged for display, so the owner sees
+*3 – 6 Aug*; split around a booking, so a booked 4–5 Aug leaves *3 Aug* and
+*6 Aug* as separate removable rows. That is the founder's requirement — a
+specific night must be removable cleanly — and only a night-set can express it.
+
+**Shape:** one live range keeps the single `No longer available` button. Two or
+more switches to a WhatsApp **list message** (up to 10 rows, well beyond the
+3-button ceiling), one row per run, each tappable to remove exactly those
+nights.
+
+**Revocation needs no new table.** Removing a run inserts an
+`external_availability_checks` row with `status = 'unavailable'` spanning it.
+Because confidence takes the owner's *latest* answer per night, those nights
+flip to busy immediately, and a later yes can still reopen them. The audit
+trail is the same table, in order.
+
+**Booked nights leave the ledger.** Once sold they are ours; the booked-notice
+is the owner's record. Leaving them in would invite an owner to "mark
+unavailable" something already sold — alarming, and it would change nothing.
+
+### Still to build
+
+1. SQL function for the night-set, so the CRM (sends the ledger) and the
+   Platform (renders confidence) share ONE definition rather than two
+   implementations that can drift. This is Phase 1 of this document, now with a
+   concrete second caller.
+2. CRM: `sendInteractiveList` (the sender only does buttons today), ledger
+   assembly, `unlist:<runStart>:<runEnd>` payload handling.
+3. Platform + app: the "N more on request" divider, and "On request" badges on
+   cards whose confidence is `unknown`.
+4. `booking_confirmed_owner` template at Meta — the only approval-gated piece.
+
 **Two rules this message follows, and the ask template does not:**
 
 *No salutation.* It arrives seconds after the owner's own tap, in a thread
