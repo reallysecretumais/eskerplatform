@@ -64,6 +64,19 @@ type Signals = {
   icalFresh: Map<string, number>;
   /** Listing id → age in ms of the freshest "available" tap covering the date. */
   tapped: Map<string, number>;
+  /**
+   * Listing ids the owner has explicitly said NO to for this date, recently.
+   *
+   * This outranks everything, including a fresh calendar sync. An owner who
+   * tells us the night is gone knows something their calendar has not caught up
+   * with yet — that is precisely the case where they took a booking elsewhere
+   * and told us, which is the behaviour the whole revocation design is built to
+   * encourage. Treating their "no" as merely *absence of a yes* would drop the
+   * listing to "unknown", and a fresh iCal would then promote it straight back
+   * to available. The owner would have done exactly what we asked and watched
+   * nothing happen.
+   */
+  refused: Set<string>;
 };
 
 /**
@@ -79,10 +92,12 @@ async function loadSignals(dateIso: string): Promise<Signals> {
 
   const [props, checks] = await Promise.all([
     admin.from("external_properties").select("id, ical_synced_at"),
+    // BOTH answers, not just the yeses. A "no" is a stronger signal than a
+    // "yes" and has to be read, or revocation silently does nothing.
     admin
       .from("external_availability_checks")
-      .select("external_property_id, responded_at, checkin, checkout")
-      .eq("status", "available")
+      .select("external_property_id, status, responded_at, checkin, checkout")
+      .in("status", ["available", "unavailable"])
       .gte("responded_at", tapCutoff)
       .order("responded_at", { ascending: false }),
   ]);
@@ -95,7 +110,14 @@ async function loadSignals(dateIso: string): Promise<Signals> {
   }
 
   const tapped = new Map<string, number>();
-  type Row = { external_property_id: string; responded_at: string; checkin: string | null; checkout: string | null };
+  const refused = new Set<string>();
+  type Row = {
+    external_property_id: string;
+    status: string;
+    responded_at: string;
+    checkin: string | null;
+    checkout: string | null;
+  };
   for (const r of (checks.data ?? []) as Row[]) {
     // A tap answers the dates it was ASKED about and nothing else. An owner who
     // said "free this weekend" has said nothing whatsoever about next Tuesday,
@@ -104,20 +126,36 @@ async function loadSignals(dateIso: string): Promise<Signals> {
     if (!coversDate(r.checkin, r.checkout, dateIso)) continue;
     const age = now - new Date(r.responded_at).getTime();
     if (!Number.isFinite(age) || age < 0) continue;
+
+    if (r.status === "unavailable") {
+      refused.add(r.external_property_id);
+      continue;
+    }
     // Ordered newest-first, so the first hit for a property is its freshest.
     if (!tapped.has(r.external_property_id)) tapped.set(r.external_property_id, age);
   }
 
-  return { icalFresh, tapped };
+  return { icalFresh, tapped, refused };
 }
+
+/**
+ * The Asia/Karachi calendar date of a timestamp.
+ *
+ * `checkin`/`checkout` on a check are `timestamptz`, so they come back as UTC.
+ * Slicing the first ten characters reads the UTC date, which is a different day
+ * from the Pakistani one for any moment before 05:00 PKT — a check-in stored as
+ * 00:30 PKT is 19:30Z the PREVIOUS day, and the range would silently start a
+ * day early. Check-ins are normally 4pm so this rarely bites, but "rarely" is
+ * how a wrong night gets sold.
+ */
+const pkDate = (iso: string): string =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Karachi" }).format(new Date(iso));
 
 /** Does a tap's asked-about range cover this date? Checkout is exclusive — the
  *  morning a guest leaves is a night the place is free again. */
 function coversDate(checkin: string | null, checkout: string | null, dateIso: string): boolean {
   if (!checkin || !checkout) return false;
-  const ci = checkin.slice(0, 10);
-  const co = checkout.slice(0, 10);
-  return ci <= dateIso && dateIso < co;
+  return pkDate(checkin) <= dateIso && dateIso < pkDate(checkout);
 }
 
 /**
@@ -134,9 +172,9 @@ export async function confidenceFor(
   const externals = listings.filter(isExternal);
   // Nothing external in this market: every answer is already known, so don't
   // pay for the signal queries at all.
-  const signals = externals.length
+  const signals: Signals = externals.length
     ? await loadSignals(dateIso)
-    : { icalFresh: new Map<string, number>(), tapped: new Map<string, number>() };
+    : { icalFresh: new Map(), tapped: new Map(), refused: new Set() };
 
   const out = new Map<string, ListingConfidence>();
   for (const l of listings) {
@@ -147,6 +185,12 @@ export async function confidenceFor(
     if (!isExternal(l)) {
       // Ours. We hold the calendar, so an empty night is a free night.
       out.set(l.id, { state: "confirmed", instant: true });
+      continue;
+    }
+    // The owner's own "no" beats every other signal, including a calendar that
+    // synced ten minutes ago. See `Signals.refused`.
+    if (signals.refused.has(l.id)) {
+      out.set(l.id, { state: "busy", instant: false });
       continue;
     }
     const ical = signals.icalFresh.get(l.id);
