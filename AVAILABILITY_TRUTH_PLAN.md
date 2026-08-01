@@ -210,6 +210,35 @@ trail is the same table, in order.
 is the owner's record. Leaving them in would invite an owner to "mark
 unavailable" something already sold — alarming, and it would change nothing.
 
+## Review findings (2026-08-02) — owner engagement and safety seams
+
+**Revoking a booked night is an incident, not an update.** Old ledger messages
+stay tappable in WhatsApp forever. If an owner taps a row whose nights now
+include a CONFIRMED booking, the handler must NOT silently write `unavailable`
+— those nights are sold, and a silent write would bury a real conflict. Rule:
+nights split into (still-live → revoked normally) and (booked → staff alerted
+via `notifyUsers` + owner told "those dates include a confirmed booking — our
+team will call you right away"). This converts the worst failure (double-book
+discovered at the doorstep) into a phone call within minutes, initiated by us.
+
+**Stale taps are answered politely, never errored.** The `unlist` payload
+carries night ranges, not check ids, so the handler recomputes against current
+state: nights already revoked → "already removed, nothing to do"; ledger
+re-sent so the owner's newest view is again complete.
+
+**The payout moment is the calendar-link moment.** Every ~3rd booked notice
+appends one line: *"Want this to be automatic? Send us your calendar link and
+we'll never need to ask."* The whole tap system is a bridge to linked
+calendars; the moment an owner has just been paid is the one moment the ask
+lands as an upgrade rather than a chore. (iCal-linked owners never receive
+ledgers — their calendar already speaks for them, and reading their own synced
+nights back at them is noise.)
+
+**Demand is the engagement engine, already built.** Web-origin asks say a real
+guest is waiting; the ledger re-listing every live night doubles as a recurring
+"Esker is actively selling for you" touchpoint. No gamification needed — the
+product's own activity is the retention message.
+
 ### Still to build
 
 1. SQL function for the night-set, so the CRM (sends the ledger) and the
