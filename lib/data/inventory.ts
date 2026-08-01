@@ -1,5 +1,6 @@
 import "server-only";
 import { getListings, getBusyByProperty, type PublicListing } from "@/lib/data/listings";
+import { confidenceFor, type ListingConfidence } from "@/lib/data/confidence";
 
 /**
  * Availability-aware inventory: what's actually free, and how much of it.
@@ -28,11 +29,34 @@ const hasPool = (l: PublicListing) =>
 export type Inventory = {
   /** Every published listing in the market. */
   all: PublicListing[];
-  /** Free for tonight. */
+  /**
+   * CONFIRMED free for tonight — stock we can stand behind, and the only thing
+   * any public count is allowed to be built from.
+   *
+   * This used to mean "no busy row covers tonight", which is the truth for a
+   * stay Esker runs and a guess for a resold unit whose owner never linked a
+   * calendar. Silence from a calendar we don't hold is not availability. That
+   * conflation is why the app announced "17 open tonight" out of twenty.
+   */
   freeTonight: PublicListing[];
+  /**
+   * Not booked as far as we know, but nobody has confirmed it — externals with
+   * no synced calendar and no recent owner answer.
+   *
+   * These are NOT hidden. They appear wherever they belong wearing "on
+   * request", and a guest tapping one is what triggers the owner ask that turns
+   * an unknown into a confirmed. Real demand is a far better trigger than a
+   * nightly cron pestering every owner about nights nobody wants.
+   */
+  onRequestTonight: PublicListing[];
+  /** Booking confidence per listing id for tonight — see `lib/data/confidence`. */
+  confidence: Map<string, ListingConfidence>;
   counts: {
     total: number;
+    /** CONFIRMED free tonight. The number the greeting and the doorway say. */
     tonight: number;
+    /** Unconfirmed but unbooked — the "N more on request" line. */
+    onRequest: number;
     pools: number;
     sleeps6: number;
     exclusives: number;
@@ -55,7 +79,14 @@ export async function getInventory(marketSlug?: string | null, now = new Date())
 
   const all = marketSlug ? listings.filter((l) => l.market_slug === marketSlug) : listings;
 
-  const freeTonight = all.filter((l) => !(busy.get(l.id) ?? []).some((r) => coversDate(r, date)));
+  const isBusy = (l: PublicListing) => (busy.get(l.id) ?? []).some((r) => coversDate(r, date));
+  const confidence = await confidenceFor(all, date, isBusy);
+
+  // Split, rather than filter. What used to be one bucket is genuinely two, and
+  // keeping them apart at the source is what stops a caller downstream quietly
+  // re-merging them and putting the guess back into the headline.
+  const freeTonight = all.filter((l) => confidence.get(l.id)?.state === "confirmed");
+  const onRequestTonight = all.filter((l) => confidence.get(l.id)?.state === "unknown");
 
   const byCategory: Record<string, number> = {};
   for (const l of all) {
@@ -67,9 +98,12 @@ export async function getInventory(marketSlug?: string | null, now = new Date())
   return {
     all,
     freeTonight,
+    onRequestTonight,
+    confidence,
     counts: {
       total: all.length,
       tonight: freeTonight.length,
+      onRequest: onRequestTonight.length,
       pools: all.filter(hasPool).length,
       // "Sleeps 6+" is a real trip type (the group weekend), not a filter chip.
       sleeps6: all.filter((l) => (l.capacity ?? 0) >= 6).length,
