@@ -40,8 +40,38 @@ import { isExternal, type PublicListing } from "@/lib/data/listings";
 
 /** Fresh enough to sell against: matches the CRM's iCal rule exactly. */
 export const ICAL_FRESH_HOURS = 12;
-/** How long an owner's tap is trusted. Matches the CRM's reply window. */
-export const TAP_TRUST_HOURS = 48;
+
+/**
+ * HOW LONG AN OWNER'S ANSWER IS TRUSTED, by how far away the night is.
+ *
+ * A flat 48h treats "is tonight free?" and "is a night in October free?" as the
+ * same question, and they are not. The risk being priced is *something has
+ * happened since* — and the nearer the night, the faster it moves: tonight can
+ * be sold in the next hour, whereas a night ten weeks out rarely changes in a
+ * week. A single window therefore either expires far-future answers pointlessly
+ * (re-asking owners about October every two days is how you get ignored) or
+ * trusts imminent ones too long.
+ *
+ * Three rungs, capped deliberately low. The founder's brief was "longer for
+ * distant dates, but not way too long", and a week is where that lands: long
+ * enough to stop pestering, short enough that no promise outlives the owner's
+ * memory of making it.
+ */
+export const TRUST_HOURS = { near: 48, mid: 96, far: 168 } as const;
+/** Nights within this many days are "near" — the fast-moving end. */
+const NEAR_DAYS = 7;
+/** Beyond this many days out, a night is "far" and moves slowly. */
+const FAR_DAYS = 30;
+
+/** The trust window for an answer about a night `leadDays` from today. */
+export function trustHoursFor(leadDays: number): number {
+  if (leadDays <= NEAR_DAYS) return TRUST_HOURS.near;
+  if (leadDays <= FAR_DAYS) return TRUST_HOURS.mid;
+  return TRUST_HOURS.far;
+}
+
+/** Widest window we ever need to fetch — narrowed per night after loading. */
+const MAX_TRUST_HOURS = TRUST_HOURS.far;
 /**
  * Inside this, a signal is strong enough to take money on the spot; beyond it
  * the listing still SHOWS as available but the guest goes through
@@ -62,21 +92,23 @@ export type ListingConfidence = {
 type Signals = {
   /** Listing ids whose owner calendar synced within ICAL_FRESH_HOURS. */
   icalFresh: Map<string, number>;
-  /** Listing id → age in ms of the freshest "available" tap covering the date. */
-  tapped: Map<string, number>;
   /**
-   * Listing ids the owner has explicitly said NO to for this date, recently.
+   * Listing id → the owner's MOST RECENT answer covering this night, if it is
+   * still inside that night's trust window.
    *
-   * This outranks everything, including a fresh calendar sync. An owner who
-   * tells us the night is gone knows something their calendar has not caught up
-   * with yet — that is precisely the case where they took a booking elsewhere
-   * and told us, which is the behaviour the whole revocation design is built to
-   * encourage. Treating their "no" as merely *absence of a yes* would drop the
-   * listing to "unknown", and a fresh iCal would then promote it straight back
-   * to available. The owner would have done exactly what we asked and watched
-   * nothing happen.
+   * Most recent, not "any yes" and not "any no". Both directions matter:
+   *
+   * A "no" has to be read at all, or revocation does nothing. If a refusal only
+   * removed the yes, the listing would fall to "unknown" — and a fresh iCal
+   * would promote it straight back to available. The owner would have done
+   * exactly what we asked and watched nothing happen, which is how you train
+   * someone to stop bothering.
+   *
+   * But a "no" must not be permanent either. An owner whose guest cancels can
+   * tell us it is free again, and that later yes has to win. Ordering by answer
+   * time and taking the first hit gets both, and needs no special-casing.
    */
-  refused: Set<string>;
+  answer: Map<string, { available: boolean; ageMs: number }>;
 };
 
 /**
@@ -85,10 +117,13 @@ type Signals = {
  * Deliberately NOT per-listing: the grid asks about twenty listings on every
  * render, and a per-listing call is how a home screen turns into forty queries.
  */
-async function loadSignals(dateIso: string): Promise<Signals> {
+async function loadSignals(dateIso: string, leadDays: number): Promise<Signals> {
   const admin = createAdminClient();
   const now = Date.now();
-  const tapCutoff = new Date(now - TAP_TRUST_HOURS * 3600_000).toISOString();
+  // Fetch at the widest window, then apply this night's own window below —
+  // one query rather than one per rung.
+  const tapCutoff = new Date(now - MAX_TRUST_HOURS * 3600_000).toISOString();
+  const trustMs = trustHoursFor(leadDays) * 3600_000;
 
   const [props, checks] = await Promise.all([
     admin.from("external_properties").select("id, ical_synced_at"),
@@ -109,8 +144,7 @@ async function loadSignals(dateIso: string): Promise<Signals> {
     if (Number.isFinite(age) && age >= 0 && age < ICAL_FRESH_HOURS * 3600_000) icalFresh.set(r.id, age);
   }
 
-  const tapped = new Map<string, number>();
-  const refused = new Set<string>();
+  const answer = new Map<string, { available: boolean; ageMs: number }>();
   type Row = {
     external_property_id: string;
     status: string;
@@ -119,23 +153,21 @@ async function loadSignals(dateIso: string): Promise<Signals> {
     checkout: string | null;
   };
   for (const r of (checks.data ?? []) as Row[]) {
-    // A tap answers the dates it was ASKED about and nothing else. An owner who
-    // said "free this weekend" has said nothing whatsoever about next Tuesday,
-    // and treating the answer as general is exactly the error this file exists
-    // to remove.
+    // An answer speaks for the dates it was ASKED about and nothing else. An
+    // owner who said "free this weekend" has said nothing whatsoever about next
+    // Tuesday, and treating the answer as general is the same error this file
+    // exists to remove, one layer down.
     if (!coversDate(r.checkin, r.checkout, dateIso)) continue;
     const age = now - new Date(r.responded_at).getTime();
-    if (!Number.isFinite(age) || age < 0) continue;
-
-    if (r.status === "unavailable") {
-      refused.add(r.external_property_id);
-      continue;
+    if (!Number.isFinite(age) || age < 0 || age > trustMs) continue;
+    // Rows arrive newest-first, so the first hit IS the owner's latest word on
+    // this night — whichever way it went.
+    if (!answer.has(r.external_property_id)) {
+      answer.set(r.external_property_id, { available: r.status === "available", ageMs: age });
     }
-    // Ordered newest-first, so the first hit for a property is its freshest.
-    if (!tapped.has(r.external_property_id)) tapped.set(r.external_property_id, age);
   }
 
-  return { icalFresh, tapped, refused };
+  return { icalFresh, answer };
 }
 
 /**
@@ -150,6 +182,10 @@ async function loadSignals(dateIso: string): Promise<Signals> {
  */
 const pkDate = (iso: string): string =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Karachi" }).format(new Date(iso));
+
+/** Today in Karachi. Local to this file so the trust ladder can measure lead
+ *  time without importing the inventory module and creating a cycle. */
+const todayIso = (): string => pkDate(new Date().toISOString());
 
 /** Does a tap's asked-about range cover this date? Checkout is exclusive — the
  *  morning a guest leaves is a night the place is free again. */
@@ -170,11 +206,16 @@ export async function confidenceFor(
   isBusy: (l: PublicListing) => boolean,
 ): Promise<Map<string, ListingConfidence>> {
   const externals = listings.filter(isExternal);
+  // How far out this night is, in whole days — picks the trust rung.
+  const leadDays = Math.max(
+    0,
+    Math.round((Date.parse(`${dateIso}T00:00:00+05:00`) - Date.parse(`${todayIso()}T00:00:00+05:00`)) / 86_400_000),
+  );
   // Nothing external in this market: every answer is already known, so don't
   // pay for the signal queries at all.
   const signals: Signals = externals.length
-    ? await loadSignals(dateIso)
-    : { icalFresh: new Map(), tapped: new Map(), refused: new Set() };
+    ? await loadSignals(dateIso, leadDays)
+    : { icalFresh: new Map(), answer: new Map() };
 
   const out = new Map<string, ListingConfidence>();
   for (const l of listings) {
@@ -187,20 +228,20 @@ export async function confidenceFor(
       out.set(l.id, { state: "confirmed", instant: true });
       continue;
     }
-    // The owner's own "no" beats every other signal, including a calendar that
-    // synced ten minutes ago. See `Signals.refused`.
-    if (signals.refused.has(l.id)) {
+    // The owner's latest word outranks every other signal, including a calendar
+    // that synced ten minutes ago — they know what their calendar has not caught
+    // up with yet. See `Signals.answer`.
+    const said = signals.answer.get(l.id);
+    if (said && !said.available) {
       out.set(l.id, { state: "busy", instant: false });
       continue;
     }
-    const ical = signals.icalFresh.get(l.id);
-    if (ical !== undefined) {
+    if (signals.icalFresh.has(l.id)) {
       out.set(l.id, { state: "confirmed", instant: true });
       continue;
     }
-    const tap = signals.tapped.get(l.id);
-    if (tap !== undefined) {
-      out.set(l.id, { state: "confirmed", instant: tap < INSTANT_HOURS * 3600_000 });
+    if (said) {
+      out.set(l.id, { state: "confirmed", instant: said.ageMs < INSTANT_HOURS * 3600_000 });
       continue;
     }
     out.set(l.id, { state: "unknown", instant: false });
