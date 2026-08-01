@@ -116,9 +116,40 @@ JazakAllah for the quick reply, {{name}}.
 book it directly, which is the fastest way to fill those nights. The moment
 someone books, we'll message you right away with all the details.
 
-You stay in control: if those nights get taken elsewhere, one tap below
-removes it immediately.
+Just one thing we'd ask: if these nights get booked anywhere else, tap below
+straight away. It takes a second, and it makes sure no guest is ever sent to a
+room that's already taken. The button stays in this chat, so you can tap it
+whenever it happens.
 ```
+
+**Why that last paragraph is shaped the way it is.** The whole system rests on
+the owner remembering to revoke, so the wording has to earn the tap rather than
+merely permit it. Four deliberate moves:
+
+1. **A trigger, not a hypothetical.** "If those nights get taken elsewhere" is
+   a condition nobody notices themselves meeting. "If these nights get booked
+   anywhere else" names the exact moment they will experience, so the memory
+   has something to attach to.
+2. **An ask, not an offer.** "You stay in control" is a permission — nothing to
+   live up to. "Just one thing we'd ask" is a small agreement, and people keep
+   agreements they have accepted.
+3. **Their stake, not ours.** "No guest is ever sent to a room that's already
+   taken" is the owner's own doorstep problem, not Esker's data quality.
+4. **Friction named and dismissed.** "Takes a second" and "the button stays in
+   this chat, so you can tap it whenever" — because the realistic failure is
+   the owner seeing the message at 11pm, thinking *later*, and later never
+   coming. The quick-reply button remains tappable in the thread indefinitely,
+   so this is true as well as reassuring.
+
+**Not said, deliberately:** that the freshness ladder drops the listing to "on
+request" after 48h anyway. It is true, and it is our safety net — but telling
+an owner their forgetfulness is already covered is the surest way to guarantee
+they forget.
+
+**Backstop if forgetting still proves common** (measure first, don't
+pre-build): a single quiet reminder at ~18h — *"{{property}} is still live for
+{{dates}}. Still free?"* with the same two buttons. One message, once, only
+while a listing is actually live.
 
 **Two rules this message follows, and the ask template does not:**
 
