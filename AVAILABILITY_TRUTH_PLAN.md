@@ -195,10 +195,33 @@ then re-expressed as contiguous runs. Merged for display, so the owner sees
 *6 Aug* as separate removable rows. That is the founder's requirement — a
 specific night must be removable cleanly — and only a night-set can express it.
 
-**Shape:** one live range keeps the single `No longer available` button. Two or
-more switches to a WhatsApp **list message** (up to 10 rows, well beyond the
-3-button ceiling), one row per run, each tappable to remove exactly those
-nights.
+**THE LEDGER IS PER-OWNER, NOT PER-PROPERTY (correction, 2026-08-02).** Found
+by the vStardom 2 session and the founder independently: one owner can hold
+several apartments, and the WhatsApp thread is found by the owner's PHONE —
+one thread per owner, all properties mixed. A per-property ledger therefore
+breaks the founding requirement the moment an owner has two apartments:
+confirming Apartment A would re-list A's nights while B's scrolled away with an
+old message. "The newest message is always complete" must mean complete
+ACROSS EVERYTHING THE OWNER HAS LIVE.
+
+Structure: headline = the event that triggered it ("{{property}} is now marked
+available for {{dates}}…"), then the full ledger beneath, grouped by property.
+iCal-linked properties still never appear, even when the same owner's OTHER
+apartment is tap-based — the exclusion is per-property, not per-owner.
+
+**Shape:** exactly one live run across all properties → the single
+`No longer available` button. Otherwise a WhatsApp **list message**: one
+SECTION per property (section title = property name, 24-char limit), one ROW
+per run (title = the date range), each tappable to remove exactly those
+nights. The 10-row ceiling is shared across sections; overflow rule =
+soonest-first (near nights carry the double-booking risk), and past ten runs
+send a second list message rather than silently dropping the tail.
+
+**Payload correction:** `unlist:<propertyId>:<startISO>:<endISO>` — the
+property id is REQUIRED. Without it, "3 – 6 Aug" is ambiguous for any owner
+with more than one apartment, and a revocation could land on the wrong one:
+the exact class of silent wrongness this whole system exists to remove. (Row
+ids allow 200 chars; uuid + two dates fits easily.)
 
 **Revocation needs no new table.** Removing a run inserts an
 `external_availability_checks` row with `status = 'unavailable'` spanning it.
@@ -266,7 +289,9 @@ on 2026-08-02 with a full brief. Nothing in that handoff exists in code yet.
    assembly, `unlist:<runStart>:<runEnd>` payload handling.
 3. Platform + app: the "N more on request" divider, and "On request" badges on
    cards whose confidence is `unknown`.
-4. `booking_confirmed_owner` template at Meta — the only approval-gated piece.
+4. ~~`booking_confirmed_owner` template at Meta~~ — **SUBMITTED 2026-08-02,
+   awaiting review** (founder edited the wording slightly; read the approved
+   version from Meta before wiring the send). Nothing else is approval-gated.
 
 **Two rules this message follows, and the ask template does not:**
 
@@ -287,7 +312,18 @@ labels the ask already produces.
 **B. Booked notice** — template `booking_confirmed_owner`, 4 body variables to
 mirror the existing pair. Button: `Something's wrong` (17 chars).
 
-> **SUBMISSION-READY SPEC — copy into WhatsApp Manager → Templates → Create.**
+> ⚠️ **SUBMITTED TO META 2026-08-02, awaiting review — and the founder edited
+> the wording slightly at submission. THE APPROVED TEMPLATE AT META IS THE
+> SOURCE OF TRUTH, NOT THE BODY BELOW.** Before writing the send-side, read the
+> live definition (`getMetaTemplates()` in `lib/whatsapp/cloud.ts` already
+> fetches it) and match the variable COUNT and ORDER exactly — a mismatch is a
+> runtime send failure, not a build error. Re-sync the block below and the
+> in-window free-text version to whatever Meta approved, so the owner reads the
+> same words whether we caught them inside the 24h window or not; that
+> word-for-word parity is an existing convention here
+> (`externalAvailability.ts:374–391`).
+>
+> **AS SUBMITTED (pre-edit) — structure to expect:**
 > Meta rules already satisfied: no variable at the very start or end of the
 > body, no two variables adjacent, body well under 1024 chars.
 >
