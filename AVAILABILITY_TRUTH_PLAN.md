@@ -89,9 +89,67 @@ Two companions that close the loop:
   "Booked: [dates]. Anything wrong? tap here / call us", so a race that slipped
   through is caught in minutes, not at check-in.
 
-Needs one new Meta template (`availability_live_notice`, body + 1 quick-reply)
-— submit early, approval has lead time. The revocation tap lands on the same
-webhook/button plumbing as `avail:<id>:yes|no`.
+**Correction to the first draft of this plan: the live-notice needs NO Meta
+approval.** The owner's "Available" tap is an inbound message, which opens the
+24-hour customer-service window — and the notice goes out seconds later. So it
+sends as an interactive free-text message with a quick-reply button, exactly
+like the in-window branch of `askOwnerAvailability` already does. Only the
+BOOKED notice needs a template, because that can land days after the tap, long
+after the window has shut. That reorders the build: nothing is blocked on Meta
+except the last piece.
+
+The revocation tap lands on the same webhook/button plumbing as
+`avail:<id>:yes|no` — a new payload prefix (`unlist:<checkId>`).
+
+### The messages, word-for-word
+
+Written to match the two approved templates: same salutation, property on its
+own line, `Check-in:` / `Check-out:`, one line of motivation, `JazakAllah.`
+
+**A. Live notice** — interactive, in-window, sent on the "Available" tap.
+Button: `No longer available` (19 chars, under Meta's 20 limit).
+
+```
+Assalam o Alaikum {{name}}, this is an automated message from Esker Rentals.
+
+JazakAllah for confirming. {{property}} is now live on our website and app:
+
+Check-in: {{checkin}}
+Check-out: {{checkout}}
+
+Guests can book these dates directly now, which is the fastest way to fill
+them — and the moment someone does, we'll message you straight away with the
+details.
+
+You stay in control: if the dates get taken elsewhere before then, one tap
+below removes it immediately.
+
+JazakAllah.
+```
+
+**B. Booked notice** — template `booking_confirmed_owner`, 4 body variables to
+mirror the existing pair. Button: `Something's wrong` (17 chars).
+
+```
+Assalam o Alaikum {{1}}, this is an automated message from Esker Rentals.
+
+Good news — {{2}} has just been booked through Esker Rentals:
+
+Check-in: {{3}}
+Check-out: {{4}}
+
+Your dates are now blocked on our side, so you won't get any more requests for
+them. Our team will be in touch shortly with the guest details.
+
+If anything about this doesn't look right, tap below and we'll call you.
+
+JazakAllah.
+```
+
+**Deliberately absent:** any mention of rate or payment. Those terms differ per
+owner and per deal, and a template that states commercial terms it doesn't
+actually know is the fastest way to lose an owner's trust — the ops team
+handles that conversation.
 
 **2. Trust window, rethought (he asked for better than a flat 48h):** time is
 the wrong primary axis — the risk is *intervening events*, which the revocation
