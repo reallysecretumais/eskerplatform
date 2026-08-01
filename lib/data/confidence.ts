@@ -39,6 +39,21 @@ import { isExternal, type PublicListing } from "@/lib/data/listings";
  * than mirroring it. A second copy of a fact is a second chance to disagree.
  */
 
+/**
+ * ⚠️ SANCTIONED DUPLICATE #3 (deferred-with-trigger, 2026-08-02).
+ *
+ * The CRM's `Esker OS/lib/availabilityNights.ts` mirrors this file's verdict
+ * constants and adds the half only it needs: contiguous night RUNS, split
+ * around bookings, for the owner ledger. THIS file is the source of the
+ * per-night constants (trust ladder, latest-answer-wins, Karachi nights,
+ * checkout-exclusive); THAT file is the reference for the runs math.
+ * **Change one, change both in the same commit.**
+ *
+ * Both collapse into one SQL function the day the app's V2-5 world chips land
+ * ("From Sat" needs forward-looking confirmed runs — DESIGN_V2_BUILD_PLAN
+ * §4.3) or at the first observed drift, whichever comes first.
+ */
+
 /** Fresh enough to sell against: matches the CRM's iCal rule exactly. */
 export const ICAL_FRESH_HOURS = 12;
 

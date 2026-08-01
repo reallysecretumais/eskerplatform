@@ -318,6 +318,25 @@ guest is waiting; the ledger re-listing every live night doubles as a recurring
 "Esker is actively selling for you" touchpoint. No gamification needed — the
 product's own activity is the retention message.
 
+## ⚠️ META GOTCHA — a QUICK_REPLY with no payload echoes its TEXT
+
+Found by the CRM session while wiring `booking_confirmed_owner` (status:
+PENDING at Meta). A template quick-reply button only returns OUR payload if one
+is attached in the `button` component **at send time**; omit it and Meta sends
+back the button's visible TEXT instead. `Something's wrong` would then have been
+silently dead the first time anyone sent that template without wiring the
+payload — a button that looks fine and does nothing.
+
+Two defences, both now in place CRM-side and both worth keeping: attach the
+payload on every template send, AND accept the button text as a first-class
+second route in the handler. Anyone wiring a new template button here should
+assume the payload will be forgotten once.
+
+**Also live-with-a-typo:** `availability_check_web` was approved carrying
+"a quick tap below **let's** the guest know…". Founder's call whether a
+re-approval round trip is worth it; noted so nobody "fixes" the code to match
+a template that reads wrong.
+
 ## STATUS (2026-08-02)
 
 **LIVE on the Platform + app.** All verified against production, not assumed:
@@ -332,8 +351,17 @@ product's own activity is the retention message.
 | app tonight world | confirmed, then "N more on request" divider, then unknowns |
 | Measured | hero line went `17 open tonight` → **`3 open tonight`**; tonight feed 2 confirmed + 13 on-request, zero overlap |
 
-**NOT BUILT — the CRM half**, handed to the *Esker OS Web vStardom 2* session
-on 2026-08-02 with a full brief. Nothing in that handoff exists in code yet.
+**CRM half — BUILT 2026-08-02** by the *Esker OS Web vStardom 2* session
+(`7993dfc` live notice + revocation + incident path + `Something's wrong`;
+`6c22cf8` the per-owner night-set ledger, `lib/availabilityNights.ts`,
+14 unit tests). All three of my hand-off conditions met and verified.
+
+⚠️ **NOBODY HAS SEEN A POPULATED LEDGER YET.** Run against live data it yields
+zero runs for every owner — correctly, and for two independent agreeing
+reasons: every answered check covers JULY nights (past nights are never
+offered) and all were answered 170–319h ago, beyond even the 168h ceiling. So
+it is honestly empty rather than quietly broken, but the first real owner
+confirmation is still the first true test. Watch that one.
 
 ### Still to build
 
