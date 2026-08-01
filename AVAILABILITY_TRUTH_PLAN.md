@@ -281,10 +281,18 @@ on 2026-08-02 with a full brief. Nothing in that handoff exists in code yet.
 
 ### Still to build
 
-1. SQL function for the night-set, so the CRM (sends the ledger) and the
-   Platform (renders confidence) share ONE definition rather than two
-   implementations that can drift. This is Phase 1 of this document, now with a
-   concrete second caller.
+1. ~~SQL function for the night-set~~ — **DEFERRED WITH A TRIGGER (arbitrated
+   between sessions, 2026-08-02).** The CRM builds the runs math in TS first
+   (only the CRM needs split-around-bookings today, and TS can be tested
+   against real check rows before an interface freezes). The Platform's
+   `confidence.ts` stays the reference for the per-night verdict constants and
+   the CRM module must mirror them exactly (trust ladder 48/96/168h at ≤7/≤30
+   days, latest-answer-wins, Asia/Karachi nights, checkout-exclusive), with
+   mutual source-citations per the sanctioned-duplicate convention.
+   **Promotion trigger:** the app's V2-5 world availability chips ("From Sat"
+   needs forward-looking confirmed runs per listing — `DESIGN_V2_BUILD_PLAN.md`
+   §4.3) or the first observed drift, whichever comes first. Then the night-set
+   becomes ONE SQL function and both repos call it.
 2. CRM: `sendInteractiveList` (the sender only does buttons today), ledger
    assembly, `unlist:<runStart>:<runEnd>` payload handling.
 3. Platform + app: the "N more on request" divider, and "On request" badges on
