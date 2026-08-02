@@ -69,10 +69,33 @@ The website reads **only** the public views (`public_listings`, `public_availabi
 - **HUMAN-only flow**: `ensureThread` (find/create the account's website contact + conversation, attach property/booking context) → `sendGuestMessage` (guest msg in as `sender_kind='guest'`; conversation → `unreplied`; staff bell once per burst). **No auto-AI** — staff reply from the CRM inbox; the reply flows back over realtime. The AI concierge stays on the property pages (pre-booking Q&A); staff may use the CRM's AI-draft assist. Reads via `lib/data/chat.ts` (`getMyThreads`/`getThreadMessages`/`getMyThread`); realtime via `lib/supabase/realtime.ts` `subscribeAuthed` (JWT-on-socket-first or RLS drops events).
 - **UI**: `app/messages/page.tsx` = two-pane inbox (`components/chat/MessagesInbox`) — thread list (Esker Support + a thread per host/stay in Phase 3, no contact numbers) + open `ChatThread`; threads load lazily (`loadThreadMessages`). Floating support panel (`ChatLauncher`+`ChatDock`) mounted once in `app/layout.tsx` (hidden on `/book/*`, auth, `/messages`); entry points via `components/chat/ChatEntry`. CRM side: `providerFor('website')` stub (insert = delivered), `sendMessage` skips the 24h window for website, staff reply pings `POST {WEBSITE_URL}/api/chat/notify-reply` (shared `REVALIDATE_SECRET`) → throttled guest email.
 
+## Mobile app API (`/api/app/v1/*`) — the Esker Rentals app's whole server side
+
+The app repo is `C:\Claude Projects\esker-platform-app`. It has **no database access of its own** — every screen it draws comes from these routes, so a change here changes the app.
+
+- **Routes:** `config` · `markets` · `greeting` · `grid` · `corridor` · `listings` (+ `listings/[id]`) · `bookings/quote` · `me` · `auth/phone/{start,verify}` + `auth/refresh`.
+- **CORS is opened for `/api/app/*` only**, in `middleware.ts`. Safe *only* because that path carries no ambient credentials — no cookie session, and a browser never auto-attaches a Bearer token. Do not widen it.
+- `lib/data/inventory.ts` — the one place that decides what the app's worlds contain (`freeTonight`, `onRequestTonight`, `confidence`, `counts`). `lib/quote.ts` prices; `lib/data/greeting.ts` writes the cover's line; `describeListing()` in `lib/listings.ts` is the single copy source.
+- **The app derives its API host from Metro's host URI at runtime**, so a DHCP change needs no reconfiguring. Web-only builds must set `EXPO_PUBLIC_API_BASE`.
+
+## Availability is three-valued (`lib/data/confidence.ts`)
+
+**`confirmed` | `busy` | `unknown` — and no public surface may flatten `unknown` into free.** Before this, "Open tonight" claimed 17 of 20 because externals with no linked calendar were assumed available; the honest number was 3.
+
+- **Confirmed** = ours (we hold the calendar) · iCal synced within `ICAL_FRESH_HOURS` (12) · an owner tap inside its trust window **covering that specific night**.
+- **Trust ladder** (`TRUST_HOURS`): a night ≤7 days out trusts an answer 48h · 8–30 days 96h · beyond 30 days 168h. Distance buys patience; it does not buy forever.
+- **Latest answer wins per night** — rows are read `responded_at` DESC, so a fresh "no" beats even fresh iCal and a later "yes" reopens the night.
+- **Nights are Asia/Karachi days** (`Intl.DateTimeFormat("en-CA", { timeZone })`) — slicing an ISO string reads the UTC day and is wrong after 19:00 PKT. Ranges are checkout-exclusive `[ci, co)`.
+- `INSTANT_HOURS` (12) separates instant-book from show-but-request. Unknowns are **not hidden**: the app shows them under an "N more on request" divider.
+- **Cached** with `unstable_cache`, tag `availability-signals`, 60s revalidate — four surfaces call `getInventory()` per app open.
+- **The CRM must ping on any answer change.** `app/api/platform/availability-replied/route.ts` reads `external_availability_checks` **directly** (shared Postgres) and busts the cache **before** its guest-matching early-returns. It used to match `external_date_requests` and silently no-op for staff-originated asks, so a rep's owner answer never reached the website.
+- **Booking authorisation is untouched by any of this.** `hasAuthorizedRequest` stays per-account and exact-dates — confidence decides what we *show*, never who may *pay*.
+- The CRM mirrors these constants in `Esker OS/lib/availabilityNights.ts` (a **sanctioned** duplicate — the two files cite each other). Full spec, founder decisions and owner message wording: **`AVAILABILITY_TRUTH_PLAN.md`**.
+
 ## Pages & components
 `app/`: `page.tsx` (home), `stays/page.tsx`, `stays/[id]/page.tsx`, `book/[id]/page.tsx` + `confirmation`, `login`, `signup`, `account`, `auth/callback`, `api/concierge`.
 `components/`: SiteNav, HeroCollage, ConciergeSearch, ConciergeStream, PropertyConcierge, CategoryShowcase, StayCard, Gallery, BookingWidget, AmenityList, PakistanDetails, LocationSection, AuthForm, CheckoutForm, BookingActions.
-`lib/`: `brand.ts`, `payments.ts`, `listings.ts` (units/price/format), `img.ts` (Supabase thumbnail transform), `data/listings.ts` (getListings/getListing/getAvailability/pick…), `auth.ts`, `ai/concierge.ts`, `ai/idcheck.ts`, `supabase/{client,server,admin,middleware}.ts`.
+`lib/`: `brand.ts`, `payments.ts`, `listings.ts` (units/price/format + `describeListing`), `img.ts` (Supabase image transforms — **`thumb()` fits inside a box (`resize=contain`), `crop()` fills a frame (`resize=cover`)**; asking for a square `thumb()` of a landscape photo returns a small image the client then upscales, which is how the app shipped visibly soft photos twice), `cache.ts`, `quote.ts`, `data/listings.ts` (getListings/getListing/getAvailability/pick…), `data/inventory.ts`, `data/confidence.ts`, `data/greeting.ts`, `data/markets.ts`, `auth.ts`, `ai/concierge.ts`, `ai/idcheck.ts`, `supabase/{client,server,admin,middleware}.ts`.
 
 ## Design system
 Concept B — light/airy, photography-led. Esker gold `#C9A84C` (sparing). Display = **Sora** (`font-display`, weights 500/600/700 only), body = **Inter** (`font-sans`); Georgia italic serif reserved for precious accents (hero "stay", money figures). Tokens in `app/globals.css`: `bg-bg`, `bg-surface`, `text-ink`, `text-muted`, `text-gold`/`text-gold-deep`, `border-line`, etc. Mobile-first. Images served via `thumb()` (Supabase image transform); cards use real `<img loading="lazy">` + alt + 480/720 srcset.
@@ -89,7 +112,7 @@ Concept B — light/airy, photography-led. Esker gold `#C9A84C` (sparing). Displ
 - **Reviews** — table `reviews` + view `public_reviews` (`07_reviews.sql`); `lib/data/reviews.ts`; `components/Reviews.tsx` (rating + cards, Exclusive fallback); `aggregateRating` via `lib/seo.ts`.
 - **SEO** — `lib/seo.ts` (metadata/JSON‑LD builders), `app/{robots,sitemap,opengraph-image}`, `components/JsonLd.tsx`, `public/llms.txt`; per‑property `generateMetadata`.
 - **Analytics** — `lib/analytics.ts` (Meta CAPI, hashed PII), `components/MetaPixel.tsx` + `components/TrackEvent.tsx` (env‑driven via `NEXT_PUBLIC_META_PIXEL_ID`/`META_CAPI_TOKEN`).
-- **Caching** — `lib/data/listings.ts` caches `getListings`/`getListing` (cookieless anon client); availability stays uncached/fresh. Bust via `app/api/revalidate`.
+- **Caching** — `lib/data/listings.ts` caches `getListings`/`getListing` (cookieless anon client), tag `listings`, bust via `app/api/revalidate`. **Per-listing availability stays uncached/fresh** (a booking must never race a cache); the *confidence signals* that feed the app's worlds are cached 60s under tag `availability-signals`. Both busters live in `lib/cache.ts` — use them rather than `revalidatePath`, since listings live at slug URLs and Next 16's `revalidateTag` types need the documented cast.
 - **Auth** — password reset: `forgot()` in `components/AuthForm.tsx` → `/auth/callback?next=/auth/reset` → `app/auth/reset`.
 - **Voice concierge** — `components/VoiceConcierge.tsx` + `VoiceOrb.tsx`; routes `app/api/voice/{transcribe,speak}`; `/api/concierge` `voice:true` (bilingual, Roman Urdu). `lib/voiceAudio.ts` (gesture‑unlocked AudioContext).
 - **Brand** — `components/EskerLogo.tsx` (wordmark, currentColor), `app/icon.svg` (favicon).

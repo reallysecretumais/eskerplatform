@@ -14,7 +14,12 @@
 - **Booking auth untouched** — `hasAuthorizedRequest` stays per‑account + exact‑dates. Money rule, not a display rule.
 - Verified live: hero `3 open tonight`; tonight feed **2 confirmed + 13 on‑request, zero overlap**.
 
-**The CRM half is NOT built** (owner live‑notice, the night‑set ledger, revocation, booked notice). Handed to the *Esker OS Web vStardom 2* session 2026‑08‑02 with a full brief; spec + final message wording in `AVAILABILITY_TRUTH_PLAN.md`. **Founder action: submit the `booking_confirmed_owner` template** (submission‑ready spec is in that doc).
+**✅ The CRM half is now BUILT too** (same day, by the *Esker OS Web vStardom 2* session — commits `7993dfc`, `6c22cf8`, `64a8c14`): the live notice on every "Available" tap, the **per‑owner night‑set ledger** (14 unit tests), `unlist:<propertyId>:<start>:<end>` revocation, the booked‑night incident path, `Something's wrong` → `needs_attention` + a human‑assigned muted thread + all‑staff push, and the owner booked‑notice on the newly approved **`booking_confirmed_owner`** template. Spec + founder decisions + final wording: **`AVAILABILITY_TRUTH_PLAN.md`**.
+
+Three things a later session must know:
+- **A ledger send was proven end‑to‑end on a real phone** (2 property sections, 3 runs, 690/1024 chars). **The row TAP coming back is still unproven** — nobody has exercised `applyUnlistReply` from a real tap, and that is the path where a wrong payload silently withdraws the wrong property's nights.
+- **An owner holds MANY apartments** and the WhatsApp thread is per PHONE, so the ledger is per‑owner with a section per property. A per‑property ledger would leave the newest message incomplete.
+- **The night‑set math is deliberately duplicated** in CRM `lib/availabilityNights.ts` rather than pushed into SQL — a sanctioned duplicate, constants mirrored exactly, the two files citing each other. **Promotion trigger:** the app's V2‑5 "From Sat" world chips (they need forward confirmed runs), or first drift.
 
 ## NEW 2026‑07‑31 — Multi‑market readiness (`117a6ed`, DEPLOYED) + PayFast compliance pages
 
