@@ -44,17 +44,33 @@ export async function POST(req: NextRequest) {
     return Response.json({ ok: false, message: "Invalid JSON." }, { status: 400 });
   }
   const { checkId, status } = body;
-  if (!checkId || (status !== "available" && status !== "unavailable")) {
-    return Response.json({ ok: false, message: "checkId and a valid status are required." }, { status: 400 });
+  if (status !== "available" && status !== "unavailable") {
+    return Response.json({ ok: false, message: "A valid status is required." }, { status: 400 });
   }
 
   // The owner has spoken, so the cached availability signals are stale RIGHT
-  // NOW — bust them before anything else, and unconditionally. This must not
-  // sit below the guest-matching early-returns: a staff-origin reply has no
-  // `external_date_requests` row and exits at "matched: false", but it changes
-  // public availability exactly as much as a guest-origin one. Busting first is
-  // what makes a rep's ask update the website, which is half the point.
+  // NOW — bust them before anything else, and unconditionally.
+  //
+  // THIS ROUTE HAS TWO JOBS AND ONLY ONE OF THEM NEEDS A checkId. Busting the
+  // cache is a fact about the whole catalogue; notifying the guest who asked
+  // needs their request row. Requiring checkId up front conflated the two, and
+  // it silently cost us the more safety-critical direction: the CRM's ledger
+  // withdrawal (`applyUnlistReply`) pings with externalPropertyId + dates and NO
+  // checkId — there is no waiting guest to tell — so every owner "these nights
+  // are gone" 400'd here and never busted a thing. The ping is fire-and-forget
+  // on the CRM side, so nothing surfaced; the website simply kept selling the
+  // withdrawn night until the 60s ceiling expired on its own.
+  //
+  // So: bust on any valid status, then require checkId only for the half that
+  // genuinely needs it.
   bustAvailabilitySignals();
+
+  if (!checkId) {
+    // A cache-bust-only ping (an owner withdrawal, or any staff-side change with
+    // no guest attached). Answered explicitly rather than as a 400 so the CRM's
+    // logs can tell "nothing to notify" apart from "you called this wrong".
+    return Response.json({ ok: true, busted: true, matched: false });
+  }
 
   const admin = createAdminClient();
 
