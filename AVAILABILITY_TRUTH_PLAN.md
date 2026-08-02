@@ -539,7 +539,11 @@ plus "All of these dates", so an owner whose 14th sold elsewhere withdraws
 exactly the 14th); when the whole thing fits in Meta's ten rows the menu lists
 the **nights themselves**, one tap each, with **"My balance"** as its own row; a
 booking re-sends the recomputed ledger after the booked notice. Owner money
-landed alongside it (`phase69`, `external_owner_payouts`, **not yet run** —
+landed alongside it (`phase69`, `external_owner_payouts`, **RUN — verified
+against production, and holding REAL payouts within the hour**: the founder
+entered ₨27,000 and ₨15,000 against two owners minutes after it shipped, so
+this table is the only record of real money and must never be cleaned by a
+`created_at` window —
 `owed = Σ cost of completed external stays − Σ payouts`, deliberately kept out
 of expenses/cash-position so the two ledgers can't disagree about one rupee).
 
