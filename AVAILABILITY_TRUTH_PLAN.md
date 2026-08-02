@@ -417,12 +417,50 @@ a template that reads wrong.
 `6c22cf8` the per-owner night-set ledger, `lib/availabilityNights.ts`,
 14 unit tests). All three of my hand-off conditions met and verified.
 
-⚠️ **NOBODY HAS SEEN A POPULATED LEDGER YET.** Run against live data it yields
-zero runs for every owner — correctly, and for two independent agreeing
-reasons: every answered check covers JULY nights (past nights are never
-offered) and all were answered 170–319h ago, beyond even the 168h ceiling. So
-it is honestly empty rather than quietly broken, but the first real owner
-confirmation is still the first true test. Watch that one.
+✅ **THE POPULATED LEDGER IS NOW PROVEN — the outbound half.** Sent to a real
+phone and accepted by Meta: 2 property sections, 3 runs, body **690/1024** with
+real property names, and section-title truncation exercised on a 49-char name.
+So the assembly, the sectioning, the limits and the send all work on live
+production. (Before this, live data yielded zero runs for every owner —
+correctly, for two agreeing reasons: every answered check covered JULY nights,
+and all were 170–319h old, past even the 168h ceiling. Honestly empty, not
+broken.)
+
+⚠️ **STILL UNPROVEN: THE TAP COMING BACK.** Nobody has yet exercised
+`applyUnlistReply` from a real row tap on production — withdrawal written,
+Platform pinged, recomputed ledger returned. That is the remaining first-time
+path, and it is the one where a wrong payload silently withdraws the wrong
+property's nights.
+
+### A FOURTH SHAPE: tested logic inside untested wiring (2026-08-02)
+
+The three faults catalogued earlier are all *"the wrong behaviour left no
+signal"*. This one is different, and worth its own entry because it is the one
+that survives good testing.
+
+The ledger had **14 passing unit tests** on the night-set math and every
+WhatsApp field limit measured at worst case. The bugs were in neither. They were
+in the plumbing *around* the tested core: the notice and the ledger were fired
+straight at Meta and **never written to `messages`**, so Meta returned 200 with
+a wamid, the owner's phone showed the message, and the CRM thread showed
+nothing — a rep opening that owner's chat could not see what we had promised on
+their behalf. And a failed send left no trace at all, so after a signed webhook
+POST to production you could not tell from the database whether the notice had
+gone out.
+
+**Tested logic inside untested wiring reads as "verified" and isn't.** Unit
+tests bound the core; only an end-to-end run exercises the seams between it and
+everything else — and that run looked skippable *precisely because* the core was
+so well tested. Fixed CRM-side (`e5f4174`): all three owner-facing sends persist
+a row, sent or failed, with Meta's reason, and bump the thread preview like
+every other send path.
+
+**Same audit turned on this repo.** `bustAvailabilitySignals()` sits at the top
+of `/api/platform/availability-replied` and had never been exercised either. A
+bad-secret POST to production returns **401**, which proves the route still
+evaluates (the new `lib/cache` import didn't break module scope — the
+`"use server"` trap) and that auth-before-body is intact. The bust firing
+correctly on a real reply is still only proven by the CRM's live tap test.
 
 ### Still to build
 
