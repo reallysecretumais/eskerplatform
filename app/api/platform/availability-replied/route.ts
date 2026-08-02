@@ -15,6 +15,17 @@ const WA_AVAILABLE_TEMPLATE = process.env.WHATSAPP_AVAILABLE_TEMPLATE || "dates_
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/**
+ * Echoed in every JSON response so a caller can prove it reached THIS handler.
+ *
+ * A 200 is not evidence on its own. A misconfigured `WEBSITE_URL`, a redirect,
+ * a Vercel protection page or a catch-all can all answer 200 to a POST that
+ * never touched this file, and a connectivity check that asserts only on the
+ * status code would call that "connected". The CRM's Settings → Website link
+ * test should require `route === "availability-replied"`, not `res.ok`.
+ */
+const ROUTE = "availability-replied";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // The CRM pings this when an apartment owner answers a website guest's
 // request-to-book (Esker OS applyAvailabilityReply). We map the answer back to
@@ -37,15 +48,15 @@ export async function POST(req: NextRequest) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  let body: { checkId?: string; status?: string };
+  let body: { checkId?: string; status?: string; probe?: boolean };
   try {
     body = await req.json();
   } catch {
-    return Response.json({ ok: false, message: "Invalid JSON." }, { status: 400 });
+    return Response.json({ ok: false, route: ROUTE, message: "Invalid JSON." }, { status: 400 });
   }
-  const { checkId, status } = body;
+  const { checkId, status, probe } = body;
   if (status !== "available" && status !== "unavailable") {
-    return Response.json({ ok: false, message: "A valid status is required." }, { status: 400 });
+    return Response.json({ ok: false, route: ROUTE, message: "A valid status is required." }, { status: 400 });
   }
 
   // The owner has spoken, so the cached availability signals are stale RIGHT
@@ -66,10 +77,16 @@ export async function POST(req: NextRequest) {
   bustAvailabilitySignals();
 
   if (!checkId) {
-    // A cache-bust-only ping (an owner withdrawal, or any staff-side change with
-    // no guest attached). Answered explicitly rather than as a 400 so the CRM's
-    // logs can tell "nothing to notify" apart from "you called this wrong".
-    return Response.json({ ok: true, busted: true, matched: false });
+    // A cache-bust-only ping (an owner withdrawal, the CRM's connectivity probe,
+    // or any staff-side change with no guest attached). Answered explicitly
+    // rather than as a 400 so the caller can tell "nothing to notify" apart from
+    // "you called this wrong".
+    //
+    // `probe` is echoed, never branched on: a probe that took a different path
+    // through this handler would prove less than the real call it stands in for.
+    // It exists only so the CRM can filter its own test presses out of
+    // `webhook_events`.
+    return Response.json({ ok: true, route: ROUTE, busted: true, matched: false, probe: probe === true });
   }
 
   const admin = createAdminClient();
@@ -81,8 +98,8 @@ export async function POST(req: NextRequest) {
     .select("id, account_id, external_property_id, checkin, checkout, notified_at")
     .eq("check_id", checkId)
     .maybeSingle();
-  if (!reqRow) return Response.json({ ok: true, matched: false });
-  if (reqRow.notified_at) return Response.json({ ok: true, matched: true, already: true }); // idempotent
+  if (!reqRow) return Response.json({ ok: true, route: ROUTE, busted: true, matched: false });
+  if (reqRow.notified_at) return Response.json({ ok: true, route: ROUTE, busted: true, matched: true, already: true }); // idempotent
 
   const now = new Date().toISOString();
   await admin.from("external_date_requests").update({ status, resolved_at: now }).eq("id", reqRow.id);
@@ -156,7 +173,7 @@ export async function POST(req: NextRequest) {
   }
 
   await admin.from("external_date_requests").update({ notified_at: new Date().toISOString() }).eq("id", reqRow.id);
-  return Response.json({ ok: true, matched: true });
+  return Response.json({ ok: true, route: ROUTE, busted: true, matched: true });
 }
 
 type Admin = ReturnType<typeof createAdminClient>;
