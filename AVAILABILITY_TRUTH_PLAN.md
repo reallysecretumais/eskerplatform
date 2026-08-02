@@ -269,6 +269,27 @@ The menu (Cloud API interactive `list`):
 | Row id | `unlist:<propertyId>:<start>:<end>` | 200 (~65 ✓) |
 | Rows total | 10 across all sections | 10 |
 
+**Payload registry — every id the owner can send back** (all handled in the
+CRM's `app/api/whatsapp/webhook/route.ts`; **`unlist:` is the only one that
+writes**, which is what keeps recompute, the incident guard and the ledger
+re-send in one place):
+
+| Prefix | Sent by | Meaning |
+|---|---|---|
+| `avail:<checkId>:yes\|no` | the ask (buttons / template) | the owner's answer to a specific check |
+| `unlist:<propertyId>:<start>:<end>` | a ledger row, or any picker row | mark these nights unavailable — **the only writer** |
+| `pick:<propertyId>:<start>:<end>` | a multi-night ledger row | open a picker of that run's individual nights + "All of these dates"; writes nothing itself, every row it offers is an `unlist:` |
+| `balance` / typed `BALANCE`, `hisab`, `حساب` | the menu row, notice button, or the owner typing | send the owner's statement |
+| `Something's wrong` (text) | booked-notice button | raise an incident; **also matched as literal text**, because a QUICK_REPLY with no payload echoes its label |
+
+**As of `19b29ad` the menu lists NIGHTS directly when everything fits in the ten
+rows** (the common owner: one property, a couple of short runs) — one tap per
+night, an "All:" row per stretch, and "My balance" as its own row. The
+run-then-picker shape above survives as the >10-row fallback. Row copy is
+**"Mark Aug 7 unavailable", never "Remove Aug 7"** (founder): the owner is
+stating a fact about their calendar, not losing something — and a later yes
+genuinely reopens the night. Opener is **"Manage my dates"**.
+
 Ordering: sections by their soonest night, ascending; rows within a section
 ascending. Overflow past ten runs: a second list message, soonest-first —
 never drop the tail. If two truncated section titles collide (two properties
@@ -452,6 +473,35 @@ Neither unit tests nor the send-side check that Meta accepted the list could
 have caught it. **Only a real thumb on a real row.** Treat that as the standing
 requirement for every new list message: verify the `list_reply` route with an
 actual tap.
+
+✅ **AND NOW PROVEN BOTH WAYS.** The CRM session replayed the exact tap as a
+signed webhook POST against production: the `unavailable 2026-08-14 → 16` row
+written on the right property, the payload round-tripping with the correct
+`propertyId` (the multi-apartment guard held), the **recomputed ledger returned
+and delivered** with Aug 14–16 absent and the other runs intact, and the whole
+exchange recorded in the CRM thread. Test rows were then torn down by
+enumerated id. **What remains unfired is narrower and worth naming precisely:
+the booked-night incident path** (withdrawing nights that carry a confirmed
+booking → `needs_attention` + staff push) has never run, because the test
+property had no bookings.
+
+🔴 **AND MY OWN HALF OF THAT SEAM WAS BROKEN TOO** (fixed, `205393e`). The
+CRM's withdrawal pings `/api/platform/availability-replied` with
+`externalPropertyId` + dates and **no `checkId`** — there is no waiting guest to
+notify. This route required `checkId` and returned **400 on the line above
+`bustAvailabilitySignals()`**, so **every owner withdrawal busted nothing**, and
+the CRM's fire-and-forget `void fetch(...).catch(() => {})` meant neither side
+saw it. Bounded, not unlimited — `revalidate: 60` still expired on its own, so
+a withdrawn night was offered for up to a minute rather than forever — but the
+ping exists so the *safety-critical* direction is instant, and for withdrawals
+it had never once worked. **The route has two jobs and only one needs a
+`checkId`**: busting is a fact about the whole catalogue, notifying needs the
+request row. It now busts on any valid status and answers a checkId-less ping
+`{ok, busted: true, matched: false}` instead of 400.
+
+**The lesson is the same one twice in a day, from both directions:** each side
+verified its own half and the join was never exercised. Neither bug was
+findable by reading your own file.
 
 **Since fixed, and extended** (CRM `13e476c`, `19b29ad`): revocation is now
 **night-granular** (a multi-night row opens a picker of its individual nights
