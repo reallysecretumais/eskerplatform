@@ -503,6 +503,36 @@ request row. It now busts on any valid status and answers a checkId-less ping
 verified its own half and the join was never exercised. Neither bug was
 findable by reading your own file.
 
+⚠️ **AND THE PING ITSELF IS STILL UNPROVEN IN PRODUCTION — do not assume
+otherwise.** Both bugs above were found by reading both sides of the call, NOT
+by observing production; nobody has read a Vercel log. Two live possibilities
+remain and cannot be told apart from either developer machine:
+
+1. `REVALIDATE_SECRET` / `PLATFORM_API_SECRET` IS set on the CRM's Vercel → the
+   ping authenticated, hit the 400, and the fix above lands.
+2. It is NOT set → `pingPlatformAvailability` returns at `if (!secret)` and the
+   ping **has never fired at all** → the fix is necessary but not sufficient.
+
+**Why no evidence exists either way, and this is the third failure shape:** for
+a staff-origin ask the route busts the cache and returns
+`{ok: true, matched: false}` **without writing anything**, so a successful ping
+and a ping that never left the building are byte-identical from the database.
+Not "no signal on failure" — **no signal on SUCCESS**. And `external_date_requests`
+holds **zero rows** in production, so the guest half has never completed either.
+
+**A FOURTH, upstream of all of them:** neither repo can exercise this
+integration where it is developed. The shared secret exists only in Vercel, so
+a local POST returns 401 in both directions and proves nothing. **An
+integration that cannot be run where it is written is one nobody runs until it
+is live.**
+
+Settled by: the CRM's `b53ae94` (a failed or unsent ping now writes an
+`availability_ping_failed` row into `webhook_events`, including the
+absent-secret case) on the next real owner withdrawal — or immediately, by
+checking that the `eskos` and `eskerplatform` Vercel projects hold the **same
+value** for that secret. A mismatch produces 401s indistinguishable from
+"not configured".
+
 **Since fixed, and extended** (CRM `13e476c`, `19b29ad`): revocation is now
 **night-granular** (a multi-night row opens a picker of its individual nights
 plus "All of these dates", so an owner whose 14th sold elsewhere withdraws
