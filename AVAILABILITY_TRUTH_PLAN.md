@@ -289,6 +289,67 @@ trail is the same table, in order.
 is the owner's record. Leaving them in would invite an owner to "mark
 unavailable" something already sold — alarming, and it would change nothing.
 
+## 🔴 A TEMPLATE THAT NEVER EXISTED (found 2026-08-02 wiring the booked notice)
+
+`lib/ownerNotify.ts` had been sending **`external_booking_owner`** since
+phase59. Listing the live WABA (`902646692166912`) returned **13 templates and
+that is not one of them.** Every owner notification that fell outside the 24h
+window has been failing since phase59 shipped.
+
+**The bug worth learning from is not the wrong name — it is that the wrong name
+was unobservable.** The message row recorded neither `template_name` nor the
+failure reason, so a send that could never succeed looked identical to one
+waiting on a retry. The first query for its failures returned *nothing at all* —
+not even failed rows — which reads as "it never ran" rather than "it ran and we
+threw the evidence away". Both fields are recorded now.
+
+This is the same family as the `availability-replied` no-op that hid staff asks
+from the website, and as the light sweep that "worked" while being discarded
+every frame: **the behaviour was wrong AND the wrongness left no trace.** Rule
+for every outbound integration here — persist the identifier you sent and the
+reason it failed, or you have built something that cannot be debugged from
+production.
+
+`booking_confirmed_owner` (APPROVED) is therefore a REPLACEMENT, not an
+addition. Adding a second owner-booked sender would have duplicated the notice
+on one event.
+
+**Verify a template's components before first send.** This path cannot be
+exercised without messaging a real owner, so the pre-flight is the test: body
+param COUNT must equal the approved body's, and a `quick_reply` component must
+target a button index that genuinely exists — **a button component sent against
+a buttonless template is a runtime failure.**
+
+### The booked notice's two paths — ruling (2026-08-02)
+
+Both divergences from strict template/in-window parity are **approved**, with
+one condition.
+
+**1. In-window sends interactive buttons, not plain text.** Correct. An owner
+who cannot dispute a booked notice is exactly how a double-booking survives to
+the doorstep, and the escape hatch must not depend on which side of a 24-hour
+window the message happened to land on.
+
+**2. Parity is broken additively, and that is the right reading.** The approved
+template is fixed at four variables and physically cannot carry guest name,
+headcount or `owner_note`. The parity convention exists so an owner never reads
+a DIFFERENT message depending on invisible timing — and it isn't violated here,
+because the shared core is word-for-word identical and the extras are appended
+after it. The template's own sentence ("our team will be in touch shortly with
+the guest details") is a promise that the in-window path simply keeps. Dropping
+`owner_note` to satisfy a literal reading would quietly undo a field phase59
+built for this exact message, which is a worse outcome than a richer message
+sometimes.
+
+**CONDITION — an undelivered `owner_note` must not vanish silently.** When the
+template path is taken AND extras exist, the note has not reached the owner.
+Per the standing rule that no failure path may be swallowed, that must surface:
+notify staff ("owner was outside the window — note not delivered, call them")
+rather than letting an operationally important instruction ("guest arrives 2am,
+brief the guard") disappear because of a timing detail nobody can see. Without
+this, the divergence creates precisely the class of invisible loss the phantom
+template above just taught us to hate.
+
 ## Review findings (2026-08-02) — owner engagement and safety seams
 
 **Revoking a booked night is an incident, not an update.** Old ledger messages
