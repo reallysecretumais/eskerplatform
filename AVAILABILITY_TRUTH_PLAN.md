@@ -379,6 +379,16 @@ guest is waiting; the ledger re-listing every live night doubles as a recurring
 "Esker is actively selling for you" touchpoint. No gamification needed — the
 product's own activity is the retention message.
 
+## ⚠️ META GOTCHA — a LIST ROW is not a BUTTON
+
+**A row tapped in an interactive list arrives as `interactive.list_reply`,
+never `button_reply`.** A handler that reads only `button_reply` leaves every
+row of the list decorative while the tap still renders in the thread, so it
+looks handled. This shipped inside the ledger and was found only by the
+founder's real tap — see the STATUS section. **Verify any new list message's
+`list_reply` route with an actual tap; a send Meta accepted proves nothing
+about the way back.**
+
 ## ⚠️ META GOTCHA — a QUICK_REPLY with no payload echoes its TEXT
 
 Found by the CRM session while wiring `booking_confirmed_owner` (status:
@@ -426,11 +436,37 @@ correctly, for two agreeing reasons: every answered check covered JULY nights,
 and all were 170–319h old, past even the 168h ceiling. Honestly empty, not
 broken.)
 
-⚠️ **STILL UNPROVEN: THE TAP COMING BACK.** Nobody has yet exercised
-`applyUnlistReply` from a real row tap on production — withdrawal written,
-Platform pinged, recomputed ledger returned. That is the remaining first-time
-path, and it is the one where a wrong payload silently withdraws the wrong
-property's nights.
+🔴 **THE TAP CAME BACK, AND IT WAS DEAD.** Resolved the hard way, hours later
+(CRM `fffd329`). The founder tapped **"Aug 14 – Aug 16"** on his own ledger:
+the message ingested and **nothing else happened** — no withdrawal row, no
+ping, no reply.
+
+**A row picked from an interactive LIST returns `interactive.list_reply`, never
+`button_reply` — and the webhook read only `button_reply`. Every row of the
+ledger was decorative.** The precise dead-button failure this feature exists to
+prevent, shipped *inside* the feature, one layer below where we were looking
+for it. And it looked handled: the classifier already parsed `list_reply`, so
+the tap rendered as a normal bubble in the thread.
+
+Neither unit tests nor the send-side check that Meta accepted the list could
+have caught it. **Only a real thumb on a real row.** Treat that as the standing
+requirement for every new list message: verify the `list_reply` route with an
+actual tap.
+
+**Since fixed, and extended** (CRM `13e476c`, `19b29ad`): revocation is now
+**night-granular** (a multi-night row opens a picker of its individual nights
+plus "All of these dates", so an owner whose 14th sold elsewhere withdraws
+exactly the 14th); when the whole thing fits in Meta's ten rows the menu lists
+the **nights themselves**, one tap each, with **"My balance"** as its own row; a
+booking re-sends the recomputed ledger after the booked notice. Owner money
+landed alongside it (`phase69`, `external_owner_payouts`, **not yet run** —
+`owed = Σ cost of completed external stays − Σ payouts`, deliberately kept out
+of expenses/cash-position so the two ledgers can't disagree about one rupee).
+
+**Founder's wording rule, applied throughout: "Mark Aug 7 unavailable", never
+"Remove Aug 7."** The owner is stating a fact about their calendar, not losing
+something — and a later yes genuinely reopens the night. The opener button is
+**"Manage my dates"**.
 
 ### A FOURTH SHAPE: tested logic inside untested wiring (2026-08-02)
 
