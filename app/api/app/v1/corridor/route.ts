@@ -27,33 +27,45 @@ export const dynamic = "force-dynamic";
  * inside a square box — see `crop()` for why the old square cost most of the
  * resolution before the pixels ever reached the phone.
  *
- * The hero column is 44% of the screen wide at a 0.265 tile height, so roughly a
- * 0.82 portrait; on a 1080p phone that is about 476×578 real pixels. 520×640
- * covers it with margin on the devices this ships to, at a quality worth looking
- * at — this column is the one thing on the cover that nothing covers.
+ * The hero column is 44% of the screen wide at a 0.265 tile height, so roughly
+ * a 0.82 portrait; on a 1080p phone that is ~497×650 real pixels AFTER the
+ * centre column's forward scale. 760×936 is ~1.5× that — the headroom that
+ * separates "sharp" from "technically covered": the perspective transform
+ * resamples every frame, the montage cross-fades between frames, and a 1:1
+ * serve has nothing to lose to either. This column is the one thing on the
+ * cover that nothing covers; it gets real margin (founder: the corridor
+ * photographs "feel a little low quality" — a 1:1 serve at q76 was why).
  *
  * The walls are asked for less on purpose, and not only to save bytes: they sit
  * at 31°, dimmed behind a falloff, and never carry text. Serving them softer
  * than the centre is a depth-of-field cue we get for free, and it is the
  * cheapest way to make the hero look sharper than it is.
  */
-const HERO = { w: 520, h: 640, q: 76 };
+const HERO = { w: 760, h: 936, q: 82 };
 /**
- * The walls are asked for far less than they could be, deliberately.
+ * The walls: sharp now, softened only by QUALITY, not by resolution.
  *
- * They sit at 31°, behind a falloff, carrying no text — nobody reads them, and
- * an undersized image stretched across an angled surface is exactly what a lens
- * does when the subject is in focus and the room isn't. Deliberate defocus makes
- * the hero read sharper than it is, and takes bytes OFF the cover.
+ * The previous numbers (250×310 q58) under-served the walls ~1.6× on purpose —
+ * the theory was that an angled, dimmed, textless surface could wear the
+ * upscale as depth-of-field and make the hero read sharper by contrast. The
+ * founder looked at it and said the corridor photographs felt low quality
+ * (2026-08-02) — the second time softness has been read as CHEAPNESS rather
+ * than art, and his eyes outrank the theory both times. An upscale is not
+ * bokeh; a lens blurs light, bilinear filtering smears pixels.
  *
- * The FRAME follows the column, which is 36% wide against a 0.221 tile height —
- * a 0.81 portrait. It has been landscape and back within a day because the wall
- * width moved twice; the lesson is that this constant is DERIVED from the app's
- * layout, not chosen. Asking for the shape actually displayed is the whole point
- * of `crop()`, and a mismatch here re-introduces exactly the stretch that made
- * the corridor look cheap.
+ * So the walls are now served at their real displayed size (~390×520 on a
+ * 1080p phone, before the 31° foreshortening REDUCES what's needed) and the
+ * hero keeps its edge a subtler way: a quality step (q72 vs q82) and the
+ * falloff it always had. Depth stays a suggestion instead of a defect.
+ *
+ * The FRAME still follows the column — 36% wide against a 0.221 tile height, a
+ * 0.81 portrait. It has been landscape and back within a day because the wall
+ * width moved twice; the lesson stands: this constant is DERIVED from the
+ * app's layout, not chosen. Asking for the shape actually displayed is the
+ * whole point of `crop()`, and a mismatch here re-introduces exactly the
+ * stretch that made the corridor look cheap the FIRST time.
  */
-const WALL = { w: 250, h: 310, q: 58 };
+const WALL = { w: 420, h: 520, q: 72 };
 /**
  * How many photographs a hero tile cycles through. Every property has at least
  * three; two is what the corridor can afford to hold at hero resolution without
