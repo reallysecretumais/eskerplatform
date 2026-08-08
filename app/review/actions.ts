@@ -67,8 +67,10 @@ export async function submitTokenReview(input: TokenReviewInput): Promise<Action
     rating: stayRating, // the site's overall = the stay
     body,
     source: "whatsapp",
-    // Star-only reviews are genuine feedback but not site content — hold them.
-    status: keepHidden ? "hidden" : body ? "published" : "pending",
+    // Founder decision (Aug 2026): NOTHING guest-submitted publishes instantly.
+    // Every review lands as 'pending' and goes live only when staff approve it
+    // in the CRM (Team → Reviews queue). A staff-hidden review stays hidden.
+    status: keepHidden ? "hidden" : "pending",
     stayed_on: stay.checkin,
   };
   const twoPart = { ...base, stay_rating: stayRating, booking_experience_rating: bookingRating };
@@ -82,5 +84,9 @@ export async function submitTokenReview(input: TokenReviewInput): Promise<Action
   if (res.error) res = await write(base);
   if (res.error) return { ok: false, message: "Couldn't save your review — please try again." };
 
-  return { ok: true, message: body ? "Thank you — your review is live." : "Thank you — your ratings are in." };
+  if (!keepHidden) {
+    const { notifyReviewPending } = await import("@/lib/notifyReviewPending");
+    void notifyReviewPending(stay.property.name, stayRating);
+  }
+  return { ok: true, message: "Thank you — your review is in. It appears on the site once our team publishes it." };
 }

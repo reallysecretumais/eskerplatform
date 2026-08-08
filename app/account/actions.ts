@@ -375,6 +375,11 @@ export async function submitReview(input: ReviewInput): Promise<ActionResult> {
   const { data: acct } = await admin.from("accounts").select("name").eq("id", accountId).maybeSingle();
   const authorName = (acct?.name || "").trim() || "Esker guest";
 
+  // One review per stay: update if it exists — and a review staff HID stays
+  // hidden through a guest edit. Nothing publishes instantly (founder
+  // decision): reviews wait in the CRM's approval queue before the site shows
+  // them.
+  const { data: existing } = await admin.from("reviews").select("id, status").eq("booking_id", b.id).maybeSingle();
   const row = {
     property_id: b.property_id,
     guest_id: b.guest_id,
@@ -384,12 +389,10 @@ export async function submitReview(input: ReviewInput): Promise<ActionResult> {
     rating,
     body,
     source: "guest",
-    status: "published",
+    status: existing?.status === "hidden" ? "hidden" : "pending",
     stayed_on: b.checkin,
   };
 
-  // One review per stay: update if it exists, else insert.
-  const { data: existing } = await admin.from("reviews").select("id").eq("booking_id", b.id).maybeSingle();
   const res = existing?.id
     ? await admin.from("reviews").update(row).eq("id", existing.id)
     : await admin.from("reviews").insert(row);
@@ -397,5 +400,10 @@ export async function submitReview(input: ReviewInput): Promise<ActionResult> {
 
   revalidatePath(`/account/bookings/${b.id}`);
   bustListings(); // listing pages are slugged — bust the data tag, not a path
-  return { ok: true, message: existing?.id ? "Your review is updated." : "Thanks — your review is live!" };
+  if (row.status === "pending") {
+    const { notifyReviewPending } = await import("@/lib/notifyReviewPending");
+    const { data: prop } = await admin.from("properties").select("name, short_name").eq("id", b.property_id).maybeSingle();
+    void notifyReviewPending((prop?.short_name as string | null) || (prop?.name as string | null) || "A stay", rating);
+  }
+  return { ok: true, message: "Thanks — your review is in. It appears on the site once our team approves it." };
 }
