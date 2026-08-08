@@ -87,8 +87,8 @@ export default async function ReviewByTokenPage({ params }: { params: Promise<{ 
         </div>
 
         <p className="mt-4 text-center text-xs leading-relaxed text-dim">
-          Your review appears on the {brand.name} website with the name you choose above. It takes about 20 seconds
-          and helps future guests book with confidence.
+          Two taps is all it takes. Add a comment and your review appears on the {brand.name} website with the name you
+          choose above — it helps future guests book with confidence.
         </p>
       </div>
     </main>

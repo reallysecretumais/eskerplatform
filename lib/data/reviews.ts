@@ -35,16 +35,42 @@ export async function getReviews(propertyId: string): Promise<{ reviews: Review[
   return { reviews, summary: { average, count: reviews.length } };
 }
 
-export type MyReview = { rating: number; body: string; author_location: string | null };
+export type MyReview = {
+  rating: number;
+  body: string;
+  author_location: string | null;
+  /** Two-part ratings (null on legacy reviews / pre-migration DB). */
+  stay_rating?: number | null;
+  booking_experience_rating?: number | null;
+};
 
 /** The guest's own review for a booking, to prefill/edit. Reviews are staff-RLS,
  *  so this reads via the service role — call ONLY for a booking the account owns
  *  (booking ownership is already enforced by getMyBooking on the page). */
 export async function getMyReview(bookingId: string): Promise<MyReview | null> {
   const admin = createAdminClient();
-  const { data } = await admin.from("reviews").select("rating, body, author_location").eq("booking_id", bookingId).maybeSingle();
-  if (!data) return null;
-  return { rating: Number(data.rating), body: data.body, author_location: data.author_location };
+  // Two-part first; step down if the migration hasn't run (naming a missing
+  // column fails the whole select).
+  type Row = { rating: number; body: string; author_location: string | null; stay_rating?: number | null; booking_experience_rating?: number | null };
+  let d: Row | null = null;
+  const res = await admin
+    .from("reviews")
+    .select("rating, body, author_location, stay_rating, booking_experience_rating")
+    .eq("booking_id", bookingId)
+    .maybeSingle();
+  if (res.data) d = res.data as Row;
+  else if (res.error) {
+    const fb = await admin.from("reviews").select("rating, body, author_location").eq("booking_id", bookingId).maybeSingle();
+    if (fb.data) d = fb.data as Row;
+  }
+  if (!d) return null;
+  return {
+    rating: Number(d.rating),
+    body: d.body,
+    author_location: d.author_location,
+    stay_rating: d.stay_rating != null ? Number(d.stay_rating) : null,
+    booking_experience_rating: d.booking_experience_rating != null ? Number(d.booking_experience_rating) : null,
+  };
 }
 
 export type ReviewTokenBooking = {
