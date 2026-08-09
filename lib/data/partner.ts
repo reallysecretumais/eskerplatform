@@ -399,7 +399,10 @@ export async function getPartnerPerformance(propertyId: string, month: string): 
 
 // ── Bookings for the month (no guest identity) ──────────────────────────────
 
-const BOOKING_STATUSES = ["awaiting_payment", "payment_collected", "handed_over", "awaiting_checkin", "currently_staying", "checked_out", "needs_attention"];
+// "completed" is the historical-import vocabulary for a finished stay (the CRM's
+// live flow says "checked_out") — both must count or imported months lose half
+// their bookings from the calendar/list/occupancy.
+const BOOKING_STATUSES = ["awaiting_payment", "payment_collected", "handed_over", "awaiting_checkin", "currently_staying", "checked_out", "completed", "needs_attention"];
 
 /** The property's bookings overlapping the viewed month — dates, nights, amount,
  *  status only. Never joins `guests`; never touches payment proofs. */
@@ -471,9 +474,12 @@ async function queryPayouts(admin: ReturnType<typeof createAdminClient>, propert
     .order("withdrawn_on", { ascending: false })
     .order("created_at", { ascending: false });
   if (error) return [];
+  // Negative amounts are CREDITS — money owed back to the partner (e.g. expenses
+  // they covered for the property). They raise "Available to withdraw" and render
+  // as credits, so the sign must survive to the UI.
   return ((data ?? []) as { id: string; amount: number; withdrawn_on: string; for_period: string | null; receipt_no: string; note: string | null }[]).map((r) => ({
     id: r.id,
-    amount: Math.max(0, round(Number(r.amount) || 0)),
+    amount: round(Number(r.amount) || 0),
     withdrawnOn: r.withdrawn_on,
     forPeriod: r.for_period,
     receiptNo: r.receipt_no,

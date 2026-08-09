@@ -75,8 +75,11 @@ export function StatementView({ s }: { s: PartnerStatement }) {
                   <div key={w.id} className="flex items-center justify-between py-1">
                     <span className="text-muted print:text-black/60">
                       {pktDate(w.withdrawnOn)} · {w.receiptNo}
+                      {w.amount < 0 ? " · credit — added to your balance" : ""}
                     </span>
-                    <span className="tabular-nums">{pkr(w.amount)}</span>
+                    <span className={`tabular-nums ${w.amount < 0 ? "text-gold-deep print:text-black" : ""}`}>
+                      {w.amount < 0 ? `+${pkr(-w.amount)}` : pkr(w.amount)}
+                    </span>
                   </div>
                 ))}
               </div>
