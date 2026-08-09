@@ -98,20 +98,16 @@ export function TokenReviewForm({
       </div>
 
       <div className="p-5">
-        <div className="flex flex-col items-center gap-1 py-1">
+        <div className="flex w-full flex-col items-center gap-1 py-1">
           <div className="text-sm font-medium text-ink">How was the booking experience?</div>
           <div className="text-xs text-dim">Finding it, booking it, and how we communicated</div>
-          <div className="mt-1">
-            <StarRating value={bookingRating} onChange={(v) => { setBookingRating(v); setError(null); }} />
-          </div>
+          <StarRating value={bookingRating} onChange={(v) => { setBookingRating(v); setError(null); }} />
         </div>
 
-        <div className="mt-4 flex flex-col items-center gap-1 border-t border-line py-1 pt-4">
+        <div className="mt-4 flex w-full flex-col items-center gap-1 border-t border-line py-1 pt-4">
           <div className="text-sm font-medium text-ink">How was your stay?</div>
           <div className="text-xs text-dim">The space, the comfort, the little touches</div>
-          <div className="mt-1">
-            <StarRating value={stayRating} onChange={(v) => { setStayRating(v); setError(null); }} />
-          </div>
+          <StarRating value={stayRating} onChange={(v) => { setStayRating(v); setError(null); }} />
         </div>
 
         <textarea
