@@ -12,6 +12,9 @@ export const STATUS_LABEL: Record<string, string> = {
   awaiting_checkin: "Confirmed",
   currently_staying: "Staying now",
   checked_out: "Completed",
+  // Historical imports carry "completed" where the live flow writes "checked_out";
+  // without this the raw word renders next to properly-labelled rows.
+  completed: "Completed",
   cancelled: "Cancelled",
   needs_attention: "Needs attention",
 };
@@ -24,6 +27,7 @@ export const STATUS_TONE: Record<string, StatusTone> = {
   awaiting_checkin: "info",
   currently_staying: "positive",
   checked_out: "muted",
+  completed: "muted",
   cancelled: "danger",
   needs_attention: "danger",
 };
