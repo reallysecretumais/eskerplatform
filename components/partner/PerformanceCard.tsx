@@ -1,5 +1,5 @@
 import { TrendingUp, Wallet, Percent } from "lucide-react";
-import type { PartnerPerformance } from "@/lib/data/partner";
+import { isMonthInProgress, type PartnerPerformance } from "@/lib/data/partner";
 
 const pkr = (n: number) => `₨${n.toLocaleString("en-PK")}`;
 
@@ -8,8 +8,20 @@ const pkr = (n: number) => `₨${n.toLocaleString("en-PK")}`;
 // fee amount are never shown. For a management-fee deal, net is the honest
 // headline (revenue − costs won't equal net because the fee is folded in) and a
 // footnote says so, without printing the fee.
-export function PerformanceCard({ p, occupancy, bookingsCount }: { p: PartnerPerformance; occupancy: number; bookingsCount: number }) {
+export function PerformanceCard({
+  p,
+  occupancy,
+  bookingsCount,
+  month,
+}: {
+  p: PartnerPerformance;
+  occupancy: number;
+  bookingsCount: number;
+  month: string;
+}) {
   const shareLabel = p.inRecovery ? "To your recovery" : "Your share";
+  // Occupancy for a running month is measured against the nights so far, so say so.
+  const live = isMonthInProgress(month);
 
   return (
     <section>
@@ -19,7 +31,7 @@ export function PerformanceCard({ p, occupancy, bookingsCount }: { p: PartnerPer
         <Stat icon={<Percent size={15} />} label={shareLabel} value={pkr(p.yourShare)} accent />
       </div>
       <div className="mt-2 text-xs text-dim">
-        {occupancy}% occupancy · {bookingsCount} {bookingsCount === 1 ? "booking" : "bookings"} this month
+        {occupancy}% occupancy{live ? " so far" : ""} · {bookingsCount} {bookingsCount === 1 ? "booking" : "bookings"} this month
       </div>
 
       {/* Operating costs, itemised */}

@@ -44,10 +44,17 @@ export function recentMonths(count = 12, end = currentPktMonth()): string[] {
 }
 
 const round = (n: number) => Math.round(n);
-const daysInMonth = (month: string) => {
-  const [y, m] = month.split("-").map(Number);
-  return new Date(Date.UTC(y, m, 0)).getUTCDate();
-};
+const dayAfter = (d: string) => new Date(Date.parse(`${d}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+const dayDiff = (from: string, to: string) =>
+  Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+/** Today in PKT, "YYYY-MM-DD". */
+function pktToday(): string {
+  return new Date(Date.now() + PKT_OFFSET_MS).toISOString().slice(0, 10);
+}
+/** True while `month` is the month currently running in PKT. */
+export function isMonthInProgress(month: string): boolean {
+  return month === currentPktMonth();
+}
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -438,11 +445,29 @@ async function queryBookings(admin: ReturnType<typeof createAdminClient>, proper
     }));
 }
 
-/** Occupancy % for the month = occupied nights ÷ days in month (capped 100). */
+/**
+ * Occupancy % = nights sold ÷ nights ELAPSED, both measured over the part of the
+ * month that has actually happened (tonight counts — whether it sold is already
+ * known). Judging a live month against all 30/31 nights reports a strong month
+ * in progress as a near-empty one; and counting future advance bookings in the
+ * numerator would err the other way, so the window clamps both sides.
+ * A finished month is unaffected — its elapsed window is the whole month. A
+ * month still in the future has no elapsed nights, so it reads 0.
+ */
 export function occupancyPct(bookings: PartnerBooking[], month: string): number {
-  const nights = bookings.reduce((s, b) => s + (Number.isFinite(b.nightsInMonth) ? b.nightsInMonth : 0), 0);
-  const days = daysInMonth(month);
-  return days > 0 ? Math.min(100, Math.round((nights / days) * 100)) : 0;
+  const monthStart = `${month}-01`;
+  const monthEnd = `${addMonth(month, 1)}-01`; // exclusive
+  const tonightEnd = dayAfter(pktToday()); // tonight's night ends tomorrow
+  const cutoff = tonightEnd < monthEnd ? tonightEnd : monthEnd;
+  const elapsed = dayDiff(monthStart, cutoff);
+  if (elapsed <= 0) return 0;
+
+  let nights = 0;
+  for (const b of bookings) {
+    if (!b.checkin || !b.checkout) continue;
+    nights += overlapNights(b.checkin, b.checkout, monthStart, cutoff);
+  }
+  return Math.min(100, Math.round((nights / elapsed) * 100));
 }
 
 // checkin/checkout are timestamptz ("2026-07-10T07:29:00+00:00"); monthStart/End

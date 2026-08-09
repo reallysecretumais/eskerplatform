@@ -43,7 +43,7 @@ export function PropertyDashboard({ data, months, monthBase }: { data: PartnerDa
             <TrendChart points={trend} />
           </div>
 
-          <PerformanceCard p={performance} occupancy={occupancy} bookingsCount={bookings.length} />
+          <PerformanceCard p={performance} occupancy={occupancy} bookingsCount={bookings.length} month={month} />
 
           {performance.recovery && <RecoveryBar r={performance.recovery} />}
 

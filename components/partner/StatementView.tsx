@@ -1,6 +1,6 @@
 import { EskerLogo } from "@/components/EskerLogo";
 import { support } from "@/lib/payments";
-import type { PartnerStatement } from "@/lib/data/partner";
+import { isMonthInProgress, type PartnerStatement } from "@/lib/data/partner";
 import { pktDate } from "@/lib/partnerFormat";
 
 const pkr = (n: number) => `₨${n.toLocaleString("en-PK")}`;
@@ -57,7 +57,7 @@ export function StatementView({ s }: { s: PartnerStatement }) {
 
           {/* Occupancy / recovery */}
           <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
-            <Box label="Occupancy" value={`${s.occupancy}%`} />
+            <Box label={isMonthInProgress(s.month) ? "Occupancy so far" : "Occupancy"} value={`${s.occupancy}%`} />
             <Box label="Bookings" value={String(s.bookingsCount)} />
             {p.recovery ? (
               <Box label="Recovered" value={`${p.recovery.pct}%`} />
