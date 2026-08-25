@@ -7,9 +7,12 @@ import { getAccount } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Booking received", robots: { index: false, follow: false } };
 
-export default async function ConfirmationPage({ searchParams }: { searchParams: Promise<{ b?: string }> }) {
+export default async function ConfirmationPage({ searchParams }: { searchParams: Promise<{ b?: string; via?: string }> }) {
   const account = await getAccount();
-  const { b: bookingId } = await searchParams;
+  const { b: bookingId, via } = await searchParams;
+  // Safepay return: the gateway already took the payment; the webhook settles
+  // it into the booking within moments — no screenshot, no manual verification.
+  const paidOnline = via === "safepay";
 
   return (
     <main className="min-h-full">
@@ -17,13 +20,21 @@ export default async function ConfirmationPage({ searchParams }: { searchParams:
 
       <div className="mx-auto max-w-xl px-6 py-16 text-center">
         <CircleCheck size={48} className="mx-auto text-gold" strokeWidth={1.5} />
-        <h1 className="mt-5 font-display text-2xl font-semibold tracking-tight text-ink">Booking received</h1>
+        <h1 className="mt-5 font-display text-2xl font-semibold tracking-tight text-ink">
+          {paidOnline ? "Payment received" : "Booking received"}
+        </h1>
         <p className="mx-auto mt-2 max-w-md text-muted">
-          Thank you! Your booking is in — our team is verifying your payment and will confirm shortly.
+          {paidOnline
+            ? "Thank you! Your payment went through Safepay and your booking is confirming automatically."
+            : "Thank you! Your booking is in — our team is verifying your payment and will confirm shortly."}
         </p>
 
         <div className="mt-8 space-y-3 rounded-2xl border border-line bg-surface p-5 text-left text-sm">
-          <Step n={1} title="We verify your payment" body="Your dates are held for you while the team checks your screenshot against the transfer — usually within a few hours." />
+          {paidOnline ? (
+            <Step n={1} title="Payment settled" body="Safepay has confirmed your payment — no screenshots, nothing to verify by hand." />
+          ) : (
+            <Step n={1} title="We verify your payment" body="Your dates are held for you while the team checks your screenshot against the transfer — usually within a few hours." />
+          )}
           <Step n={2} title="You're confirmed" body="You'll get a confirmation, then check-in details before your stay." />
           <Step n={3} title="Held safely until check-in" body="Your payment is held securely and only released to the property after you check in." icon />
         </div>

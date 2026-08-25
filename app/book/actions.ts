@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyId, type IdSide } from "@/lib/ai/idcheck";
 import { advanceAmount, advanceLabel } from "@/lib/payments";
+import { createSafepayCheckout, isSafepayConfigured } from "@/lib/safepay";
 import { SITE_URL } from "@/lib/seo";
 import { notifyBookingReceived } from "@/lib/notifyGuest";
 import { capiEvent } from "@/lib/analytics";
@@ -17,7 +18,15 @@ const HOLD_HOURS = 18;
 const BUCKET = "guest-docs";
 const MAX_BYTES = 10 * 1024 * 1024;
 
-export type BookingResult = { ok: boolean; bookingId?: string; message?: string };
+export type BookingResult = {
+  ok: boolean;
+  bookingId?: string;
+  message?: string;
+  /** Safepay path: the hosted-checkout URL the client must redirect to. The
+   *  booking exists (awaiting_payment) and the CRM webhook settles it; an
+   *  abandoned checkout auto-releases with the standard 18h website hold. */
+  checkoutUrl?: string;
+};
 
 function ext(file: File): string {
   const fromName = file.name.split(".").pop();
@@ -74,6 +83,10 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
   const phone = String(formData.get("phone") || "").trim();
   const email = String(formData.get("email") || "").trim();
   const proof = formData.get("proof") as File | null;
+  // "safepay" = hosted checkout (card · wallet · Raast), no screenshot; anything
+  // else falls back to the bank-transfer + screenshot flow. Server-gated on
+  // keys so a forged form value can't invent a checkout on an unconfigured env.
+  const viaSafepay = String(formData.get("pay_method") || "") === "safepay" && isSafepayConfigured();
   const cnicFront = formData.get("cnicFront") as File | null;
   const cnicBack = formData.get("cnicBack") as File | null;
   const docType = String(formData.get("docType") || "cnic") === "passport" ? "passport" : "cnic";
@@ -188,8 +201,10 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
 
   // 4. Guest details + proof.
   if (!name || !phone) return { ok: false, message: "Please enter your name and phone number." };
-  if (!proof || proof.size === 0) return { ok: false, message: "Please upload your payment screenshot." };
-  if (proof.size > MAX_BYTES) return { ok: false, message: "That screenshot is too large (max 10 MB)." };
+  if (!viaSafepay) {
+    if (!proof || proof.size === 0) return { ok: false, message: "Please upload your payment screenshot." };
+    if (proof.size > MAX_BYTES) return { ok: false, message: "That screenshot is too large (max 10 MB)." };
+  }
 
   // 4b. Give every booker an account (if not already signed in) so they can track
   //     this booking and message us. Best-effort: needs an email to be reachable;
@@ -250,8 +265,11 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
     await admin.from("guests").update({ cnic_front_url: frontPath, cnic_back_url: backPath }).eq("id", guestId);
   }
 
-  // 6. Create the booking (awaiting team verification of the screenshot).
-  const note = `Website booking — ${advanceLabel(amount, exclusive)} advance ₨${advance.toLocaleString("en-PK")} of ₨${amount.toLocaleString("en-PK")} (balance ₨${balance.toLocaleString("en-PK")} due at check-in). Verify the payment screenshot.${email ? ` Email: ${email}.` : ""}${idNote}`;
+  // 6. Create the booking (screenshot path: awaiting team verification;
+  //    Safepay path: awaiting the gateway webhook, which settles it hands-free).
+  const note = `Website booking — ${advanceLabel(amount, exclusive)} advance ₨${advance.toLocaleString("en-PK")} of ₨${amount.toLocaleString("en-PK")} (balance ₨${balance.toLocaleString("en-PK")} due at check-in). ${
+    viaSafepay ? "Paying by Safepay — confirms automatically when the gateway settles." : "Verify the payment screenshot."
+  }${email ? ` Email: ${email}.` : ""}${idNote}`;
   const { data: booking, error: bErr } = await admin
     .from("bookings")
     .insert({
@@ -282,17 +300,40 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
     .single();
   if (bErr || !booking) return { ok: false, message: "Could not create your booking. Please try again." };
 
-  // 7. Record the advance + its proof screenshot. The CRM's recompute trigger
-  //    sets advance_paid + payment_status; the team verifies the proof to confirm.
-  const proofPath = `payments/${booking.id}/pay-${Date.now()}.${ext(proof)}`;
-  const upP = await admin.storage.from(BUCKET).upload(proofPath, proof, { contentType: proof.type, upsert: false });
-  if (!upP.error) {
-    await admin.from("booking_payments").insert({
-      booking_id: booking.id,
-      amount: advance,
-      proof_url: proofPath,
-      note: `Website advance (${exclusive ? "50%" : "25%"}) — verify this screenshot.`,
+  // 7. Payment.
+  //    Safepay: mint the hosted checkout NOW (booking id in tracker metadata is
+  //    how the CRM webhook finds it) and hand the URL back for the redirect —
+  //    no ledger row yet; the webhook writes it when money actually moves. If
+  //    minting fails, the booking still exists and the guest is guided to the
+  //    screenshot fallback rather than losing their dates.
+  //    Screenshot: record the advance + proof for the team to verify (as ever).
+  let checkoutUrl: string | undefined;
+  if (viaSafepay) {
+    const site = (process.env.NEXT_PUBLIC_SITE_URL || "https://eskerrentals.com").replace(/\/$/, "");
+    const checkout = await createSafepayCheckout({
+      amountPkr: advance,
+      bookingId: booking.id,
+      redirectUrl: `${site}/book/${propertyId}/confirmation?b=${booking.id}&via=safepay`,
+      cancelUrl: `${site}/book/${propertyId}?cancelled=1`,
     });
+    if (!checkout.ok) {
+      return {
+        ok: false,
+        message: `${checkout.message} Your dates are held for a while — you can also pay by bank transfer and upload the screenshot.`,
+      };
+    }
+    checkoutUrl = checkout.url;
+  } else {
+    const proofPath = `payments/${booking.id}/pay-${Date.now()}.${ext(proof!)}`;
+    const upP = await admin.storage.from(BUCKET).upload(proofPath, proof!, { contentType: proof!.type, upsert: false });
+    if (!upP.error) {
+      await admin.from("booking_payments").insert({
+        booking_id: booking.id,
+        amount: advance,
+        proof_url: proofPath,
+        note: `Website advance (${exclusive ? "50%" : "25%"}) — verify this screenshot.`,
+      });
+    }
   }
 
   // 8. Notify the guest (email now; WhatsApp queued for the inbox) + the team.
@@ -351,7 +392,7 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
     }
   }
 
-  return { ok: true, bookingId: booking.id };
+  return { ok: true, bookingId: booking.id, checkoutUrl };
 }
 
 export type RequestDatesResult = { ok: boolean; message: string; pending?: boolean };

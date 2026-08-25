@@ -19,6 +19,7 @@ export function CheckoutForm({
   balanceLabel,
   pctLabel,
   prefill,
+  safepayReady = false,
 }: {
   propertyId: string;
   checkin: string;
@@ -27,10 +28,16 @@ export function CheckoutForm({
   balanceLabel: string;
   pctLabel: string;
   prefill: Prefill;
+  /** Safepay keys exist on THIS deployment — the online option renders.
+   *  Fail-closed: the live site shows nothing until production keys are set. */
+  safepayReady?: boolean;
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [busy, setBusy] = useState(false);
+  // Online-first (founder decision): Safepay is the default whenever available;
+  // bank transfer + screenshot stays one tap away for everyone else.
+  const [payMethod, setPayMethod] = useState<"safepay" | "transfer">(safepayReady ? "safepay" : "transfer");
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [docType, setDocType] = useState<"cnic" | "passport">("cnic");
@@ -103,15 +110,23 @@ export function CheckoutForm({
     try {
       const fd = new FormData(e.currentTarget);
       const res = await createBooking(fd);
+      if (res.ok && res.checkoutUrl) {
+        // Safepay path: hand the guest to the hosted checkout. Full navigation
+        // (not router.push — it's an external origin), and `busy` deliberately
+        // STAYS true so the button can't double-fire while the browser leaves
+        // (a `finally` reset here re-armed the button mid-navigation).
+        window.location.assign(res.checkoutUrl);
+        return;
+      }
       if (res.ok) {
         router.push(`/book/${propertyId}/confirmation${res.bookingId ? `?b=${res.bookingId}` : ""}`);
-      } else {
-        setError(res.message || "Something went wrong.");
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
       }
+      setError(res.message || "Something went wrong.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setBusy(false);
     } catch {
       setError("Something went wrong. Please try again.");
-    } finally {
       setBusy(false);
     }
   };
@@ -189,10 +204,46 @@ export function CheckoutForm({
       <section>
         <h2 className="font-display text-lg font-semibold tracking-tight text-ink">Payment</h2>
         <p className="mt-1 text-sm text-muted">
-          Pay the <span className="font-medium text-ink">{pctLabel} advance — {advanceLabel}</span> now to secure your booking (balance {balanceLabel} at check-in). Send it to either Esker account below — from {payments.methods.join(", ")} — then upload your screenshot.
+          Pay the <span className="font-medium text-ink">{pctLabel} advance — {advanceLabel}</span> now to secure your booking (balance {balanceLabel} at check-in).
         </p>
 
-        <div className="mt-3 space-y-2">
+        {/* Method choice — online-first when Safepay is live on this deployment. */}
+        {safepayReady && (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <input type="hidden" name="pay_method" value={payMethod} />
+            <button
+              type="button"
+              onClick={() => setPayMethod("safepay")}
+              className={`rounded-xl border p-3 text-left transition ${payMethod === "safepay" ? "border-gold bg-gold/10" : "border-line bg-surface hover:border-gold/40"}`}
+            >
+              <div className="text-sm font-medium text-ink">
+                Pay online now <span className="ml-1 rounded bg-gold/15 px-1.5 py-0.5 text-[10px] text-gold-deep">Recommended</span>
+              </div>
+              <div className="mt-0.5 text-xs text-muted">Card · wallet · Raast — secure Safepay checkout, confirms instantly.</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPayMethod("transfer")}
+              className={`rounded-xl border p-3 text-left transition ${payMethod === "transfer" ? "border-gold bg-gold/10" : "border-line bg-surface hover:border-gold/40"}`}
+            >
+              <div className="text-sm font-medium text-ink">Bank transfer</div>
+              <div className="mt-0.5 text-xs text-muted">Send to an Esker account and upload your screenshot.</div>
+            </button>
+          </div>
+        )}
+
+        {payMethod === "safepay" ? (
+          <p className="mt-3 text-sm text-muted">
+            You&apos;ll be taken to Safepay&apos;s secure page to pay the {advanceLabel} advance — your booking confirms
+            automatically the moment the payment goes through.
+          </p>
+        ) : (
+          <p className="mt-3 text-sm text-muted">
+            Send it to either Esker account below — from {payments.methods.join(", ")} — then upload your screenshot.
+          </p>
+        )}
+
+        <div className={payMethod === "safepay" ? "hidden" : "mt-3 space-y-2"}>
           {payments.accounts.map((a) => (
             <div key={a.number} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3">
               <div className="min-w-0">
@@ -208,11 +259,13 @@ export function CheckoutForm({
           ))}
         </div>
 
-        <div className="mt-4">
+        <div className={payMethod === "safepay" ? "hidden" : "mt-4"}>
           <label className={label}>
             <span className="inline-flex items-center gap-1.5"><Upload size={14} /> Payment screenshot</span>
           </label>
-          <input name="proof" type="file" accept="image/*" className={file} required />
+          {/* `required` only on the transfer path — a hidden required input
+              blocks submit invisibly on the Safepay path. */}
+          <input name="proof" type="file" accept="image/*" className={file} required={payMethod !== "safepay"} />
         </div>
 
         <p className="mt-3 inline-flex items-start gap-1.5 text-xs text-muted">
@@ -223,12 +276,22 @@ export function CheckoutForm({
 
       <div>
         <button type="submit" disabled={busy || idBlocking} className="w-full rounded-xl bg-gold px-5 py-3 text-sm font-medium text-ink transition hover:brightness-105 disabled:opacity-50">
-          {busy ? "Confirming…" : frontStatus === "checking" || backStatus === "checking" ? "Checking your ID…" : `Pay ${advanceLabel} advance & confirm`}
+          {busy
+            ? payMethod === "safepay" ? "Taking you to secure payment…" : "Confirming…"
+            : frontStatus === "checking" || backStatus === "checking"
+              ? "Checking your ID…"
+              : payMethod === "safepay"
+                ? `Continue to secure payment — ${advanceLabel}`
+                : `Pay ${advanceLabel} advance & confirm`}
         </button>
         {idBlocking && frontStatus !== "checking" && backStatus !== "checking" && (
           <p className="mt-2 text-center text-xs text-red">Please upload a valid ID above to continue.</p>
         )}
-        <p className="mt-2 text-center text-xs text-muted">Your dates are held for you while we verify — usually within a few hours.</p>
+        <p className="mt-2 text-center text-xs text-muted">
+          {payMethod === "safepay"
+            ? "Your booking confirms automatically the moment the payment goes through."
+            : "Your dates are held for you while we verify — usually within a few hours."}
+        </p>
         <p className="mt-3 text-center text-xs text-muted">
           By confirming, you agree to Esker&apos;s{" "}
           <Link href="/legal/terms" className="text-gold-deep underline hover:no-underline">Terms</Link>,{" "}

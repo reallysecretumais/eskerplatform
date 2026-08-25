@@ -7,6 +7,7 @@ import { getListing, getAvailability } from "@/lib/data/listings";
 import { getAccount } from "@/lib/auth";
 import { formatPrice } from "@/lib/listings";
 import { advanceAmount, advanceLabel as advancePctLabel } from "@/lib/payments";
+import { isSafepayConfigured } from "@/lib/safepay";
 import { thumb } from "@/lib/img";
 import { TrackEvent } from "@/components/TrackEvent";
 import type { Metadata } from "next";
@@ -82,7 +83,7 @@ export default async function BookPage({
 
         <div className="mt-6 grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <CheckoutForm propertyId={id} checkin={checkin} checkout={checkout} advanceLabel={advanceLabel} balanceLabel={balanceLabel} pctLabel={pctLabel} prefill={prefill} />
+            <CheckoutForm propertyId={id} checkin={checkin} checkout={checkout} advanceLabel={advanceLabel} balanceLabel={balanceLabel} pctLabel={pctLabel} prefill={prefill} safepayReady={isSafepayConfigured()} />
           </div>
 
           {/* Order summary */}
