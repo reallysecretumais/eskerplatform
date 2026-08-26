@@ -3,14 +3,17 @@
 import { useActionState, useState } from "react";
 import { CreditCard, Building, Upload, Check } from "lucide-react";
 import { submitBalancePayment } from "@/app/account/actions";
-import { payments } from "@/lib/payments";
+import type { BankAccount } from "@/lib/bankAccounts";
 
 const pkr = (n: number) => `₨${n.toLocaleString("en-PK")}`;
 
 // Balance due + how to pay it. Today: bank transfer + screenshot (verified by the
 // team). The "Pay now by card" button is the Safepay seam — enabled when the
 // gateway goes live behind lib/payments/provider.ts.
-export function BalancePanel({ bookingId, balance }: { bookingId: string; balance: number }) {
+export function BalancePanel({ bookingId, balance, accounts }: { bookingId: string; balance: number;
+  /** Read from the CRM's Settings by the server parent — a client component
+   *  can't read the database itself. */
+  accounts: BankAccount[] }) {
   const [state, action, pending] = useActionState(submitBalancePayment, null);
   const [openTransfer, setOpenTransfer] = useState(false);
 
@@ -53,10 +56,10 @@ export function BalancePanel({ bookingId, balance }: { bookingId: string; balanc
         <div className="mt-4 border-t border-line pt-4">
           <p className="text-xs text-muted">Transfer {pkr(balance)} to any Esker account below, then upload your screenshot — we&apos;ll confirm it.</p>
           <div className="mt-3 space-y-2">
-            {payments.accounts.map((a) => (
-              <div key={a.number} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
-                <div className="text-ink">{payments.title} · {a.bank}{a.primary ? " (primary)" : ""}</div>
-                <div className="break-all font-mono text-xs text-muted">{a.number}</div>
+            {accounts.map((a) => (
+              <div key={a.id} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+                <div className="text-ink">{a.title} · {a.bank}{a.primary ? " (primary)" : ""}</div>
+                <div className="break-all font-mono text-xs text-muted">{a.iban}</div>
               </div>
             ))}
           </div>

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Copy, Check, Upload, ShieldCheck, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { createBooking, verifyIdUpload } from "@/app/book/actions";
 import { payments } from "@/lib/payments";
+import type { BankAccount } from "@/lib/bankAccounts";
 
 type IdStatus = "idle" | "checking" | "ok" | "bad";
 
@@ -19,6 +20,7 @@ export function CheckoutForm({
   balanceLabel,
   pctLabel,
   prefill,
+  accounts,
   safepayReady = false,
 }: {
   propertyId: string;
@@ -28,6 +30,9 @@ export function CheckoutForm({
   balanceLabel: string;
   pctLabel: string;
   prefill: Prefill;
+  /** Read from the CRM's Settings by the server parent — this is a client
+   *  component and can't read the database itself. */
+  accounts: BankAccount[];
   /** Safepay keys exist on THIS deployment — the online option renders.
    *  Fail-closed: the live site shows nothing until production keys are set. */
   safepayReady?: boolean;
@@ -239,21 +244,22 @@ export function CheckoutForm({
           </p>
         ) : (
           <p className="mt-3 text-sm text-muted">
-            Send it to either Esker account below — from {payments.methods.join(", ")} — then upload your screenshot.
+            Send it to {accounts.length === 1 ? "the Esker account" : "any of the Esker accounts"} below — from{" "}
+            {payments.methods.join(", ")} — then upload your screenshot.
           </p>
         )}
 
         <div className={payMethod === "safepay" ? "hidden" : "mt-3 space-y-2"}>
-          {payments.accounts.map((a) => (
-            <div key={a.number} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3">
+          {accounts.map((a) => (
+            <div key={a.id} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3">
               <div className="min-w-0">
                 <div className="text-sm font-medium text-ink">
-                  {payments.title} · {a.bank} {a.primary && <span className="ml-1 rounded bg-gold/15 px-1.5 py-0.5 text-[10px] text-gold-deep">Primary</span>}
+                  {a.title} · {a.bank} {a.primary && <span className="ml-1 rounded bg-gold/15 px-1.5 py-0.5 text-[10px] text-gold-deep">Primary</span>}
                 </div>
-                <div className="truncate text-sm text-muted tnum">{a.number}</div>
+                <div className="truncate text-sm text-muted tnum">{a.iban}</div>
               </div>
-              <button type="button" onClick={() => copy(a.number)} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-xs text-ink transition hover:bg-surface-2">
-                {copied === a.number ? <Check size={13} className="text-green" /> : <Copy size={13} />} {copied === a.number ? "Copied" : "Copy"}
+              <button type="button" onClick={() => copy(a.iban)} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-xs text-ink transition hover:bg-surface-2">
+                {copied === a.iban ? <Check size={13} className="text-green" /> : <Copy size={13} />} {copied === a.iban ? "Copied" : "Copy"}
               </button>
             </div>
           ))}

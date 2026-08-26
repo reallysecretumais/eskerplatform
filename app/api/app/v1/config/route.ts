@@ -1,6 +1,7 @@
 import { ok, guard } from "@/lib/app/api";
 import { brand } from "@/lib/brand";
 import { payments, support, MIN_ADVANCE, advancePct } from "@/lib/payments";
+import { getBankAccounts, toWireAccounts, primaryTitle } from "@/lib/data/bankAccounts";
 import { getWebsiteAi } from "@/lib/settings";
 
 export const runtime = "nodejs";
@@ -26,7 +27,7 @@ const MIN_SUPPORTED_VERSION = "1.0.0";
 const LATEST_VERSION = "1.0.0";
 
 export const GET = guard(async () => {
-  const ai = await getWebsiteAi();
+  const [ai, accounts] = await Promise.all([getWebsiteAi(), getBankAccounts()]);
 
   return ok({
     // ── Release gates ───────────────────────────────────────────────
@@ -65,8 +66,10 @@ export const GET = guard(async () => {
       advancePctExclusive: advancePct(true),
       advancePctStandard: advancePct(false),
       methods: payments.methods,
-      accountTitle: payments.title,
-      bankAccounts: payments.accounts,
+      // Same keys the app has parsed since launch; the values now come from the
+      // CRM's Settings instead of a constant in this repo.
+      accountTitle: primaryTitle(accounts),
+      bankAccounts: toWireAccounts(accounts),
     },
 
     support: { email: support.email, whatsapp: brand.whatsapp },

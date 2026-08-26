@@ -11,6 +11,7 @@ import { BalancePanel } from "@/components/account/BalancePanel";
 import { CancelDialog } from "@/components/account/CancelDialog";
 import { ReviewForm } from "@/components/account/ReviewForm";
 import { ChatEntry } from "@/components/chat/ChatEntry";
+import { getBankAccounts } from "@/lib/data/bankAccounts";
 
 export const metadata = { title: "Booking — Esker" };
 
@@ -30,6 +31,8 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
   const quote = b.checkin ? cancellationQuote(b.checkin, b.advancePaid) : null;
   const reviewable = b.status === "checked_out";
   const myReview = reviewable ? await getMyReview(b.id) : null;
+  // BalancePanel is a client component, so the accounts are read here.
+  const accounts = await getBankAccounts();
 
   return (
     <div className="max-w-2xl">
@@ -74,7 +77,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
       {/* Balance payment */}
       {activePayable && b.balance > 0 && (
         <div className="mt-4">
-          <BalancePanel bookingId={b.id} balance={b.balance} />
+          <BalancePanel bookingId={b.id} balance={b.balance} accounts={accounts} />
         </div>
       )}
 

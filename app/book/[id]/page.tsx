@@ -11,6 +11,7 @@ import { isSafepayConfigured } from "@/lib/safepay";
 import { thumb } from "@/lib/img";
 import { TrackEvent } from "@/components/TrackEvent";
 import type { Metadata } from "next";
+import { getBankAccounts } from "@/lib/data/bankAccounts";
 
 export const metadata: Metadata = { title: "Confirm & pay", robots: { index: false, follow: false } };
 
@@ -52,6 +53,9 @@ export default async function BookPage({
 
   // Don't allow checkout for taken dates.
   const busy = await getAvailability(id);
+  // Where a transfer should go — the CRM's Settings, read server-side because
+  // CheckoutForm is a client component.
+  const accounts = await getBankAccounts();
   const booked = bookedSet(busy);
   for (let d = new Date(`${checkin}T00:00:00`), g = 0; d < new Date(`${checkout}T00:00:00`) && g < 400; d.setDate(d.getDate() + 1), g++) {
     if (booked.has(d.toISOString().slice(0, 10))) redirect(`/stays/${id}`);
@@ -83,7 +87,7 @@ export default async function BookPage({
 
         <div className="mt-6 grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <CheckoutForm propertyId={id} checkin={checkin} checkout={checkout} advanceLabel={advanceLabel} balanceLabel={balanceLabel} pctLabel={pctLabel} prefill={prefill} safepayReady={isSafepayConfigured()} />
+            <CheckoutForm propertyId={id} checkin={checkin} checkout={checkout} advanceLabel={advanceLabel} balanceLabel={balanceLabel} pctLabel={pctLabel} prefill={prefill} accounts={accounts} safepayReady={isSafepayConfigured()} />
           </div>
 
           {/* Order summary */}

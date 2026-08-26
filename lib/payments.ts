@@ -1,13 +1,24 @@
-// Real Esker payment accounts shown at checkout. Guests can send the amount into
-// either account from any Easypaisa / JazzCash / bank transfer / SadaPay, then
-// upload a screenshot of the transfer. (A real gateway slots in behind this later.)
+// Guests send the advance into one of Esker's accounts from any Easypaisa /
+// JazzCash / bank transfer / SadaPay, then upload a screenshot of the transfer.
+//
+// ⚠️ THE ACCOUNTS BELOW ARE NO LONGER THE SOURCE OF TRUTH. They live in the
+// CRM's Settings (`app_settings.payment_bank_accounts`), because opening or
+// closing a bank account should take a founder a minute, not a deploy of the
+// public website. Read them with `getBankAccounts()` from lib/data/bankAccounts.
+//
+// These stay as the FLOOR under that read, and must never be deleted: a
+// checkout that renders zero accounts is a guest who came to pay and found
+// nowhere to send the money, which fails silently and looks like a page that
+// loaded fine. Keep them correct — they are what a database outage serves.
+export const FALLBACK_ACCOUNTS = [
+  { bank: "Soneri Bank", number: "PK64SONE0041020015820404", primary: true },
+  { bank: "Allied Bank", number: "13960010133695040020", primary: false },
+] as const;
+
 export const payments = {
   title: "ESKER RENTALS",
+  // Copy, not data — how a guest can pay, not where the money goes.
   methods: ["Easypaisa", "JazzCash", "Bank transfer", "SadaPay"],
-  accounts: [
-    { bank: "Soneri Bank", number: "PK64SONE0041020015820404", primary: true },
-    { bank: "Allied Bank", number: "13960010133695040020", primary: false },
-  ],
 } as const;
 
 // Guest support contact (shown in emails / messages).
