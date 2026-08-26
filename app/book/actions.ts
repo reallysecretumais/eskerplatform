@@ -310,9 +310,29 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
   let checkoutUrl: string | undefined;
   if (viaSafepay) {
     const site = (process.env.NEXT_PUBLIC_SITE_URL || "https://eskerrentals.com").replace(/\/$/, "");
+    // ANCHOR-first (same shape as chat pay-links): the checkout's metadata
+    // carries a gateway_payments row, not the booking id — one uniform settle
+    // path in the CRM webhook, and the anchor records property + amount for
+    // the reconciliation view. Website anchors are born WITH their booking.
+    const { data: anchor, error: anchorErr } = await admin
+      .from("gateway_payments")
+      .insert({
+        booking_id: booking.id,
+        amount: advance,
+        status: "pending",
+        gateway: "safepay",
+        source: "website",
+        property_label: String(listing.title ?? "your stay"),
+        ...(isExternal ? { external_property_id: propertyId } : { property_id: propertyId }),
+      })
+      .select("id")
+      .single();
+    if (anchorErr || !anchor) {
+      return { ok: false, message: "Couldn't start the payment — please try again, or pay by bank transfer." };
+    }
     const checkout = await createSafepayCheckout({
       amountPkr: advance,
-      bookingId: booking.id,
+      bookingId: anchor.id, // metadata order_id = the anchor
       redirectUrl: `${site}/book/${propertyId}/confirmation?b=${booking.id}&via=safepay`,
       cancelUrl: `${site}/book/${propertyId}?cancelled=1`,
     });
@@ -322,6 +342,7 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
         message: `${checkout.message} Your dates are held for a while — you can also pay by bank transfer and upload the screenshot.`,
       };
     }
+    await admin.from("gateway_payments").update({ tracker: checkout.tracker }).eq("id", anchor.id);
     checkoutUrl = checkout.url;
   } else {
     const proofPath = `payments/${booking.id}/pay-${Date.now()}.${ext(proof!)}`;

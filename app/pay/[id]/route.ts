@@ -1,0 +1,38 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createSafepayCheckout, isSafepayConfigured } from "@/lib/safepay";
+
+// Public tap target for WhatsApp pay-links: eskerrentals.com/pay/<anchor-id> —
+// the frozen base URL of the approved `payment_link` template's button.
+// Mirrors the CRM's app/pay/[id]/route.ts (the product-tier copy); this one
+// exists so guests tap a brand-domain link. The checkout is minted at TAP time
+// (Safepay's tbt token is short-lived; the anchor id is not), every mint
+// carries the same anchor id, and a paid/cancelled anchor refuses to mint —
+// which is what makes double payment structurally impossible.
+export const dynamic = "force-dynamic";
+
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const origin = req.nextUrl.origin;
+  const gone = (why: string) => NextResponse.redirect(`${origin}/pay/closed?why=${why}`, 302);
+
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return gone("invalid");
+  if (!isSafepayConfigured()) return gone("unavailable");
+
+  const admin = createAdminClient();
+  const { data: anchor } = await admin.from("gateway_payments").select("id, amount, status").eq("id", id).maybeSingle();
+  if (!anchor) return gone("invalid");
+  if (anchor.status === "paid" || anchor.status === "refunded") return gone("paid");
+  if (anchor.status !== "pending") return gone("cancelled");
+
+  const checkout = await createSafepayCheckout({
+    amountPkr: anchor.amount,
+    bookingId: anchor.id, // metadata order_id carries the ANCHOR id
+    redirectUrl: `${origin}/pay/done`,
+    cancelUrl: `${origin}/pay/cancelled`,
+  });
+  if (!checkout.ok) return gone("error");
+
+  await admin.from("gateway_payments").update({ tracker: checkout.tracker, updated_at: new Date().toISOString() }).eq("id", id).eq("status", "pending");
+  return NextResponse.redirect(checkout.url, 302);
+}
