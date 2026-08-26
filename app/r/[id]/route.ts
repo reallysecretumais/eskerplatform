@@ -11,7 +11,14 @@ export const dynamic = "force-dynamic";
 // id, and we redirect to the prefilled booking page. Also used anywhere we want
 // one tap from "available" → book.
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const { id: raw } = await params;
+  // The reminder's button base was authored with a literal {{1}} inside it, so
+  // links already in guests' chats arrive as /r/{{1}}<id>. That id doesn't
+  // resolve, and this route's kindness — fall back to /stays — turns a dead
+  // link into a silently lost booking rather than a visible error. Recover the
+  // id; a correct link matches itself and nothing changes.
+  const id = raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0] ?? raw;
+  if (id !== raw) console.warn(`[r] malformed link segment "${raw}" — recovered request ${id}.`);
 
   const admin = createAdminClient();
   const { data } = await admin
