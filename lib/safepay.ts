@@ -71,7 +71,9 @@ export async function createSafepayCheckout(opts: {
       currency: "PKR",
       amount: amount * 100, // paisa
       include_fees: feePolicy(amount).includeFees,
-      metadata: { booking_id: opts.bookingId, source: "website" },
+      // Safepay whitelists metadata keys ("booking_id" is rejected) —
+      // order_id carries our booking id. Mirrors the CRM copy.
+      metadata: { order_id: opts.bookingId, source: "website" },
     });
     const tracker = (session.json as { data?: { tracker?: { token?: string } } } | null)?.data?.tracker?.token;
     if (!session.ok || !tracker) return { ok: false, message: "Couldn't start the payment — please try again." };
