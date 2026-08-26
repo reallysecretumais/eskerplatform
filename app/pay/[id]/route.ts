@@ -12,7 +12,15 @@ import { createSafepayCheckout, isSafepayConfigured } from "@/lib/safepay";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const { id: raw } = await params;
+  // Meta stores a URL button as <frozen base> + {{1}}, and THIS button's base
+  // ends in a literal {{1}} of its own (Graph returns it as %7B%7B1%7D%7D), so a
+  // tapped link can arrive as /pay/{{1}}<anchor-id>. Recover the id from anywhere
+  // in the segment rather than answer a guest holding real money with a dead
+  // page. A correct link matches itself, so this changes nothing once the
+  // template's button is fixed — it is a net, not a substitute for fixing it.
+  const id = raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0] ?? raw;
+  if (id !== raw) console.warn(`[pay] malformed link segment "${raw}" — recovered anchor ${id}. FIX THE TEMPLATE BUTTON.`);
   const origin = req.nextUrl.origin;
   const gone = (why: string) => NextResponse.redirect(`${origin}/pay/closed?why=${why}`, 302);
 
