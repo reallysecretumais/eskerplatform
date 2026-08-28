@@ -14,9 +14,11 @@ import "server-only";
  *
  *   SAFEPAY_ENV / SAFEPAY_API_KEY / SAFEPAY_SECRET_KEY   (per deployment)
  *
- * FEE POLICY mirrors the CRM: guest pays the gateway fee on top
- * (include_fees) — a future partial-absorb lives in feePolicy() here and in
- * the CRM copy together.
+ * FEE POLICY mirrors the CRM: the gateway fee is SPLIT — Esker absorbs half,
+ * the guest pays half as a surcharge on top of the quoted price (founder,
+ * 28 Aug 2026). The rates below are SANDBOX-MEASURED, not Esker's contracted
+ * production rate; confirm with Safepay in writing before go-live. This block
+ * and lib/payments/safepay.ts in the CRM must stay identical.
  */
 
 const HOSTS = {
@@ -35,8 +37,22 @@ export function isSafepayConfigured(): boolean {
   return Boolean(process.env.SAFEPAY_API_KEY && process.env.SAFEPAY_SECRET_KEY);
 }
 
-export function feePolicy(_amountPkr: number): { includeFees: boolean } {
-  return { includeFees: true };
+const GATEWAY_FEE_RATE = 0.029; // 2.90% — sandbox-measured
+const GATEWAY_FEE_TAX = 0.1517; // 15.17% tax ON the fee — sandbox-measured
+export const GATEWAY_ALL_IN_RATE = GATEWAY_FEE_RATE * (1 + GATEWAY_FEE_TAX);
+/** Esker's share of the gateway fee. 0.5 = half and half (founder, 28 Aug). */
+export const ESKER_FEE_SHARE = 0.5;
+
+/** `h = A·k/(1−k)` where `k = allInRate · guestShare` — solving it (rather than
+ *  adding half of rate·A) is what makes the split genuinely even. */
+export function feePolicy(amountPkr: number): {
+  includeFees: boolean;
+  chargeAmountPkr: number;
+  surchargePkr: number;
+} {
+  const k = GATEWAY_ALL_IN_RATE * (1 - ESKER_FEE_SHARE);
+  const surcharge = Math.round((amountPkr * k) / (1 - k));
+  return { includeFees: true, chargeAmountPkr: amountPkr + surcharge, surchargePkr: surcharge };
 }
 
 async function api(path: string, body: unknown): Promise<{ ok: boolean; status: number; json: unknown }> {
@@ -63,14 +79,16 @@ export async function createSafepayCheckout(opts: {
   if (!isSafepayConfigured()) return { ok: false, message: "Online payment isn't available right now." };
   const amount = Math.round(opts.amountPkr);
   if (!Number.isFinite(amount) || amount < 1) return { ok: false, message: "Invalid amount." };
+  // The guest is charged the quote plus their half of the gateway fee.
+  const { includeFees, chargeAmountPkr } = feePolicy(amount);
   try {
     const session = await api("/order/payments/v3/", {
       merchant_api_key: process.env.SAFEPAY_API_KEY,
       intent: "CYBERSOURCE",
       mode: "payment",
       currency: "PKR",
-      amount: amount * 100, // paisa
-      include_fees: feePolicy(amount).includeFees,
+      amount: chargeAmountPkr * 100, // paisa
+      include_fees: includeFees,
       // Safepay whitelists metadata keys ("booking_id" is rejected) —
       // order_id carries our booking id. Mirrors the CRM copy.
       metadata: { order_id: opts.bookingId, source: "website" },

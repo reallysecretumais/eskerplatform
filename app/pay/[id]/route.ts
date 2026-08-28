@@ -11,6 +11,10 @@ import { createSafepayCheckout, isSafepayConfigured } from "@/lib/safepay";
 // which is what makes double payment structurally impossible.
 export const dynamic = "force-dynamic";
 
+/** How long a pay-link stays payable (founder, 28 Aug). The CRM's twin of this
+ *  route carries the SAME constant — change one, change both. */
+const PAY_LINK_TTL_DAYS = 7;
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: raw } = await params;
   // Meta stores a URL button as <frozen base> + {{1}}, and THIS button's base
@@ -28,10 +32,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!isSafepayConfigured()) return gone("unavailable");
 
   const admin = createAdminClient();
-  const { data: anchor } = await admin.from("gateway_payments").select("id, amount, status").eq("id", id).maybeSingle();
+  const { data: anchor } = await admin.from("gateway_payments").select("id, amount, status, created_at").eq("id", id).maybeSingle();
   if (!anchor) return gone("invalid");
   if (anchor.status === "paid" || anchor.status === "refunded") return gone("paid");
   if (anchor.status !== "pending") return gone("cancelled");
+
+  // Links die after 7 days (founder, 28 Aug) — a pay-link carries a price that
+  // was true when quoted, and dates we may since have sold. Checked at TAP
+  // time so there is no scheduler to fail.
+  const ageDays = (Date.now() - new Date(anchor.created_at).getTime()) / 86_400_000;
+  if (ageDays > PAY_LINK_TTL_DAYS) {
+    await admin
+      .from("gateway_payments")
+      .update({ status: "cancelled", last_error: `Expired automatically after ${PAY_LINK_TTL_DAYS} days.`, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("status", "pending");
+    return gone("expired");
+  }
 
   const checkout = await createSafepayCheckout({
     amountPkr: anchor.amount,

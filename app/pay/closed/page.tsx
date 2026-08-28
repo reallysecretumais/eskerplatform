@@ -14,6 +14,10 @@ const COPY: Record<string, { title: string; body: string }> = {
     title: "This payment link is no longer active",
     body: "It may have been replaced with a newer one. Please check your chat for the latest link, or message us and we'll send a fresh one.",
   },
+  expired: {
+    title: "This payment link has expired",
+    body: "Payment links stay valid for 7 days so that prices and availability stay accurate. Nothing was charged — message us on WhatsApp and we'll send you a fresh link straight away.",
+  },
   invalid: {
     title: "This link isn't valid",
     body: "It may have been mistyped. Please use the exact link from your chat, or message us for a fresh one.",
