@@ -99,6 +99,11 @@ export async function createSafepayCheckout(opts: {
       source: "hosted",
       redirect_url: opts.redirectUrl,
       cancel_url: opts.cancelUrl,
+      // ⚠️ WITHOUT THIS, SAFEPAY SENDS NO WEBHOOK AT ALL — a per-checkout opt-in
+      // that DEFAULTS TO FALSE (`webhooks?: boolean` in their own SDK). Every
+      // Safepay webhook lands on the CRM, so a checkout minted HERE without it
+      // would settle nowhere. Change this file and the CRM's together.
+      webhooks: "true",
     });
     return { ok: true, url: `${CHECKOUT_HOSTS[env()]}?${qs.toString()}`, tracker };
   } catch {
