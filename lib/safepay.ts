@@ -14,11 +14,13 @@ import "server-only";
  *
  *   SAFEPAY_ENV / SAFEPAY_API_KEY / SAFEPAY_SECRET_KEY   (per deployment)
  *
- * FEE POLICY mirrors the CRM: the gateway fee is SPLIT — Esker absorbs half,
- * the guest pays half as a surcharge on top of the quoted price (founder,
- * 28 Aug 2026). The rates below are SANDBOX-MEASURED, not Esker's contracted
- * production rate; confirm with Safepay in writing before go-live. This block
- * and lib/payments/safepay.ts in the CRM must stay identical.
+ * FEE POLICY mirrors the CRM: we send the booking amount and nothing on top.
+ * `include_fees: true` makes Safepay add its fee to the card charge and settle
+ * Esker the quoted amount — measured on two captured payments, `charge.net`
+ * equals the quote exactly. A "half the fee" surcharge was briefly added on
+ * 28 Aug on the strength of a pre-authorisation screen and double-charged the
+ * guest; it is gone. See lib/payments/safepay.ts in the CRM for the full
+ * measurement — these two blocks must stay identical.
  */
 
 const HOSTS = {
@@ -37,22 +39,12 @@ export function isSafepayConfigured(): boolean {
   return Boolean(process.env.SAFEPAY_API_KEY && process.env.SAFEPAY_SECRET_KEY);
 }
 
-const GATEWAY_FEE_RATE = 0.029; // 2.90% — sandbox-measured
-const GATEWAY_FEE_TAX = 0.1517; // 15.17% tax ON the fee — sandbox-measured
-export const GATEWAY_ALL_IN_RATE = GATEWAY_FEE_RATE * (1 + GATEWAY_FEE_TAX);
-/** Esker's share of the gateway fee. 0.5 = half and half (founder, 28 Aug). */
-export const ESKER_FEE_SHARE = 0.5;
-
-/** `h = A·k/(1−k)` where `k = allInRate · guestShare` — solving it (rather than
- *  adding half of rate·A) is what makes the split genuinely even. */
 export function feePolicy(amountPkr: number): {
   includeFees: boolean;
   chargeAmountPkr: number;
   surchargePkr: number;
 } {
-  const k = GATEWAY_ALL_IN_RATE * (1 - ESKER_FEE_SHARE);
-  const surcharge = Math.round((amountPkr * k) / (1 - k));
-  return { includeFees: true, chargeAmountPkr: amountPkr + surcharge, surchargePkr: surcharge };
+  return { includeFees: true, chargeAmountPkr: Math.round(amountPkr), surchargePkr: 0 };
 }
 
 async function api(path: string, body: unknown): Promise<{ ok: boolean; status: number; json: unknown }> {
