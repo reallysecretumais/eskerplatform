@@ -27,6 +27,20 @@ type BookingReceived = {
   advance: number;
   balance: number;
   accountLink?: string | null; // magic link to the guest's account (auto-provisioned)
+  /**
+   * TRUE for a card checkout, where the guest has been handed a payment URL and
+   * has NOT paid yet. Suppresses everything addressed to the GUEST — no email,
+   * no WhatsApp — because telling someone their booking is received while they
+   * are still standing at the payment page is a lie that costs a real arrival:
+   * they abandon the checkout, believe they are booked, and turn up. Measured
+   * 30 Aug: a card checkout was started and abandoned, and the guest received a
+   * booking confirmation on WhatsApp anyway.
+   *
+   * The team alert still fires (staff want to see a booking being attempted),
+   * with wording that says so. Once the payment settles, the CRM sends the
+   * guest their `payment_received` confirmation.
+   */
+  awaitingPayment?: boolean;
 };
 
 const pkr = (n: number) => `₨${Math.round(n).toLocaleString("en-PK")}`;
@@ -37,9 +51,9 @@ export async function notifyBookingReceived(b: BookingReceived): Promise<void> {
   const locationLabel = [b.category, b.area].filter(Boolean).join(" · ") || "Esker stay";
   const nightsLabel = `${b.nights} ${b.nights === 1 ? "night" : "nights"}`;
 
-  // 1. Guest email (immediate)
+  // 1. Guest email (immediate) — never before the money has actually moved.
   try {
-    if (b.email) {
+    if (b.email && !b.awaitingPayment) {
       const mail = bookingReceivedEmail({
         guestName: b.guestName,
         propertyTitle: b.propertyTitle,
@@ -69,9 +83,11 @@ export async function notifyBookingReceived(b: BookingReceived): Promise<void> {
   }
 
   // 2. Guest WhatsApp — queued for the CRM inbox sender (native conversation +
-  //    approved 'booking_received' template) once the WA API is live.
+  //    approved 'booking_received' template). Skipped while payment is
+  //    outstanding: this queue is what actually reached the founder's phone
+  //    after he abandoned a card checkout.
   try {
-    await admin.from("guest_messages").insert({
+    if (!b.awaitingPayment) await admin.from("guest_messages").insert({
       booking_id: b.bookingId,
       channel: "whatsapp",
       event: "booking_received",
@@ -102,8 +118,12 @@ export async function notifyBookingReceived(b: BookingReceived): Promise<void> {
     const rows = (staff ?? []).map((u: { id: string }) => ({
       user_id: u.id,
       type: "booking",
-      title: `New website booking — ${b.propertyTitle}`,
-      body: `${b.guestName} · ${fmtDate(b.checkin)} → ${fmtDate(b.checkout)} · advance ${pkr(b.advance)} (verify payment)`,
+      title: b.awaitingPayment
+        ? `Website booking started — ${b.propertyTitle}`
+        : `New website booking — ${b.propertyTitle}`,
+      body: `${b.guestName} · ${fmtDate(b.checkin)} → ${fmtDate(b.checkout)} · advance ${pkr(b.advance)} ${
+        b.awaitingPayment ? "(card checkout opened — nothing paid yet)" : "(verify payment)"
+      }`,
       link: `/bookings/${b.bookingId}`,
     }));
     if (rows.length) await admin.from("notifications").insert(rows);

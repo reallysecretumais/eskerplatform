@@ -377,10 +377,22 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
     advance,
     balance,
     accountLink: accountMagicLink,
+    // Card checkout: the guest has a payment URL and has paid NOTHING. Suppress
+    // everything addressed to them until the money lands; the team alert still
+    // fires, worded as "checkout opened".
+    awaitingPayment: viaSafepay,
   });
 
-  // 9. Meta Conversions API — server-side Purchase (no-op until CAPI is configured).
-  await capiEvent("Purchase", { email: email || null, phone, value: advance, currency: "PKR", contentIds: [propertyId] });
+  // 9. Meta Conversions API — server-side Purchase.
+  //    NOT for a card checkout. Reporting a Purchase the moment a payment page
+  //    opens tells Meta a sale happened that may never happen: it corrupts ROAS,
+  //    inflates reported revenue, and trains the optimiser toward people who
+  //    abandon checkouts. The CRM fires the real Purchase from
+  //    firePurchaseIfEligible when the gateway actually settles, so firing here
+  //    too would double-count even the ones that DO pay.
+  if (!viaSafepay) {
+    await capiEvent("Purchase", { email: email || null, phone, value: advance, currency: "PKR", contentIds: [propertyId] });
+  }
 
   // 10. If the guest has a chat thread, tie this booking to it so the team sees
   //     exactly what the conversation is about. Best-effort — never blocks.
