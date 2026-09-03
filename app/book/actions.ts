@@ -8,7 +8,7 @@ import { createSafepayCheckout, isSafepayConfigured } from "@/lib/safepay";
 import { SITE_URL } from "@/lib/seo";
 import { notifyBookingReceived } from "@/lib/notifyGuest";
 import { capiEvent } from "@/lib/analytics";
-import { getExternalBookability, hasAuthorizedRequest } from "@/lib/data/externalBooking";
+import { getExternalBookability, hasAuthorizedRequest, refreshExternalCalendar } from "@/lib/data/externalBooking";
 import { notifyStaff } from "@/lib/notifyStaff";
 
 const ACTIVE = ["awaiting_payment", "payment_collected", "handed_over", "awaiting_checkin", "currently_staying", "needs_attention"];
@@ -171,6 +171,11 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
   if (realClash) return { ok: false, message: "Sorry — those dates were just taken. Please pick others." };
 
   if (isExternal) {
+    // Money is about to move, so re-read the owner's calendar first rather than
+    // trusting a copy that may be hours old. Best-effort: if the pull fails we
+    // fall through to the rows we already have, which still block.
+    await refreshExternalCalendar(propertyId);
+
     // The OWNER's own calendar, cached by the CRM's iCal sync. Stale rows still
     // block: hiding a date that's actually free is far cheaper than double-selling
     // one on a calendar Esker doesn't control. `ends` is exclusive, so a stay
