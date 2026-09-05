@@ -180,12 +180,19 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
     // block: hiding a date that's actually free is far cheaper than double-selling
     // one on a calendar Esker doesn't control. `ends` is exclusive, so a stay
     // starting exactly when another ends is NOT a clash.
+    //
+    // The bounds MUST be anchored to PKT midnight. These rows hold PKT
+    // midnights as instants (a 4–6 Sep block is stored 03T19:00Z → 05T19:00Z),
+    // and a bare "2026-09-05" is read by Postgres as UTC midnight — five hours
+    // adrift, which over-blocked a stay ending exactly when a block began.
+    // The same confusion, read the other way, is what let the public
+    // availability window publish every owner block a day early (phase91).
     const { data: busy } = await admin
       .from("external_ical_busy")
       .select("id")
       .eq("external_property_id", propertyId)
-      .lt("starts", checkout)
-      .gt("ends", checkin)
+      .lt("starts", `${checkout}T00:00:00+05:00`)
+      .gt("ends", `${checkin}T00:00:00+05:00`)
       .limit(1);
     if (busy && busy.length > 0) {
       return { ok: false, message: "Sorry — those dates were just taken. Please pick others." };
