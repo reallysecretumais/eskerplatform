@@ -79,11 +79,14 @@ export type Area = {
   sub: string;
   tagline: string;
   units: Partial<Record<UnitType, UnitData>>;
-  /** A public listing whose cover photo stands in for this area (Esker-run units only). */
-  photoListingId: string;
-  /** True when that photo is an Esker interior from ANOTHER area — the card then says so. */
-  photoIsRepresentative?: boolean;
+  /** Where the area sits on the drawn map (components/invest/AreaMap.tsx), in map
+   *  units, and which side its label goes so neighbours never collide. */
+  pin: MapPin;
 };
+
+/** A point on the drawn Islamabad–Rawalpindi map. Map units: x = (lon − 72.80) × 1000,
+ *  y = (33.80 − lat) × 1200 — approximate placement, the map says "not to scale". */
+export type MapPin = { x: number; y: number; label: "left" | "right" };
 
 export const AREAS: readonly Area[] = [
   {
@@ -95,7 +98,7 @@ export const AREAS: readonly Area[] = [
       "2BHK": { rent: 60000, rentRange: "55–65k", nightly: 15000 },
       "1BHK": { rent: 40000, rentRange: "~40k", nightly: 8500, nightlyRange: "8–9k" },
     },
-    photoListingId: "5812c441-f2d6-44b7-900e-79b0e709d3f7", // 2BHK Jacuzzi Phase 7
+    pin: { x: 300, y: 334, label: "left" },
   },
   {
     id: "dha2",
@@ -103,8 +106,7 @@ export const AREAS: readonly Area[] = [
     sub: "Islamabad",
     tagline: "Gated, quiet and in demand with families and professionals.",
     units: { "1BHK": { rent: 40000, rentRange: "~40k", nightly: 8500, nightlyRange: "8–9k" } },
-    photoListingId: "6e213488-8d6b-4bbd-b060-f418fc35cfe6", // Medieval Apartment (Bahria)
-    photoIsRepresentative: true,
+    pin: { x: 350, y: 320, label: "right" },
   },
   {
     id: "e11",
@@ -112,7 +114,7 @@ export const AREAS: readonly Area[] = [
     sub: "Islamabad",
     tagline: "Margalla views and our strongest-performing sector.",
     units: { "2BHK": { rent: 80000, rentRange: "60–80k", nightly: 16000 } },
-    photoListingId: "7dc7023b-fcfe-4773-9e4c-8c73783dbe5f", // E-11 2BHK Luxury Penthouse
+    pin: { x: 180, y: 121, label: "left" },
   },
   {
     id: "f11",
@@ -120,7 +122,7 @@ export const AREAS: readonly Area[] = [
     sub: "Islamabad",
     tagline: "Central Islamabad's premium address.",
     units: { "2BHK": { rent: 160000, rentRange: "120–160k", nightly: 18000 } },
-    photoListingId: "ee92a337-134d-4e69-b2a9-132119c01995", // Rockstar's 1BHK (F-10/F-11)
+    pin: { x: 187, y: 139, label: "right" },
   },
   {
     id: "skypark",
@@ -128,13 +130,9 @@ export const AREAS: readonly Area[] = [
     sub: "Gulberg Greens · mall underneath",
     tagline: "A landmark tower with a mall downstairs. Guests pay for that.",
     units: { "2BHK": { rent: 170000, rentRange: "~170k", nightly: 23000, nightlyRange: "22–24k" } },
-    photoListingId: "32940cfa-a6fa-4c06-86a9-5a00256da88b", // B-17 Duplex Penthouse
-    photoIsRepresentative: true,
+    pin: { x: 360, y: 228, label: "left" },
   },
 ];
-
-/** The hero photograph: the E-11 pool penthouse. */
-export const HERO_LISTING_ID = "7dc7023b-fcfe-4773-9e4c-8c73783dbe5f";
 
 /** The founder's portfolio facts, as he states them (they span every partnership,
  *  not only what one system records). */
@@ -145,10 +143,12 @@ export const PORTFOLIO = [
   { value: 500, suffix: "+", label: "Bookings a month" },
 ] as const;
 
-/** Real months from our own operating records (Investor Guide, Sep 2026). */
+/** Real months from our own operating records (Investor Guide, Sep 2026). `pin` = where the
+ *  property sits on the drawn map. */
 export const PROOF = [
   {
-    listingId: "7dc7023b-fcfe-4773-9e4c-8c73783dbe5f",
+    pin: { x: 180, y: 121, label: "right" } as MapPin,
+    place: "E-11, Islamabad",
     name: "E-11 2BHK Penthouse",
     sub: "Private pool · outdoor cinema · Margalla views",
     revenue: 815000,
@@ -156,7 +156,8 @@ export const PROOF = [
     lines: ["Booked at up to Rs 35,000 a night", "Consistently one of our strongest performers", "Partner receives a full monthly report"],
   },
   {
-    listingId: "32940cfa-a6fa-4c06-86a9-5a00256da88b",
+    pin: { x: 38, y: 152, label: "right" } as MapPin,
+    place: "B-17, Islamabad",
     name: "B-17 Duplex Penthouse",
     sub: "Private pool · movie room · sleeps 8",
     revenue: 711500,

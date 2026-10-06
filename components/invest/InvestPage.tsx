@@ -6,14 +6,14 @@ import { AREAS, PACKAGES, TERMS, COST_LABEL, UNIT_INCLUDES, FOUNDERS, type Packa
 import { quote, compareRows, returnRange, areaSummary, unitsOf, findArea, rs, lakh, pct, months, stakeLabel, type Quote } from "@/lib/invest/calc";
 import { Num, Reveal, useInView } from "./motion";
 import { Model, Own, Handles, Proof, Terms, Footer } from "./Sections";
+import { MapDefs, HeroMap, AreaTile } from "./AreaMap";
 
-export type InvestPhotos = { hero: string | null; areas: Record<string, string | null>; proof: (string | null)[] };
 export type InitialSelection = { areaId: string; unit: UnitType; stake: number; pkg: PackageId };
 
 const rsFmt = (n: number) => rs(n);
 const pkgOf = (id: PackageId) => PACKAGES.find((p) => p.id === id)!;
 
-export function InvestPage({ photos, initial }: { photos: InvestPhotos; initial: InitialSelection }) {
+export function InvestPage({ initial }: { initial: InitialSelection }) {
   const [areaId, setAreaId] = useState(initial.areaId);
   const [unit, setUnit] = useState<UnitType>(initial.unit);
   const [stake, setStake] = useState(initial.stake);
@@ -33,6 +33,7 @@ export function InvestPage({ photos, initial }: { photos: InvestPhotos; initial:
     u.searchParams.set("stake", stake === 1 ? "100" : "50");
     u.searchParams.set("pkg", pkg);
     u.searchParams.delete("denied");
+    u.searchParams.delete("k"); // never leave the access code sitting in the address bar
     window.history.replaceState(null, "", u);
   }, [areaId, unit, stake, pkg]);
 
@@ -67,7 +68,8 @@ export function InvestPage({ photos, initial }: { photos: InvestPhotos; initial:
 
   return (
     <>
-      <Hero photo={photos.hero} />
+      <MapDefs />
+      <Hero />
       <Model />
 
       <section id="numbers" className="pad">
@@ -95,13 +97,12 @@ export function InvestPage({ photos, initial }: { photos: InvestPhotos; initial:
                     return (
                       <button key={a.id} type="button" className="area" aria-pressed={a.id === areaId} onClick={() => pickArea(a.id)}>
                         <div className="ph arch">
-                          {photos.areas[a.id] ? <img className="cover" src={photos.areas[a.id]!} alt="" loading="lazy" decoding="async" /> : null}
+                          <AreaTile areaId={a.id} active={a.id === areaId} />
                           <span className="badge num">up to {s.bestReturn}% / yr</span>
                         </div>
                         <div className="meta">
                           <div className="nm">{a.name}</div>
                           <div className="sb">{a.sub}</div>
-                          {a.photoIsRepresentative ? <div className="rep">Photo: an Esker interior</div> : null}
                           <div className="fr num">from Rs {lakh(s.fromUpfront)}</div>
                         </div>
                       </button>
@@ -158,7 +159,7 @@ export function InvestPage({ photos, initial }: { photos: InvestPhotos; initial:
       <Compare onLoad={load} current={{ areaId, unit }} />
       <Own />
       <Handles />
-      <Proof photos={photos.proof} />
+      <Proof />
       <Terms />
       <Cta q={q} pkg={pkg} />
       <Footer />
@@ -169,8 +170,9 @@ export function InvestPage({ photos, initial }: { photos: InvestPhotos; initial:
 
 /* ── Hero ───────────────────────────────────────────────────────────────── */
 
-function Hero({ photo }: { photo: string | null }) {
+function Hero() {
   const range = useMemo(() => returnRange("standard"), []);
+  const returns = useMemo(() => Object.fromEntries(AREAS.map((a) => [a.id, areaSummary(a).bestReturn])), []);
   return (
     <header className="dark hero" id="top">
       <div className="topbar">
@@ -211,9 +213,9 @@ function Hero({ photo }: { photo: string | null }) {
           </a>
         </div>
         <div className="hero-arch">
-          <div className="ring" aria-hidden />
+          <div className="arch-ring" aria-hidden />
           <div className="frame arch arch-open">
-            {photo ? <img className="cover kenburns" src={photo} alt="An Esker penthouse" fetchPriority="high" decoding="async" /> : null}
+            <HeroMap returns={returns} />
           </div>
           <span className="chip">
             <i aria-hidden />

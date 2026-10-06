@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { hasAccess } from "./access";
-import { readSelection, investPhotos, type SearchParams } from "./selection";
+import { readSelection, type SearchParams } from "./selection";
 import { Gate } from "@/components/invest/Gate";
 import { InvestPage } from "@/components/invest/InvestPage";
 
@@ -23,7 +23,7 @@ export default async function Invest({ searchParams }: { searchParams: Promise<S
   }
   return (
     <main>
-      <InvestPage photos={await investPhotos()} initial={readSelection(sp)} />
+      <InvestPage initial={readSelection(sp)} />
     </main>
   );
 }

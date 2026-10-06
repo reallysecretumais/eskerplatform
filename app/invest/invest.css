@@ -66,7 +66,8 @@
 /* ── The arch ── */
 .inv .arch { border-radius: 999px 999px 0 0; overflow: hidden; }
 .inv .arch-soft { border-radius: 40px 40px 0 0; overflow: hidden; }
-.inv img.cover { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* ── The drawn map (components/invest/AreaMap.tsx) ── */
+.inv svg.map { width: 100%; height: 100%; display: block; background: #16211b; }
 
 /* ── Buttons ── */
 .inv .btn {
@@ -95,7 +96,7 @@
 .inv .hero-grid { display: grid; gap: 40px; align-items: center; }
 .inv .hero-arch { position: relative; width: min(calc(100% - 28px), 360px); aspect-ratio: 3 / 4; justify-self: center; }
 .inv .hero-arch .frame { position: absolute; inset: 0; }
-.inv .hero-arch .ring { position: absolute; inset: -12px -12px 0 -12px; border: 1px solid var(--line-d); border-bottom: 0; border-radius: 999px 999px 0 0; }
+.inv .hero-arch .arch-ring { position: absolute; inset: -12px -12px 0 -12px; border: 1px solid var(--line-d); border-bottom: 0; border-radius: 999px 999px 0 0; }
 .inv .hero-arch .chip {
   position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
   background: color-mix(in srgb, var(--ink) 78%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
@@ -160,14 +161,13 @@
 .inv .q-block + .q-block { margin-top: 40px; }
 
 /* area cards */
-.inv .areas { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px var(--gutter) 18px; margin: 0 calc(-1 * var(--gutter)); scrollbar-width: none; }
+.inv .areas { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: var(--gutter); padding: 4px var(--gutter) 18px; margin: 0 calc(-1 * var(--gutter)); scrollbar-width: none; }
 .inv .areas::-webkit-scrollbar { display: none; }
 .inv .area { flex: 0 0 172px; scroll-snap-align: start; text-align: left; background: none; border: 0; padding: 0; }
 .inv .area .ph { height: 196px; background: var(--sand); position: relative; transition: transform 0.6s var(--ease); }
-.inv .area .ph img { transition: transform 1.2s var(--ease); }
-.inv .area:hover .ph img { transform: scale(1.05); }
+.inv .area .ph svg { transition: transform 1.2s var(--ease); }
+.inv .area:hover .ph svg { transform: scale(1.06); }
 .inv .area .badge { position: absolute; left: 10px; bottom: 10px; background: var(--paper); color: var(--ink); font-size: 11px; font-weight: 700; padding: 5px 9px; border-radius: 999px; }
-.inv .area .rep { font-size: 10.5px; color: var(--mute-l); margin-top: 3px; font-style: italic; }
 .inv .area .meta { padding: 12px 2px 0; border-bottom: 2px solid transparent; transition: border-color 0.35s var(--ease); }
 .inv .area .meta .nm { font-family: var(--f-serif), Georgia, serif; font-size: 22px; line-height: 1.1; }
 .inv .area .meta .sb { font-size: 12px; color: var(--mute-l); margin-top: 2px; }
@@ -364,17 +364,28 @@
 .inv .enter-4 { animation-delay: 0.46s; }
 .inv .enter-5 { animation-delay: 0.58s; }
 .inv .arch-open { animation: inv-arch-open 1.5s var(--ease) 0.15s both; }
-.inv .kenburns { animation: inv-kb 26s ease-in-out infinite alternate; transform-origin: 50% 60%; will-change: transform; }
+.inv .map-drift { animation: inv-drift 30s ease-in-out infinite alternate; transform-origin: 60% 55%; transform-box: view-box; }
+/* The hero map draws itself: roads trace in, then each pin drops with its return. */
+.inv .map-draw .map-road { stroke-dasharray: 1; stroke-dashoffset: 1; animation: inv-draw 2.2s var(--ease) 0.4s forwards; }
+.inv .map-pin { opacity: 0; animation: inv-pin 0.9s var(--ease) forwards; transform-box: fill-box; }
+.inv .map-pulse { transform-box: fill-box; transform-origin: center; animation: inv-pulse 2.6s ease-out infinite; }
+.inv .map-still .map-pulse { animation: none; opacity: 0; }
 
 @keyframes inv-rise { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
 @keyframes inv-arch-open { from { clip-path: inset(100% 0 0 0 round 999px 999px 0 0); } to { clip-path: inset(0 0 0 0 round 999px 999px 0 0); } }
-@keyframes inv-kb { from { transform: scale(1.02); } to { transform: scale(1.14) translateY(-2%); } }
+@keyframes inv-drift { from { transform: scale(1); } to { transform: scale(1.05) translate(-1%, -1%); } }
+@keyframes inv-draw { to { stroke-dashoffset: 0; } }
+@keyframes inv-pin { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes inv-pulse { 0% { transform: scale(0.6); opacity: 0.7; } 100% { transform: scale(3.4); opacity: 0; } }
 @keyframes inv-ping { 0% { box-shadow: 0 0 0 0 rgba(127, 214, 163, 0.55); } 70%, 100% { box-shadow: 0 0 0 9px rgba(127, 214, 163, 0); } }
 
 @media (prefers-reduced-motion: reduce) {
   .inv *, .inv *::before, .inv *::after { animation: none !important; transition: none !important; }
   .inv .rv, .inv .sentence .w { opacity: 1 !important; transform: none !important; }
   .inv .step-arch path { stroke-dashoffset: 0 !important; }
+  .inv .map-draw .map-road { stroke-dashoffset: 0 !important; }
+  .inv .map-pin { opacity: 1 !important; }
+  .inv .map-pulse { opacity: 0 !important; }
 }
 
 /* ── Handover sheet (screen preview + print) ── */

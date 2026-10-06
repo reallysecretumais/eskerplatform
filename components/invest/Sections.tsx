@@ -4,6 +4,7 @@ import {
 import { PORTFOLIO, PROOF, TERMS, DISCLAIMER } from "@/lib/invest/config";
 import { rs } from "@/lib/invest/calc";
 import { Num, Reveal } from "./motion";
+import { PlaceMap } from "./AreaMap";
 
 /* ── The model in one sentence, then four steps ─────────────────────────── */
 
@@ -140,7 +141,7 @@ export function Handles() {
 
 /* ── Proof ──────────────────────────────────────────────────────────────── */
 
-export function Proof({ photos }: { photos: (string | null)[] }) {
+export function Proof() {
   return (
     <section className="dark-2 pad dark">
       <div className="wrap">
@@ -166,7 +167,9 @@ export function Proof({ photos }: { photos: (string | null)[] }) {
         <div className="stmts">
           {PROOF.map((p, i) => (
             <Reveal key={p.name} delay={(i + 1) as 1 | 2} className="stmt">
-              <div className="ph">{photos[i] ? <img className="cover" src={photos[i]!} alt={p.name} loading="lazy" decoding="async" /> : null}</div>
+              <div className="ph">
+                <PlaceMap pin={p.pin} label={p.place} />
+              </div>
               <div className="bd">
                 <div className="hd">
                   <span>Monthly statement</span>
