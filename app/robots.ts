@@ -6,7 +6,7 @@ import { SITE_URL } from "@/lib/seo";
 // only private/transactional paths are blocked.
 export default function robots(): MetadataRoute.Robots {
   const allowedAiBots = ["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "Claude-Web", "anthropic-ai", "PerplexityBot", "Perplexity-User", "Google-Extended", "Applebot-Extended", "Bytespider", "Amazonbot", "Meta-ExternalAgent"];
-  const disallow = ["/book/", "/account", "/login", "/signup", "/auth/", "/api/"];
+  const disallow = ["/book/", "/account", "/login", "/signup", "/auth/", "/api/", "/invest"];
 
   return {
     rules: [

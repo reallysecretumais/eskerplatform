@@ -50,8 +50,9 @@ export function ChatLauncher({ signedIn, initialUnread }: { signedIn: boolean; i
 
   // Keep checkout + auth pages distraction-free; /messages already IS the chat.
   // (The post-booking confirmation page keeps it — that's a key entry point.)
+  // /invest is the private investor page — a guest chat bubble has no place there.
   const p = pathname ?? "";
-  if (/^\/(login|signup|auth|messages)/.test(p) || /^\/book\/[^/]+\/?$/.test(p)) return null;
+  if (/^\/(login|signup|auth|messages|invest)/.test(p) || /^\/book\/[^/]+\/?$/.test(p)) return null;
 
   return (
     <>
