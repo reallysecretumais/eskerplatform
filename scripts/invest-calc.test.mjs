@@ -2,8 +2,8 @@
 // Run: node --test scripts/invest-calc.test.mjs
 //
 // The spec's table used 20 nights for Conservative; the founder moved it to 21
-// (6 Oct 2026). The 24- and 28-night columns are the spec's numbers verbatim;
-// the 21-night column is pinned from the same formulas.
+// (6 Oct 2026). 1BHK rows are the spec's numbers; 2BHK rows were re-pinned on
+// 8 Oct 2026 when the founder set 2BHK caretaker ₨10k and laundry ₨8k.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { quote, compareRows, returnRange, areaSummary, rs, lakh, pct, months } from "../lib/invest/calc.ts";
@@ -11,12 +11,12 @@ import { AREAS, PACKAGES } from "../lib/invest/config.ts";
 
 // [areaId, unit, upfront, monthlyCost, { nights: [monthly, payback, annual%] }]
 const TABLE = [
-  ["bahria", "2BHK", 1680000, 160000, { 21: [108500, "15.5", 78], 24: [140000, "12", 100], 28: [182000, "9.2", 130] }],
+  ["bahria", "2BHK", 1680000, 153000, { 21: [113400, "14.8", 81], 24: [144900, "11.6", 103], 28: [186900, "9", 134] }],
   ["bahria", "1BHK", 920000, 103500, { 21: [52500, "17.5", 68], 24: [70350, "13.1", 92], 28: [94150, "9.8", 123] }],
   ["dha2", "1BHK", 920000, 103500, { 21: [52500, "17.5", 68], 24: [70350, "13.1", 92], 28: [94150, "9.8", 123] }],
-  ["e11", "2BHK", 1740000, 180000, { 21: [109200, "15.9", 75], 24: [142800, "12.2", 98], 28: [187600, "9.3", 129] }],
-  ["f11", "2BHK", 1980000, 260000, { 21: [82600, "24", 50], 24: [120400, "16.4", 73], 28: [170800, "11.6", 104] }],
-  ["skypark", "2BHK", 2010000, 270000, { 21: [149100, "13.5", 89], 24: [197400, "10.2", 118], 28: [261800, "7.7", 156] }],
+  ["e11", "2BHK", 1740000, 173000, { 21: [114100, "15.2", 79], 24: [147700, "11.8", 102], 28: [192500, "9", 133] }],
+  ["f11", "2BHK", 1980000, 253000, { 21: [87500, "22.6", 53], 24: [125300, "15.8", 76], 28: [175700, "11.3", 106] }],
+  ["skypark", "2BHK", 2010000, 263000, { 21: [154000, "13.1", 92], 24: [202300, "9.9", 121], 28: [266700, "7.5", 159] }],
 ];
 
 test("packages are 21 / 24 / 28 nights, Standard in the middle", () => {
@@ -48,8 +48,8 @@ for (const [areaId, unit, upfront, cost, cells] of TABLE) {
   });
 }
 
-test("hero range at Standard is 73–118%", () => {
-  assert.deepEqual(returnRange("standard"), { min: 73, max: 118 });
+test("hero range at Standard is 76–121%", () => {
+  assert.deepEqual(returnRange("standard"), { min: 76, max: 121 });
 });
 
 test("compare view is ranked by annual return and covers every area × unit", () => {
@@ -64,12 +64,12 @@ test("unavailable unit returns null (disable, don't crash)", () => {
 });
 
 test("breakeven nights round UP", () => {
-  assert.equal(quote({ areaId: "bahria", unit: "2BHK", stake: 1 }).breakevenNights, 11); // 160000 / 15000 = 10.67
-  assert.equal(quote({ areaId: "skypark", unit: "2BHK", stake: 1 }).breakevenNights, 12); // 270000 / 23000 = 11.74
+  assert.equal(quote({ areaId: "bahria", unit: "2BHK", stake: 1 }).breakevenNights, 11); // 153000 / 15000 = 10.2
+  assert.equal(quote({ areaId: "skypark", unit: "2BHK", stake: 1 }).breakevenNights, 12); // 263000 / 23000 = 11.43
 });
 
 test("area card summary: lowest upfront and best Standard return", () => {
-  assert.deepEqual(areaSummary(AREAS.find((a) => a.id === "bahria")), { fromUpfront: 920000, bestReturn: 100 });
+  assert.deepEqual(areaSummary(AREAS.find((a) => a.id === "bahria")), { fromUpfront: 920000, bestReturn: 103 });
 });
 
 test("formatting", () => {

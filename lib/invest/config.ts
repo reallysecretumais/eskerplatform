@@ -41,9 +41,10 @@ export const DEFAULT_PACKAGE: PackageId = "standard";
 export type RunningCosts = { electricity: number; caretaker: number; laundry: number; maintenance: number; internet: number };
 
 /** Monthly running costs. Electricity sits at the UPPER end of the real range,
- *  so projections lean conservative. */
+ *  so projections lean conservative. 2BHK caretaker ₨10k and laundry ₨8k are
+ *  the founder's figures (8 Oct 2026; were 15k / 10k). */
 export const RUNNING_COSTS: Record<UnitType, RunningCosts> = {
-  "2BHK": { electricity: 55000, caretaker: 15000, laundry: 10000, maintenance: 15000, internet: 5000 },
+  "2BHK": { electricity: 55000, caretaker: 10000, laundry: 8000, maintenance: 15000, internet: 5000 },
   "1BHK": { electricity: 35000, caretaker: 8000, laundry: 7000, maintenance: 10000, internet: 3500 },
 };
 
