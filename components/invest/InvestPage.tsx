@@ -123,11 +123,10 @@ export function InvestPage({ initial, name, pulseSlot }: { initial: InitialSelec
                 <div className="areas" role="group" aria-label="Area" ref={areasRef}>
                   {standardAreas().map((a) => {
                     const s = areaSummary(a);
-                    const ph = PHOTOS.find((p) => p.area === a.id);
                     return (
                       <button key={a.id} type="button" className="area" aria-pressed={a.id === areaId} onClick={() => pickArea(a.id)}>
                         <div className="ph arch">
-                          {ph ? <Pic k={ph.key} size={520} /> : <AreaTile areaId={a.id} active={a.id === areaId} />}
+                          <AreaTile areaId={a.id} active={a.id === areaId} />
                           <span className="badge num">up to {s.bestReturn}% / yr</span>
                         </div>
                         <div className="meta">

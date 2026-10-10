@@ -3,9 +3,9 @@ import type { Pulse } from "./pulseFormat";
 
 /**
  * The investor page's live line, read from Esker OS:
- * "Last booking received 47 minutes ago · 3,910 guest messages this week".
+ * "3,910 guest messages handled in the last 7 days".
  *
- * Two aggregates, nothing identifying. Cached for five minutes by Next's data
+ * One aggregate, nothing identifying. Cached for five minutes by Next's data
  * cache so a busy afternoon of investors opening the page costs the CRM one
  * request. Streamed in through <Suspense>, so the eight-second ceiling only
  * ever delays the line itself, never the page. Best-effort: when the CRM is unreachable the section simply omits
@@ -25,9 +25,9 @@ export async function getPulse(): Promise<Pulse | null> {
       console.warn(`[pulse] CRM answered ${res.status}`);
       return null;
     }
-    const j = (await res.json()) as { ok?: boolean; lastBookingAt?: string | null; inboundMessages7d?: number };
+    const j = (await res.json()) as { ok?: boolean; inboundMessages7d?: number };
     if (!j.ok) return null;
-    return { lastBookingAt: j.lastBookingAt ?? null, inboundMessages7d: j.inboundMessages7d ?? 0 };
+    return { inboundMessages7d: j.inboundMessages7d ?? 0 };
   } catch (e) {
     // Best-effort, but never silent: the reason lands in the runtime logs.
     console.warn(`[pulse] CRM unreachable: ${e instanceof Error ? `${e.name} ${e.message}` : String(e)}`);

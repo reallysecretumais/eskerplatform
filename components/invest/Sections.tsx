@@ -291,7 +291,7 @@ export function Verify({ pulseSlot }: { pulseSlot: ReactNode }) {
             <span className="num pulse-time">{new Date().toLocaleTimeString("en-GB", { timeZone: "Asia/Karachi", hour: "2-digit", minute: "2-digit" })} PKT</span>
           </div>
           {pulseSlot}
-          <p className="pulse-foot">Two numbers read from the system that runs every booking and every guest conversation. They change every time you look. Nothing identifying anyone is ever shown.</p>
+          <p className="pulse-foot">Read from the system that runs every booking and every guest conversation. It changes every time you look. Nothing identifying anyone is ever shown.</p>
         </Reveal>
       </div>
     </section>
