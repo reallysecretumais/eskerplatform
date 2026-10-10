@@ -421,6 +421,8 @@
 .inv .pulse-body b { display: block; font-size: clamp(26px, 7vw, 38px); font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
 .inv .pulse-body span { display: block; font-size: 12.5px; color: var(--mute-d); margin-top: 6px; }
 .inv .pulse-off { margin-top: 26px; font-size: 14px; color: var(--mute-d); }
+.inv .pulse-wait { animation: inv-wait 1.4s ease-in-out infinite alternate; }
+@keyframes inv-wait { from { opacity: 0.45; } to { opacity: 0.9; } }
 .inv .pulse-foot { margin-top: 20px; font-size: 11.5px; line-height: 1.5; color: var(--mute-d); max-width: 48em; }
 @media (min-width: 900px) { .inv .pulse { padding: 26px 32px; } .inv .pulse-body { grid-template-columns: 1fr 1fr; gap: 32px; } }
 

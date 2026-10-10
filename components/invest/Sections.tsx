@@ -1,7 +1,7 @@
+import type { ReactNode } from "react";
 import { Search, Handshake, Sofa, Camera, Megaphone, CalendarCheck, IdCard, Sparkles, PhoneCall, Wrench, Check, ShieldCheck, Building2, Landmark, FileSignature, AtSign, Activity, Plus } from "lucide-react";
 import { PORTFOLIO, PROOF, TERMS, DISCLAIMER, PHOTOS, VERIFY, FAQ, COMPANY, FOUNDERS, type Photo } from "@/lib/invest/config";
 import { rs } from "@/lib/invest/calc";
-import { ago, type Pulse } from "@/lib/invest/pulseFormat";
 import { Num, Reveal } from "./motion";
 
 /* ── Photos ─────────────────────────────────────────────────────────────── */
@@ -254,7 +254,7 @@ export function Proof() {
 
 const VERIFY_ICONS = [Building2, Landmark, ShieldCheck, FileSignature, AtSign, Activity] as const;
 
-export function Verify({ pulse }: { pulse: Pulse | null }) {
+export function Verify({ pulseSlot }: { pulseSlot: ReactNode }) {
   return (
     <section className="bone pad" id="verify">
       <div className="wrap">
@@ -290,20 +290,7 @@ export function Verify({ pulse }: { pulse: Pulse | null }) {
             <span>Esker OS · read live</span>
             <span className="num pulse-time">{new Date().toLocaleTimeString("en-GB", { timeZone: "Asia/Karachi", hour: "2-digit", minute: "2-digit" })} PKT</span>
           </div>
-          {pulse ? (
-            <div className="pulse-body">
-              <div>
-                <b className="num">{pulse.lastBookingAt ? ago(pulse.lastBookingAt) : "—"}</b>
-                <span>last booking received</span>
-              </div>
-              <div>
-                <b className="num">{rs(pulse.inboundMessages7d)}</b>
-                <span>guest messages handled in the last 7 days</span>
-              </div>
-            </div>
-          ) : (
-            <p className="pulse-off">The live figures couldn&apos;t be read just now. Ask us to show you the system on a call.</p>
-          )}
+          {pulseSlot}
           <p className="pulse-foot">Two numbers read from the system that runs every booking and every guest conversation. They change every time you look. Nothing identifying anyone is ever shown.</p>
         </Reveal>
       </div>

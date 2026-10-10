@@ -7,7 +7,8 @@ import type { Pulse } from "./pulseFormat";
  *
  * Two aggregates, nothing identifying. Cached for five minutes by Next's data
  * cache so a busy afternoon of investors opening the page costs the CRM one
- * request. Best-effort: when the CRM is unreachable the section simply omits
+ * request. Streamed in through <Suspense>, so the eight-second ceiling only
+ * ever delays the line itself, never the page. Best-effort: when the CRM is unreachable the section simply omits
  * the line rather than showing a stale or made-up one.
  */
 export async function getPulse(): Promise<Pulse | null> {
@@ -18,7 +19,7 @@ export async function getPulse(): Promise<Pulse | null> {
     const res = await fetch(`${base}/api/platform/pulse`, {
       headers: { "x-esker-secret": secret },
       next: { revalidate: 300 },
-      signal: AbortSignal.timeout(4000),
+      signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) {
       console.warn(`[pulse] CRM answered ${res.status}`);

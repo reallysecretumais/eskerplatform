@@ -3,7 +3,8 @@ import { hasAccess } from "./access";
 import { readName, readSelection, type SearchParams } from "./selection";
 import { Gate } from "@/components/invest/Gate";
 import { InvestPage } from "@/components/invest/InvestPage";
-import { getPulse } from "@/lib/invest/pulse";
+import { Suspense } from "react";
+import { PulseLive, PulseWaiting } from "@/components/invest/PulseLive";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +24,15 @@ export default async function Invest({ searchParams }: { searchParams: Promise<S
     }
     return <Gate denied={sp.denied === "1"} />;
   }
-  const pulse = await getPulse();
+  // The live line streams in on its own; the CRM round-trip never delays the page.
+  const pulseSlot = (
+    <Suspense fallback={<PulseWaiting />}>
+      <PulseLive />
+    </Suspense>
+  );
   return (
     <main>
-      <InvestPage initial={readSelection(sp)} name={readName(sp)} pulse={pulse} />
+      <InvestPage initial={readSelection(sp)} name={readName(sp)} pulseSlot={pulseSlot} />
     </main>
   );
 }

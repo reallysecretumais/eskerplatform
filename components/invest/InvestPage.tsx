@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowDown, ChevronDown, FileText, MessageCircle, Volume2, VolumeX, MapPin, Sparkles } from "lucide-react";
 import { AREAS, BUDGETS, PACKAGES, TERMS, COST_LABEL, UNIT_INCLUDES, FOUNDERS, HERO_VIDEO, PHOTOS, type PackageId, type UnitType } from "@/lib/invest/config";
 import { quote, compareRows, returnRange, headline, fitForBudget, areaSummary, standardAreas, specialAreas, unitsOf, findArea, rs, lakh, pct, months, stakeLabel, type Quote, type Option } from "@/lib/invest/calc";
-import type { Pulse } from "@/lib/invest/pulseFormat";
 import { Num, Reveal, useInView } from "./motion";
 import { Story, Model, Protected, Proof, Verify, People, Terms, Footer, Pic, photo, sized } from "./Sections";
 import { MapDefs, AreaTile } from "./AreaMap";
@@ -15,7 +14,7 @@ const rsFmt = (n: number) => rs(n);
 const pkgOf = (id: PackageId) => PACKAGES.find((p) => p.id === id)!;
 const reduced = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-export function InvestPage({ initial, name, pulse }: { initial: InitialSelection; name: string | null; pulse: Pulse | null }) {
+export function InvestPage({ initial, name, pulseSlot }: { initial: InitialSelection; name: string | null; pulseSlot: ReactNode }) {
   const [areaId, setAreaId] = useState(initial.areaId);
   const [unit, setUnit] = useState<UnitType>(initial.unit);
   const [stake, setStake] = useState(initial.stake);
@@ -193,7 +192,7 @@ export function InvestPage({ initial, name, pulse }: { initial: InitialSelection
       <Limited />
       <Protected />
       <Proof />
-      <Verify pulse={pulse} />
+      <Verify pulseSlot={pulseSlot} />
       <People />
       <Terms />
       <Cta q={q} pkg={pkg} />
