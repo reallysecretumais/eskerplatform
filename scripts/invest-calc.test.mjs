@@ -6,7 +6,7 @@
 // 8 Oct 2026 when the founder set 2BHK caretaker ₨10k and laundry ₨8k.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { quote, compareRows, returnRange, areaSummary, rs, lakh, pct, months } from "../lib/invest/calc.ts";
+import { quote, compareRows, returnRange, areaSummary, headline, fitForBudget, standardAreas, specialAreas, rs, lakh, pct, months } from "../lib/invest/calc.ts";
 import { AREAS, PACKAGES } from "../lib/invest/config.ts";
 
 // [areaId, unit, upfront, monthlyCost, { nights: [monthly, payback, annual%] }]
@@ -54,7 +54,7 @@ test("hero range at Standard is 76–121%", () => {
 
 test("compare view is ranked by annual return and covers every area × unit", () => {
   const rows = compareRows("standard");
-  assert.equal(rows.length, AREAS.reduce((n, a) => n + Object.keys(a.units).length, 0));
+  assert.equal(rows.length, standardAreas().reduce((n, a) => n + Object.keys(a.units).length, 0));
   for (let i = 1; i < rows.length; i++) assert.ok(rows[i - 1].annualReturn >= rows[i].annualReturn);
   assert.equal(rows[0].areaId, "skypark");
 });
@@ -79,4 +79,58 @@ test("formatting", () => {
   assert.equal(lakh(900000), "9L");
   assert.equal(months(12.0), "12");
   assert.equal(months(17.14), "17.1");
+});
+
+// ── v2 (10 Oct 2026) ───────────────────────────────────────────────────────
+
+test("the one-off penthouse stays out of the standard set, the compare list and the hero range", () => {
+  assert.deepEqual(specialAreas().map((a) => a.id), ["e11pool"]);
+  assert.ok(!standardAreas().some((a) => a.id === "e11pool"));
+  assert.ok(!compareRows("standard").some((r) => r.areaId === "e11pool"));
+  assert.deepEqual(returnRange("standard"), { min: 76, max: 121 });
+});
+
+test("E-11 terrace-pool penthouse — the founder's figures (10 Oct 2026)", () => {
+  // Rent 1,20,000 · 25,000 a night · electricity 1,00,000 (upper end of 80–100k)
+  // · Rs 15 lakh all-in = 1 month's rent + 2 months' security + 11.4L furnishing/pool.
+  const q = quote({ areaId: "e11pool", unit: "2BHK", stake: 1 });
+  assert.equal(q.upfrontTotal, 1500000);
+  assert.equal(q.advanceRent, 120000);
+  assert.equal(q.securityDeposit, 240000);
+  assert.equal(q.furnishing, 1140000);
+  assert.equal(q.costs.electricity, 100000);
+  assert.equal(q.monthlyCost, 258000);
+  assert.equal(q.breakevenNights, 11); // 258000 / 25000 = 10.32
+  const s = q.packages.standard;
+  assert.equal(s.revenue, 600000);
+  assert.equal(s.netProfit, 342000);
+  assert.equal(s.yourMonthly, 239400);
+  assert.equal(months(s.paybackMonths), "6.3");
+  assert.equal(pct(s.annualReturn), 192);
+  assert.equal(q.packages.conservative.yourMonthly, 186900);
+  assert.equal(q.packages.high.yourMonthly, 309400);
+});
+
+test("hero headline: the smallest start, the span of monthly shares and paybacks", () => {
+  const h = headline("standard");
+  assert.equal(h.fromCapital, 460000); // half a Bahria/DHA 1BHK
+  assert.equal(h.monthlyMin, 35175);
+  assert.equal(h.monthlyMax, 202300); // SkyPark 2BHK, full
+  assert.equal(months(h.paybackMin), "9.9");
+  assert.equal(months(h.paybackMax), "15.8");
+});
+
+test("budget fit: the biggest monthly share within budget, best first", () => {
+  const ten = fitForBudget(1000000);
+  assert.equal(ten.best.areaId, "e11"); // half 2BHK E-11 (8.7L) earns 73,850 — more than a full 1BHK (70,350)
+  assert.equal(ten.best.stake, 0.5);
+  assert.ok(ten.within.every((o) => o.quote.yourCapital <= 1000000));
+  for (let i = 1; i < ten.within.length; i++) assert.ok(ten.within[i - 1].quote.packages.standard.yourMonthly >= ten.within[i].quote.packages.standard.yourMonthly);
+  const twenty = fitForBudget(2000000);
+  assert.deepEqual([twenty.best.areaId, twenty.best.unit, twenty.best.stake], ["e11", "2BHK", 1]); // 17.4L; SkyPark (20.1L) is over
+  const thirty = fitForBudget(3000000);
+  assert.deepEqual([thirty.best.areaId, thirty.best.stake], ["skypark", 1]);
+  const tiny = fitForBudget(100000);
+  assert.equal(tiny.best, null);
+  assert.equal(tiny.smallest.quote.yourCapital, 460000);
 });

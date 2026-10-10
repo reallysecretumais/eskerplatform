@@ -67,7 +67,7 @@ export default async function Sheet({ searchParams }: { searchParams: Promise<Se
           <tbody>
             <tr><td>Advance rent · {TERMS.advanceRentMonths} month</td><td style={{ textAlign: "right" }}>Rs {rs(q.advanceRent)}</td></tr>
             <tr><td>Security · {TERMS.securityMonths} months (refundable at lease end)</td><td style={{ textAlign: "right" }}>Rs {rs(q.securityDeposit)}</td></tr>
-            <tr><td>Furnishing to the Esker standard</td><td style={{ textAlign: "right" }}>Rs {rs(q.furnishing)}</td></tr>
+            <tr><td>{q.furnishingLabel}</td><td style={{ textAlign: "right" }}>Rs {rs(q.furnishing)}</td></tr>
             <tr><td>Total setup</td><td style={{ textAlign: "right" }}>Rs {rs(q.upfrontTotal)}</td></tr>
             <tr className="hl"><td>Your investment · {stakeLabel(q.stake)}</td><td style={{ textAlign: "right" }}>Rs {rs(q.yourCapital)}</td></tr>
           </tbody>
