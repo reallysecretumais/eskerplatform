@@ -37,6 +37,7 @@ export type Quote = {
   advanceRent: number;
   securityDeposit: number;
   furnishing: number;
+  furnishingLabel: string;
   upfrontTotal: number;
   yourCapital: number;
   breakevenNights: number;
@@ -45,6 +46,15 @@ export type Quote = {
 
 export function findArea(areaId: string): Area | undefined {
   return AREAS.find((a) => a.id === areaId);
+}
+
+/** The areas an investor picks between — the one-off opportunities are shown apart. */
+export function standardAreas(): Area[] {
+  return AREAS.filter((a) => !a.special);
+}
+
+export function specialAreas(): Area[] {
+  return AREAS.filter((a) => !!a.special);
 }
 
 export function unitsOf(area: Area): UnitType[] {
@@ -56,8 +66,8 @@ export function quote(sel: Selection): Quote | null {
   const area = findArea(sel.areaId);
   const u = area?.units[sel.unit];
   if (!area || !u) return null;
-  const run = RUNNING_COSTS[sel.unit];
-  const furnishing = FURNISHING[sel.unit];
+  const run = { ...RUNNING_COSTS[sel.unit], ...(u.costs ?? {}) };
+  const furnishing = u.furnishing ?? FURNISHING[sel.unit];
 
   const advanceRent = u.rent * TERMS.advanceRentMonths;
   const securityDeposit = u.rent * TERMS.securityMonths;
@@ -99,6 +109,7 @@ export function quote(sel: Selection): Quote | null {
     advanceRent,
     securityDeposit,
     furnishing,
+    furnishingLabel: u.furnishingLabel ?? "Furnishing · Esker standard",
     upfrontTotal,
     yourCapital,
     breakevenNights: Math.ceil(monthlyCost / u.nightly),
@@ -108,10 +119,10 @@ export function quote(sel: Selection): Quote | null {
 
 export type CompareRow = { areaId: string; areaName: string; unit: UnitType; upfront: number; monthly: number; annualReturn: number; paybackMonths: number };
 
-/** Every area × unit at one package, full stake, best annual return first. */
+/** Every standard area × unit at one package, full stake, best annual return first. */
 export function compareRows(pkg: PackageId = "standard"): CompareRow[] {
   const rows: CompareRow[] = [];
-  for (const area of AREAS) {
+  for (const area of standardAreas()) {
     for (const unit of unitsOf(area)) {
       const q = quote({ areaId: area.id, unit, stake: 1 })!;
       const p = q.packages[pkg];
@@ -127,6 +138,23 @@ export function returnRange(pkg: PackageId = "standard"): { min: number; max: nu
   return { min: Math.min(...r), max: Math.max(...r) };
 }
 
+/**
+ * The hero's concrete numbers at one package, across every standard option
+ * including half shares: the smallest capital anyone can start with, the span
+ * of monthly shares, and the span of payback months.
+ */
+export function headline(pkg: PackageId = "standard"): { fromCapital: number; monthlyMin: number; monthlyMax: number; paybackMin: number; paybackMax: number } {
+  const qs = everyOption().map((o) => o.quote);
+  const ps = qs.map((q) => q.packages[pkg]);
+  return {
+    fromCapital: Math.min(...qs.map((q) => q.yourCapital)),
+    monthlyMin: Math.min(...ps.map((p) => p.yourMonthly)),
+    monthlyMax: Math.max(...ps.map((p) => p.yourMonthly)),
+    paybackMin: Math.min(...ps.map((p) => p.paybackMonths)),
+    paybackMax: Math.max(...ps.map((p) => p.paybackMonths)),
+  };
+}
+
 /** Lowest upfront in an area ("from Rs X") and its best Standard return (the badge). */
 export function areaSummary(area: Area): { fromUpfront: number; bestReturn: number } {
   const qs = unitsOf(area).map((u) => quote({ areaId: area.id, unit: u, stake: 1 })!);
@@ -134,6 +162,32 @@ export function areaSummary(area: Area): { fromUpfront: number; bestReturn: numb
     fromUpfront: Math.min(...qs.map((q) => q.upfrontTotal)),
     bestReturn: Math.max(...qs.map((q) => pct(q.packages.standard.annualReturn))),
   };
+}
+
+export type Option = { areaId: string; unit: UnitType; stake: number; quote: Quote };
+
+/** Every standard area × unit × stake. */
+export function everyOption(): Option[] {
+  const out: Option[] = [];
+  for (const area of standardAreas()) {
+    for (const unit of unitsOf(area)) {
+      for (const stake of TERMS.stakes) out.push({ areaId: area.id, unit, stake, quote: quote({ areaId: area.id, unit, stake })! });
+    }
+  }
+  return out;
+}
+
+/**
+ * What a budget buys. The best fit is the option within budget with the
+ * largest Standard monthly share — the number an investor actually feels —
+ * and the rest within budget follow, best first. Below the smallest option
+ * there is no fit; the caller shows the smallest instead.
+ */
+export function fitForBudget(budget: number, pkg: PackageId = "standard"): { best: Option | null; within: Option[]; smallest: Option } {
+  const all = everyOption();
+  const smallest = all.reduce((a, b) => (b.quote.yourCapital < a.quote.yourCapital ? b : a));
+  const within = all.filter((o) => o.quote.yourCapital <= budget).sort((a, b) => b.quote.packages[pkg].yourMonthly - a.quote.packages[pkg].yourMonthly);
+  return { best: within[0] ?? null, within, smallest };
 }
 
 // ── Formatting ───────────────────────────────────────────────────────────────
