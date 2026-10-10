@@ -20,11 +20,16 @@ export async function getPulse(): Promise<Pulse | null> {
       next: { revalidate: 300 },
       signal: AbortSignal.timeout(4000),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[pulse] CRM answered ${res.status}`);
+      return null;
+    }
     const j = (await res.json()) as { ok?: boolean; lastBookingAt?: string | null; inboundMessages7d?: number };
     if (!j.ok) return null;
     return { lastBookingAt: j.lastBookingAt ?? null, inboundMessages7d: j.inboundMessages7d ?? 0 };
-  } catch {
+  } catch (e) {
+    // Best-effort, but never silent: the reason lands in the runtime logs.
+    console.warn(`[pulse] CRM unreachable: ${e instanceof Error ? `${e.name} ${e.message}` : String(e)}`);
     return null;
   }
 }
