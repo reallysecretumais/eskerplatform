@@ -3,6 +3,8 @@ import { getListing, getAvailability, getListingHost, getBusyByProperty } from "
 import { rangeConfidence } from "@/lib/data/confidence";
 import { company } from "@/lib/contact";
 import { crop } from "@/lib/img";
+import { stayPath } from "@/lib/slug";
+import { SITE_URL } from "@/lib/seo";
 import { getReviews } from "@/lib/data/reviews";
 import { getSlots, getBusyTimes } from "@/lib/data/slots";
 import { getExternalBookability } from "@/lib/data/externalBooking";
@@ -78,6 +80,8 @@ export const GET = guard(async (req: Request, { params }: { params: Promise<{ id
       photos: listing.photos ?? [],
       publicFacts: listing.public_facts ?? null,
       exclusive: listing.esker_exclusive,
+      /** The stay's page on the website, for Share — built by the one function that builds them. */
+      url: `${SITE_URL}${stayPath(listing)}`,
       /** Standard times; the stay page and trip pass show these (website lib/contact.ts). */
       checkIn: company.checkIn,
       checkOut: company.checkOut,
