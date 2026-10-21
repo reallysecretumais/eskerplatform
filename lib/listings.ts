@@ -116,8 +116,8 @@ export type HomeSections<T> = {
   rest: T[];
 };
 
-/** Strongest first: Esker Exclusive → has photos → higher price. */
-function byStrength<T extends { esker_exclusive: boolean; photos: string[] | null; price: number }>(a: T, b: T) {
+/** Strongest first: Esker Exclusive → has photos → higher price. The one ordering rule the website and the app share. */
+export function byStrength<T extends { esker_exclusive: boolean; photos: string[] | null; price: number }>(a: T, b: T) {
   return (
     Number(b.esker_exclusive) - Number(a.esker_exclusive) ||
     (b.photos?.length ? 1 : 0) - (a.photos?.length ? 1 : 0) ||

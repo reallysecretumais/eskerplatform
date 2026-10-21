@@ -1,5 +1,8 @@
 import { ok, notFound, guard } from "@/lib/app/api";
-import { getListing, getAvailability, getListingHost } from "@/lib/data/listings";
+import { getListing, getAvailability, getListingHost, getBusyByProperty } from "@/lib/data/listings";
+import { rangeConfidence } from "@/lib/data/confidence";
+import { company } from "@/lib/contact";
+import { crop } from "@/lib/img";
 import { getReviews } from "@/lib/data/reviews";
 import { getSlots, getBusyTimes } from "@/lib/data/slots";
 import { getExternalBookability } from "@/lib/data/externalBooking";
@@ -21,8 +24,13 @@ export const dynamic = "force-dynamic";
  * nothing internal can appear: no cost/margin on resale units, no caretaker, no
  * access codes, no other guests.
  */
-export const GET = guard(async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+export const GET = guard(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;
+  const sp = new URL(req.url).searchParams;
+  const from = sp.get("from");
+  const to = sp.get("to");
 
   const listing = await getListing(id);
   // Not public, unpublished, paused, or nonexistent — all indistinguishable to a
@@ -41,6 +49,14 @@ export const GET = guard(async (_req: Request, { params }: { params: Promise<{ i
     // ask the owner first. Esker-run stock is always instant.
     listing.source === "external" ? getExternalBookability(id) : Promise.resolve({ mode: "instant" as const }),
   ]);
+
+  // The V3 app's Stay page asks with the guest's dates: open, on request
+  // (an owner confirms first) or taken, by the same night-by-night rule as
+  // /search, so a card and its stay page can never disagree.
+  const rangeState =
+    from && to && DAY.test(from) && DAY.test(to) && from < to
+      ? ((await rangeConfidence([listing], from, to, await getBusyByProperty())).get(listing.id) ?? null)
+      : null;
 
   return ok({
     listing: {
@@ -62,7 +78,17 @@ export const GET = guard(async (_req: Request, { params }: { params: Promise<{ i
       photos: listing.photos ?? [],
       publicFacts: listing.public_facts ?? null,
       exclusive: listing.esker_exclusive,
+      /** Standard times; the stay page and trip pass show these (website lib/contact.ts). */
+      checkIn: company.checkIn,
+      checkOut: company.checkOut,
+      /** V3 crops at 3x: the Stay page's full-bleed photos, and a square thumbnail for trip cards. */
+      media: {
+        hero: (listing.photos ?? []).map((p) => crop(p, 1170, 1176, 74)),
+        thumb: listing.photos?.[0] ? crop(listing.photos[0], 264, 264, 70) : null,
+      },
     },
+    /** Only when `from` and `to` are given: "open" | "request" | "taken". */
+    rangeState,
     // How this stay can be taken right now, and what it costs to hold it.
     booking: {
       mode: listing.booking_mode,

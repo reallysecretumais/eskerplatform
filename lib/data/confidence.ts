@@ -293,3 +293,62 @@ export async function confidenceFor(
   }
   return out;
 }
+
+/** A stay's standing for a whole date range, as a guest sees it. */
+export type RangeState = "open" | "request" | "taken";
+
+/**
+ * The longest range whose nights are checked one by one against owner
+ * signals. Busy rows are always checked across the whole range; past this, a
+ * resold stay nobody has confirmed is "request".
+ */
+const MAX_SIGNAL_NIGHTS = 31;
+
+/**
+ * Whether each listing can be had for check-in `fromIso` to check-out `toIso`
+ * (checkout-exclusive, Karachi nights), built from `confidenceFor` one night
+ * at a time, so a range can never disagree with the nights inside it:
+ *
+ *   taken    some night in it is busy (or the owner said no to it)
+ *   open     every night is confirmed
+ *   request  nothing is busy, but at least one night nobody has confirmed —
+ *            the guest asks and the owner answers (app REBUILD_PLAN D1)
+ *
+ * `busy` is the caller's `getBusyByProperty()` map, read once for all nights.
+ */
+export async function rangeConfidence(
+  listings: PublicListing[],
+  fromIso: string,
+  toIso: string,
+  busy: Map<string, { start_date: string; end_date: string }[]>,
+): Promise<Map<string, RangeState>> {
+  const nights: string[] = [];
+  for (let t = Date.parse(`${fromIso}T00:00:00Z`); t < Date.parse(`${toIso}T00:00:00Z`); t += 86_400_000) {
+    nights.push(new Date(t).toISOString().slice(0, 10));
+  }
+  const out = new Map<string, RangeState>(listings.map((l) => [l.id, "open" as RangeState]));
+  if (!nights.length) return out;
+
+  // A booking anywhere in the range, checked in full: ranges overlap when each
+  // starts before the other ends (checkout-exclusive on both sides).
+  const overlaps = (l: PublicListing) => (busy.get(l.id) ?? []).some((r) => r.start_date < toIso && fromIso < r.end_date);
+
+  const checked = nights.slice(0, MAX_SIGNAL_NIGHTS);
+  const perNight = await Promise.all(
+    checked.map((night) =>
+      confidenceFor(listings, night, (l) => (busy.get(l.id) ?? []).some((r) => r.start_date <= night && night < r.end_date)),
+    ),
+  );
+  const beyondCap = nights.length > checked.length;
+  for (const l of listings) {
+    if (overlaps(l)) {
+      out.set(l.id, "taken");
+      continue;
+    }
+    const states = perNight.map((m) => m.get(l.id)?.state ?? "unknown");
+    if (states.includes("busy")) out.set(l.id, "taken");
+    else if (states.every((s) => s === "confirmed") && !(beyondCap && isExternal(l))) out.set(l.id, "open");
+    else out.set(l.id, "request");
+  }
+  return out;
+}
