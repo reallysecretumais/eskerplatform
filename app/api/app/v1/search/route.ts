@@ -21,6 +21,8 @@ export const dynamic = "force-dynamic";
  *   bedrooms             at least this many
  *   minPrice, maxPrice   per night
  *   sort                 recommended (default) | price_asc | price_desc
+ *   ids                  comma-separated stay ids: the app's Saved tab, kept in
+ *                        the guest's own order (newest heart first)
  *
  * Every matching stay is returned with its availability for the dates, so
  * nothing is hidden and nothing pretends (app REBUILD_PLAN):
@@ -52,6 +54,7 @@ export const GET = guard(async (req: Request) => {
   const minPrice = Number(sp.get("minPrice")) || 0;
   const maxPrice = Number(sp.get("maxPrice")) || 0;
   const sort = sp.get("sort") ?? "recommended";
+  const ids = sp.get("ids")?.split(",").map((s) => s.trim()).filter(Boolean) ?? null;
 
   const dated = !!(from || to);
   if (dated && !(from && to && DAY.test(from) && DAY.test(to) && from < to)) {
@@ -60,6 +63,8 @@ export const GET = guard(async (req: Request) => {
 
   const inv = await getInventory(null);
   let rows: PublicListing[] = inv.all;
+  // A saved stay that's since been unpublished simply drops out — never an error.
+  if (ids) rows = rows.filter((l) => ids.includes(l.id));
   if (city) rows = rows.filter((l) => cityKey(l.city ?? "") === city);
   if (area) rows = rows.filter((l) => (l.area ?? "").toLowerCase() === area);
   if (type) rows = rows.filter((l) => l.category && normalizeCategory(l.category) === normalizeCategory(type));
@@ -82,7 +87,8 @@ export const GET = guard(async (req: Request) => {
     (guests ? Number(!a.capacity) - Number(!b.capacity) : 0) ||
     (sort === "price_asc" ? a.price - b.price : sort === "price_desc" ? b.price - a.price : byStrength(a, b));
 
-  const stays = [...rows].sort(order).map((l) => appCard(l, availability.get(l.id) ?? "request"));
+  const sorted = ids ? [...rows].sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)) : [...rows].sort(order);
+  const stays = sorted.map((l) => appCard(l, availability.get(l.id) ?? "request"));
   return ok({
     total: stays.length,
     open: stays.filter((s) => s.availability === "open").length,
