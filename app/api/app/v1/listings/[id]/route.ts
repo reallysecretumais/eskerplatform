@@ -2,7 +2,7 @@ import { ok, notFound, guard } from "@/lib/app/api";
 import { getListing, getAvailability, getListingHost, getBusyByProperty } from "@/lib/data/listings";
 import { rangeConfidence } from "@/lib/data/confidence";
 import { company } from "@/lib/contact";
-import { crop } from "@/lib/img";
+import { crop, thumb } from "@/lib/img";
 import { stayPath } from "@/lib/slug";
 import { SITE_URL } from "@/lib/seo";
 import { getReviews } from "@/lib/data/reviews";
@@ -88,6 +88,8 @@ export const GET = guard(async (req: Request, { params }: { params: Promise<{ id
       /** V3 crops at 3x: the Stay page's full-bleed photos, and a square thumbnail for trip cards. */
       media: {
         hero: (listing.photos ?? []).map((p) => crop(p, 1170, 1176, 74)),
+        /** The full-screen gallery: each photo whole, its long edge 1600. */
+        full: (listing.photos ?? []).map((p) => thumb(p, 1600, 80)),
         thumb: listing.photos?.[0] ? crop(listing.photos[0], 264, 264, 70) : null,
       },
     },
