@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft, MapPin, FileText } from "lucide-react";
 import { getMyBooking } from "@/lib/auth";
 import { getMyReview } from "@/lib/data/reviews";
-import { cancellationQuote } from "@/lib/payments";
+import { guestCancelQuote } from "@/lib/payments";
 import { GUEST_CANCELLABLE } from "@/lib/bookingStatus";
 import { thumb } from "@/lib/img";
 import { StatusBadge } from "@/components/account/StatusBadge";
@@ -29,7 +29,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
   const loc = [b.listing?.category, b.listing?.area].filter(Boolean).join(" · ");
   const activePayable = !["cancelled", "checked_out"].includes(b.status);
   const cancellable = GUEST_CANCELLABLE.includes(b.status) && Boolean(b.checkin);
-  const quote = b.checkin ? cancellationQuote(b.checkin, b.advancePaid) : null;
+  const quote = b.checkin ? guestCancelQuote({ checkin: b.checkin, advancePaid: b.advancePaid, status: b.status }) : null;
   const reviewable = b.status === "checked_out";
   const myReview = reviewable ? await getMyReview(b.id) : null;
   // BalancePanel is a client component, so the accounts are read here.
@@ -103,7 +103,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
         </Link>
         {cancellable && quote && (
           <div className="ml-auto">
-            <CancelDialog bookingId={b.id} refund={quote.refund} retained={quote.retained} label={quote.label} />
+            <CancelDialog bookingId={b.id} refund={quote.refund} retained={quote.retained} label={quote.label} unverified={quote.unverified} />
           </div>
         )}
       </div>

@@ -8,7 +8,20 @@ import { rs } from "@/lib/listings";
 
 // Guest self-cancel with an up-front refund preview. The numbers shown here come
 // from the same cancellationQuote the server re-applies, so they always match.
-export function CancelDialog({ bookingId, refund, retained, label }: { bookingId: string; refund: number; retained: number; label: string }) {
+export function CancelDialog({
+  bookingId,
+  refund,
+  retained,
+  label,
+  unverified = false,
+}: {
+  bookingId: string;
+  refund: number;
+  retained: number;
+  label: string;
+  /** The transfer was never confirmed: the team checks it before any refund (guestCancelQuote). */
+  unverified?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -45,6 +58,11 @@ export function CancelDialog({ bookingId, refund, retained, label }: { bookingId
               <h3 className="headline text-2xl">Cancel this booking?</h3>
             </div>
 
+            {unverified ? (
+              <div className="mt-4 rounded-xl border border-line bg-bg/40 p-4 text-sm">
+                <p className="text-muted">{label}.</p>
+              </div>
+            ) : (
             <div className="mt-4 rounded-xl border border-line bg-bg/40 p-4 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-muted">Refund to you</span>
@@ -58,6 +76,7 @@ export function CancelDialog({ bookingId, refund, retained, label }: { bookingId
               )}
               <p className="mt-3 text-xs text-dim">{label} — as per our cancellation policy. Refunds are sent to your original payment method within 5–7 working days.</p>
             </div>
+            )}
 
             {error && <p className="mt-3 text-sm text-red">{error}</p>}
 

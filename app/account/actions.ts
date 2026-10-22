@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { bustListings } from "@/lib/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { cancellationQuote } from "@/lib/payments";
+import { guestCancelQuote } from "@/lib/payments";
 import { sendEmail } from "@/lib/email";
 import { toE164Pk } from "@/lib/otp";
 import { issueOtp, checkOtp } from "@/lib/otpFlow";
@@ -244,9 +244,11 @@ export async function cancelMyBooking(bookingId: string): Promise<CancelResult> 
   if (!b.checkin) return { ok: false, message: "This booking can't be cancelled online — please message us." };
 
   const collected = Math.max(0, Math.round(Number(b.advance_paid) || 0));
-  const quote = cancellationQuote(String(b.checkin), collected);
-  const refund = Math.min(quote.refund, collected);
-  const retained = collected - refund;
+  const quote = guestCancelQuote({ checkin: String(b.checkin), advancePaid: collected, status: String(b.status) });
+  // Unverified (still awaiting payment): nothing is refunded or kept here; the
+  // team checks whether the transfer arrived first (founder, 22 Oct).
+  const refund = quote.unverified ? 0 : Math.min(quote.refund, collected);
+  const retained = quote.unverified ? 0 : collected - refund;
 
   // Negative payment → the recompute trigger drops advance_paid to the retained fee.
   if (refund > 0) {
@@ -258,7 +260,9 @@ export async function cancelMyBooking(bookingId: string): Promise<CancelResult> 
   }
 
   const stamp = new Date().toLocaleString("en-GB", { timeZone: "Asia/Karachi" });
-  const note = `${b.notes ? `${b.notes}\n` : ""}Cancelled by guest via website (${stamp}). Policy: ${quote.tier}. Refund due ${rs(refund)}, retained ${rs(retained)}. ${refund > 0 ? "Send the refund to the guest." : "No refund due."}`;
+  const note = quote.unverified
+    ? `${b.notes ? `${b.notes}\n` : ""}Cancelled by guest (${stamp}) BEFORE their ${rs(collected)} transfer was verified. Nothing refunded automatically. Check whether it arrived: if it did, refund ${rs(quote.policy.refund)} (policy ${quote.policy.tier}); if it didn't, remove the unverified payment.`
+    : `${b.notes ? `${b.notes}\n` : ""}Cancelled by guest via website (${stamp}). Policy: ${quote.tier}. Refund due ${rs(refund)}, retained ${rs(retained)}. ${refund > 0 ? "Send the refund to the guest." : "No refund due."}`;
   const { error } = await admin
     .from("bookings")
     .update({ status: "cancelled", cancel_fee: retained, notes: note })
@@ -274,8 +278,12 @@ export async function cancelMyBooking(bookingId: string): Promise<CancelResult> 
     .maybeSingle();
   const title = String(listing?.title ?? "a stay");
   await notifyStaff(admin, {
-    title: `Website cancellation — ${title}`,
-    body: refund > 0 ? `Guest cancelled · refund ${rs(refund)} to send (kept ${rs(retained)})` : `Guest cancelled · no refund due`,
+    title: quote.unverified ? `Cancelled before verifying — ${title}` : `Website cancellation — ${title}`,
+    body: quote.unverified
+      ? `Check whether the ${rs(collected)} transfer arrived. If it did, refund ${rs(quote.policy.refund)} per policy; if not, nothing is owed.`
+      : refund > 0
+        ? `Guest cancelled · refund ${rs(refund)} to send (kept ${rs(retained)})`
+        : `Guest cancelled · no refund due`,
     link: `/bookings/${bookingId}`,
   });
 
@@ -283,7 +291,13 @@ export async function cancelMyBooking(bookingId: string): Promise<CancelResult> 
     const { data: acct } = await admin.from("accounts").select("email, name, notify_email").eq("id", accountId).maybeSingle();
     // Never email WhatsApp sign-up's no-mail placeholder address.
     if (acct?.email && realEmail(acct.email) && acct.notify_email !== false) {
-      const line = refund > 0 ? `We'll refund ${rs(refund)} to your original payment method within 5–7 working days.` : `As per our policy, no refund applies to this cancellation.`;
+      const line = quote.unverified
+        ? `We hadn't confirmed your transfer yet, so we'll check whether it reached us and, if it did, refund it under our cancellation policy.`
+        : refund > 0
+          ? `We'll refund ${rs(refund)} to your original payment method within 5–7 working days.`
+          : collected === 0
+            ? `Nothing was paid, so there's nothing to refund.`
+            : `As per our policy, no refund applies to this cancellation.`;
       await sendEmail({
         to: acct.email,
         subject: `Your Esker booking is cancelled — ${title}`,

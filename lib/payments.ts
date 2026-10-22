@@ -166,14 +166,47 @@ export function cancellationQuote(checkin: string, advancePaid: number, now: Dat
   const refund = Math.floor(collected * refundPct);
   const retained = collected - refund;
   const pkr = rs;
+  // Nothing paid, nothing kept, whenever it is: never "non-refundable".
   const label =
-    refundPct === 1
-      ? collected > 0
+    collected === 0
+      ? "Cancel free of charge"
+      : refundPct === 1
         ? `Full advance refunded (${pkr(refund)})`
-        : "Cancel free of charge"
-      : refundPct === 0.5
-        ? `50% of your advance refunded (${pkr(refund)})`
-        : "Non-refundable (within 72 hours of check-in)";
+        : refundPct === 0.5
+          ? `50% of your advance refunded (${pkr(refund)})`
+          : "Non-refundable (within 72 hours of check-in)";
 
   return { tier, daysToCheckin: days, refundPct, refund, retained, label };
+}
+
+/**
+ * A guest's own cancellation, as they see it before confirming and as the
+ * cancel applies it (website account, app trip pass, cancelMyBooking).
+ *
+ * A booking still `awaiting_payment` has never had its money confirmed: a
+ * verified transfer or a settled card moves it on. Its advance_paid is only the
+ * guest's screenshot. Founder, 22 Oct 2026: the team checks first. Nothing is
+ * refunded or kept automatically, so a fake screenshot gets nothing, and a real
+ * transfer is refunded by the team under the policy (`policy` below).
+ */
+export type GuestCancelQuote = CancellationQuote & {
+  /** The money was never confirmed: the team checks it before any refund. */
+  unverified: boolean;
+  /** What the policy would give if the money did arrive. */
+  policy: CancellationQuote;
+};
+
+export function guestCancelQuote(b: { checkin: string; advancePaid: number; status: string }, now: Date = new Date()): GuestCancelQuote {
+  const policy = cancellationQuote(b.checkin, b.advancePaid, now);
+  if (b.status === "awaiting_payment" && policy.refund + policy.retained > 0) {
+    return {
+      ...policy,
+      refund: 0,
+      retained: 0,
+      label: "We haven't confirmed your transfer yet. If it reached us, we'll refund it under our cancellation policy",
+      unverified: true,
+      policy,
+    };
+  }
+  return { ...policy, unverified: false, policy };
 }

@@ -1,6 +1,6 @@
 import { ok, guard, unauthorized, notFound, appAccount } from "@/lib/app/api";
 import { getMyBooking } from "@/lib/auth";
-import { cancellationQuote } from "@/lib/payments";
+import { guestCancelQuote } from "@/lib/payments";
 import { GUEST_CANCELLABLE } from "@/lib/bookingStatus";
 import { appTrip, paymentsInFlight } from "@/lib/app/trips";
 
@@ -12,9 +12,9 @@ export const dynamic = "force-dynamic";
  *
  * Adds to the trip what the pass needs to act: whether the guest can cancel
  * it here, and exactly what they would get back if they did (the same
- * cancellationQuote the cancel itself applies, so the number shown is the
- * number refunded). The app persists this response, so the pass opens with
- * no signal.
+ * guestCancelQuote the cancel itself applies, so the number shown is the
+ * number refunded; an unconfirmed transfer says the team checks it first).
+ * The app persists this response, so the pass opens with no signal.
  */
 export const GET = guard(async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const account = await appAccount();
@@ -28,10 +28,10 @@ export const GET = guard(async (_req: Request, { params }: { params: Promise<{ i
   const trip = appTrip(b, paying.get(b.id));
 
   const cancellable = GUEST_CANCELLABLE.includes(b.status) && !!b.checkin && trip.state !== "hold_ended";
-  const q = cancellable ? cancellationQuote(b.checkin!, b.advancePaid) : null;
+  const q = cancellable ? guestCancelQuote({ checkin: b.checkin!, advancePaid: b.advancePaid, status: b.status }) : null;
 
   return ok({
     trip,
-    cancel: q ? { label: q.label, refund: q.refund, retained: q.retained, tier: q.tier } : null,
+    cancel: q ? { label: q.label, refund: q.refund, retained: q.retained, tier: q.tier, unverified: q.unverified } : null,
   });
 });
