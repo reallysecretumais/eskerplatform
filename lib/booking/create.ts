@@ -415,7 +415,7 @@ export async function createBookingCore(input: CreateBookingInput): Promise<Book
   if (myHolds.length) {
     await admin.from("bookings").update({ hold_until: new Date().toISOString() }).in("id", myHolds);
   }
-  const hold = holdUntil(viaSafepay ? "card" : "transfer");
+  const hold = holdUntil(viaSafepay ? "card" : "transfer", checkout);
   const note = `${channel === "app" ? "App" : "Website"} booking — ${advanceLabel(amount, exclusive)} advance ${rs(advance)} of ${rs(amount)} (balance ${rs(balance)} due at check-in). ${
     viaSafepay ? "Paying by Safepay — confirms automatically when the gateway settles." : "Verify the payment screenshot."
   }${email ? ` Email: ${email}.` : ""}${idNote}`;
@@ -445,7 +445,8 @@ export async function createBookingCore(input: CreateBookingInput): Promise<Book
       // above says which of the two it came from.
       source: "Website",
       // When these dates go back on sale if no money arrives (D5): 30 minutes
-      // for a card checkout, 18 hours for a bank transfer.
+      // for a card checkout; a transfer, which arrives WITH its screenshot,
+      // holds until the team verifies or cancels it (lib/booking/hold.ts).
       hold_until: hold,
       notes: note,
     })

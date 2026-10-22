@@ -1,16 +1,20 @@
 // The date hold (lib/booking/hold.ts). Run: node scripts/hold.test.mts
 import assert from "node:assert/strict";
-import { blocksDates, holdUntil, holdLabel, isExpiringHold } from "../lib/booking/hold.ts";
+import { blocksDates, holdUntil, HOLD_LINE, isExpiringHold, minutesLabel } from "../lib/booking/hold.ts";
 
 const now = Date.parse("2026-10-22T10:00:00Z");
 const min = 60_000;
 const web = (over: object) => ({ status: "awaiting_payment", source: "Website", created_at: new Date(now - 5 * min).toISOString(), ...over });
 
-// Durations, stamped from the moment of booking.
-assert.equal(holdUntil("card", new Date(now)), new Date(now + 30 * min).toISOString());
-assert.equal(holdUntil("transfer", new Date(now)), new Date(now + 18 * 60 * min).toISOString());
-assert.equal(holdLabel("card"), "30 minutes");
-assert.equal(holdLabel("transfer"), "18 hours");
+// A card holds 30 minutes from the moment of booking.
+assert.equal(holdUntil("card", "2026-10-25", new Date(now)), new Date(now + 30 * min).toISOString());
+// A transfer (it always comes with its screenshot) holds until check-out
+// day's 12:00 PM PKT: only the team's verify or cancel releases it earlier,
+// however late they are (founder, 22 Oct).
+assert.equal(holdUntil("transfer", "2026-10-25", new Date(now)), "2026-10-25T07:00:00.000Z");
+assert.equal(blocksDates(web({ hold_until: holdUntil("transfer", "2026-10-25", new Date(now)) }), now + 2 * 24 * 60 * min), true);
+assert.equal(minutesLabel(30), "30 minutes");
+assert.equal(HOLD_LINE.transfer, "We confirm transfers within 30 minutes, and your dates stay held until we do.");
 
 // A card hold blocks for 30 minutes, then the dates are back on sale.
 assert.equal(blocksDates(web({ hold_until: new Date(now + 1 * min).toISOString() }), now), true);

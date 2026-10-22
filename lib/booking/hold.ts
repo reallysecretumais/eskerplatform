@@ -1,14 +1,20 @@
 /**
  * THE DATE HOLD — how long an unpaid booking keeps its dates (app REBUILD_PLAN
- * D5, founder 2026-10-21). PURE, safe in client components, and the one place
- * the durations live: the website's createBooking and the app's Phase 2
- * booking routes both import it.
+ * D5, founder 2026-10-21; transfer rule changed 2026-10-22). PURE, safe in
+ * client components, and the one place the rule lives: the booking core
+ * (lib/booking/create.ts) imports it for the website and the app alike.
  *
- *   card      30 minutes  Safepay's checkout is minutes of work; a card hold
- *                          that outlives the guest's attention only keeps the
- *                          dates from someone who would actually pay.
- *   transfer  18 hours    a bank transfer needs the guest's banking app and
- *                          our team's eyes on the screenshot.
+ *   card      30 minutes   Safepay's checkout is minutes of work; a card hold
+ *                           that outlives the guest's attention only keeps the
+ *                           dates from someone who would actually pay.
+ *   transfer  until the    the guest has already sent the money and its
+ *             team acts     screenshot. The team confirms within 30 minutes
+ *                           (founder, 22 Oct: "make sure the booking doesn't
+ *                           vanish if the rep or I am late"), so the hold runs
+ *                           to the end of the stay and only verifying or
+ *                           cancelling it ends it. Every transfer booking
+ *                           carries its screenshot (the core refuses one
+ *                           without), so this never holds dates for nothing.
  *
  * HOW IT IS ENFORCED. The booking is STAMPED with its expiry (`bookings.
  * hold_until`, migration 24) when it is created, and everything that asks
@@ -28,26 +34,37 @@
 
 export type HoldMethod = "card" | "transfer";
 
-export const HOLD_MINUTES: Record<HoldMethod, number> = {
-  card: 30,
-  transfer: 18 * 60,
-};
+/** How long a card checkout holds the dates. */
+export const CARD_HOLD_MINUTES = 30;
+
+/** The team's promise for checking a transfer screenshot (D7). */
+export const TRANSFER_CONFIRM_MINUTES = 30;
 
 /** Rows with no stamp (created before migration 24) expire as they always did. */
 export const LEGACY_HOLD_MS = 18 * 60 * 60 * 1000;
 
-/** The expiry to stamp on a new unpaid booking, as an ISO instant. */
-export function holdUntil(method: HoldMethod, now: Date = new Date()): string {
-  return new Date(now.getTime() + HOLD_MINUTES[method] * 60_000).toISOString();
+/**
+ * The expiry to stamp on a new unpaid booking, as an ISO instant. A transfer
+ * holds to its check-out (12:00 PM PKT that day): past then the dates are
+ * history, and before then only the team releases them.
+ */
+export function holdUntil(method: HoldMethod, checkout: string, now: Date = new Date()): string {
+  if (method === "transfer") return new Date(`${checkout}T12:00:00+05:00`).toISOString();
+  return new Date(now.getTime() + CARD_HOLD_MINUTES * 60_000).toISOString();
 }
 
-/** "30 minutes" · "18 hours" — for the lines that tell a guest how long they have. */
-export function holdLabel(method: HoldMethod): string {
-  const m = HOLD_MINUTES[method];
+/** "30 minutes" — for the lines that tell a guest how long they have. */
+export function minutesLabel(m: number): string {
   if (m % 60 !== 0) return `${m} minutes`;
   const h = m / 60;
   return `${h} ${h === 1 ? "hour" : "hours"}`;
 }
+
+/** What a guest is told about each method's hold, in one line each. */
+export const HOLD_LINE: Record<HoldMethod, string> = {
+  card: `We hold your dates for ${minutesLabel(CARD_HOLD_MINUTES)} while you pay.`,
+  transfer: `We confirm transfers within ${minutesLabel(TRANSFER_CONFIRM_MINUTES)}, and your dates stay held until we do.`,
+};
 
 type BookingRow = {
   status: string | null;

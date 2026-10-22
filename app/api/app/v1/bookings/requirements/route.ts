@@ -1,6 +1,6 @@
 import { ok, fail, guard, unauthorized, appAccount } from "@/lib/app/api";
 import { bookingPath, idOnFile, realEmail, realName } from "@/lib/booking/create";
-import { holdLabel } from "@/lib/booking/hold";
+import { HOLD_LINE } from "@/lib/booking/hold";
 import { isSafepayConfigured } from "@/lib/safepay";
 import { getBankAccounts, toWireAccounts } from "@/lib/data/bankAccounts";
 
@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
  *   idNeeded    first booking with Esker: an ID photo comes with it
  *   name        the account's real name, when it has one (else the app asks)
  *   methods     card only while Safepay is configured; transfer always
- *   holds       how long each method keeps the dates ("30 minutes")
+ *   holds       what each method promises about the dates, in a line
  *   bankAccounts  where a transfer goes, from the CRM's Settings
  */
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -48,7 +48,7 @@ export const GET = guard(async (req: Request) => {
     name: realName(account.name) || null,
     email: realEmail(account.email) || null,
     methods: { card: isSafepayConfigured(), transfer: true },
-    holds: { card: holdLabel("card"), transfer: holdLabel("transfer") },
+    holds: HOLD_LINE,
     bankAccounts: toWireAccounts(accounts),
   });
 });

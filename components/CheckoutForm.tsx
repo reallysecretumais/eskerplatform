@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Copy, Check, Camera, ShieldCheck, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { createBooking, verifyIdUpload } from "@/app/book/actions";
 import type { BankAccount } from "@/lib/bankAccounts";
-import { holdLabel } from "@/lib/booking/hold";
+import { HOLD_LINE } from "@/lib/booking/hold";
 
 type IdStatus = "idle" | "checking" | "ok" | "bad";
 
@@ -312,8 +312,8 @@ export function CheckoutForm({
         )}
         <p className="mt-2 text-center text-xs text-muted">
           {payMethod === "safepay"
-            ? `We hold your dates for ${holdLabel("card")} while you pay. Your booking confirms the moment the payment goes through.`
-            : `We hold your dates for ${holdLabel("transfer")} while we check your transfer.`}
+            ? `${HOLD_LINE.card} Your booking confirms the moment the payment goes through.`
+            : HOLD_LINE.transfer}
         </p>
         <p className="mt-3 text-center text-xs text-muted">
           By confirming, you agree to Esker&apos;s{" "}

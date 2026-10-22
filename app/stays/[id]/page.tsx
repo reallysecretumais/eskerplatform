@@ -199,7 +199,7 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
                   <div className="label text-[10.5px] text-dim">The Esker Standard</div>
                   <div className="mt-1 text-lg font-bold leading-tight stretch-88">Run by Esker</div>
                   <p className="mt-1 text-[15px] leading-snug text-muted">
-                    Inspected and managed by our own team. Esker holds your advance until you check in.
+                    Inspected and managed by our own team.
                   </p>
                 </div>
               </div>
