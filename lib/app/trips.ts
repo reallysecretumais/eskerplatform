@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { crop } from "@/lib/img";
 import { company } from "@/lib/contact";
 import type { MyBooking } from "@/lib/auth";
+import { pkDay } from "@/lib/pkDate";
 
 /**
  * A guest's booking, as the app's Trips and trip pass show it.
@@ -91,8 +92,10 @@ export function appTrip(b: MyBooking, paying: "card" | "transfer" | undefined): 
     title: b.listing?.title ?? "Your stay",
     area: b.listing?.area ?? null,
     photo: photo ? crop(photo, 1170, 1176, 74) : null,
-    checkin: b.checkin,
-    checkout: b.checkout,
+    // Plain Pakistani days: the columns are timestamptz, and the app (and Pay)
+    // work in "YYYY-MM-DD".
+    checkin: b.checkin ? pkDay(b.checkin) : null,
+    checkout: b.checkout ? pkDay(b.checkout) : null,
     nights: b.nights,
     checkInTime: company.checkIn,
     checkOutTime: company.checkOut,

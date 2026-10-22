@@ -1,4 +1,5 @@
 import { rs } from "@/lib/listings";
+import { pkDay, pkToday } from "@/lib/pkDate";
 // Guests pay the advance by card (Safepay's hosted checkout) or by bank
 // transfer into one of Esker's accounts, then upload a screenshot of it.
 //
@@ -134,10 +135,15 @@ export type CancellationQuote = {
 
 // Whole calendar days between today and the check-in date (date-only, so a stay
 // exactly 7 dates away counts as 7 — matching "7 or more days before check-in").
+// `checkin` is usually the booking's timestamptz ("2026-10-22T00:00:00+00:00"),
+// so both days are read in Karachi time (lib/pkDate.ts). Appending a time to it
+// once gave an Invalid Date, NaN days, and "non-refundable" for every cancel.
 function daysUntil(checkin: string, now: Date): number {
-  const toMidnight = (d: Date) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
-  const ci = new Date(`${checkin}T00:00:00`);
-  return Math.round((toMidnight(ci) - toMidnight(now)) / 86_400_000);
+  const utc = (day: string) => {
+    const [y, m, d] = day.split("-").map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  return Math.round((utc(pkDay(checkin)) - utc(pkToday(now))) / 86_400_000);
 }
 
 export function cancellationQuote(checkin: string, advancePaid: number, now: Date = new Date()): CancellationQuote {

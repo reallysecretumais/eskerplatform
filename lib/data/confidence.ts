@@ -1,4 +1,5 @@
 import "server-only";
+import { pkDay } from "@/lib/pkDate";
 import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isExternal, AvailabilityUnavailable, type PublicListing } from "@/lib/data/listings";
@@ -233,8 +234,7 @@ async function loadSignals(dateIso: string, leadDays: number): Promise<Signals> 
  * day early. Check-ins are normally 4pm so this rarely bites, but "rarely" is
  * how a wrong night gets sold.
  */
-const pkDate = (iso: string): string =>
-  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Karachi" }).format(new Date(iso));
+const pkDate = (iso: string): string => pkDay(iso);
 
 /** Today in Karachi. Local to this file so the trust ladder can measure lead
  *  time without importing the inventory module and creating a cycle. */

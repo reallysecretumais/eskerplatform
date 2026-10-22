@@ -12,6 +12,7 @@ import { issueOtp, checkOtp } from "@/lib/otpFlow";
 import { notifyStaff } from "@/lib/notifyStaff";
 import { rs } from "@/lib/listings";
 import { GUEST_CANCELLABLE } from "@/lib/bookingStatus";
+import { realEmail } from "@/lib/booking/create";
 
 export type ActionResult = { ok: boolean; message: string };
 
@@ -280,7 +281,8 @@ export async function cancelMyBooking(bookingId: string): Promise<CancelResult> 
 
   try {
     const { data: acct } = await admin.from("accounts").select("email, name, notify_email").eq("id", accountId).maybeSingle();
-    if (acct?.email && acct.notify_email !== false) {
+    // Never email WhatsApp sign-up's no-mail placeholder address.
+    if (acct?.email && realEmail(acct.email) && acct.notify_email !== false) {
       const line = refund > 0 ? `We'll refund ${rs(refund)} to your original payment method within 5–7 working days.` : `As per our policy, no refund applies to this cancellation.`;
       await sendEmail({
         to: acct.email,

@@ -190,6 +190,42 @@ export async function bookingPath(listingId: string, accountId: string | null, c
   return (data as { source?: string } | null)?.source === "external" ? externalPath(listingId, accountId, checkin, checkout) : "book";
 }
 
+/**
+ * A card checkout the guest backed out of gives its dates back at once
+ * (founder, 22 Oct: "I don't want the date to be locked for 30 minutes if user
+ * tries to pay with credit card and then cancels").
+ *
+ * Only the guest's OWN unpaid card booking that is still waiting on Safepay,
+ * with no transfer screenshot. Nothing is cancelled and no one is alerted: the
+ * hold just ends now instead of in 30 minutes, exactly as when the core
+ * replaces a guest's own hold. If Safepay settles it after all, the CRM moves
+ * it to payment_collected and it blocks again on its own; money is never lost.
+ */
+export async function releaseCardHold(bookingId: string, accountId: string): Promise<"released" | "paid" | "not_found" | "not_card"> {
+  const admin = createAdminClient();
+  const { data: b } = await admin.from("bookings").select("id, account_id, status, source, notes").eq("id", bookingId).maybeSingle();
+  if (!b || b.account_id !== accountId) return "not_found";
+  // Settled while the guest was coming back (or moved on some other way).
+  if (b.status !== "awaiting_payment") return "paid";
+  if (!isExpiringHold(b)) return "not_card";
+  const [{ data: anchors }, { data: proofs }] = await Promise.all([
+    admin.from("gateway_payments").select("status").eq("booking_id", bookingId),
+    admin.from("booking_payments").select("id").eq("booking_id", bookingId).not("proof_url", "is", null).limit(1),
+  ]);
+  if (proofs?.length || !anchors?.length) return "not_card";
+  if (anchors.some((g) => g.status === "paid")) return "paid";
+  const stamp = new Date().toLocaleString("en-GB", { timeZone: "Asia/Karachi" });
+  await admin
+    .from("bookings")
+    .update({
+      hold_until: new Date().toISOString(),
+      notes: `${b.notes ? `${b.notes}\n` : ""}Card checkout not completed (${stamp}); dates released. Nothing to verify.`,
+    })
+    .eq("id", bookingId)
+    .eq("status", "awaiting_payment");
+  return "released";
+}
+
 export async function createBookingCore(input: CreateBookingInput): Promise<BookingResult> {
   const { propertyId, checkin, checkout, proof, idFront: cnicFront, idBack: cnicBack, docType, channel } = input;
   const name = input.name.trim();

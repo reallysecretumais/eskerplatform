@@ -5,11 +5,12 @@ import { brand } from "@/lib/brand";
 /**
  * Where Safepay sends a guest who paid (or backed out) from the APP.
  *
- * The app opens checkout in the phone's browser; this page hands the guest back
- * to the app on their trip (`<scheme>://trip/<id>`). It tries on its own, and
- * the button does it on a tap, because some browsers only follow an app link
- * the guest touched. Nothing here is trusted: the app re-reads the booking
- * from the server when it opens, so a forged `state` changes only these words.
+ * The app opens checkout in an in-app browser; this page hands the guest back
+ * (`<scheme>://pay-return?b=<id>&state=done|cancelled`), which the waiting
+ * Pay screen catches (the app's lib/checkout.ts). It tries on its own, and the
+ * button does it on a tap, because some browsers only follow an app link the
+ * guest touched. Nothing here is trusted: the app asks the server what
+ * happened, so a forged `state` changes only these words.
  *
  *   b      the booking id
  *   s      the build's scheme (esker / eskerpreview / eskerdev)
@@ -24,8 +25,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export default async function PayAppReturnPage({ searchParams }: { searchParams: Promise<{ b?: string; s?: string; state?: string }> }) {
   const { b, s, state } = await searchParams;
   const scheme = SCHEMES.includes(s ?? "") ? s! : "esker";
-  const target = b && UUID.test(b) ? `${scheme}://trip/${b}` : `${scheme}://trips`;
   const done = state !== "cancelled";
+  const target = b && UUID.test(b) ? `${scheme}://pay-return?b=${b}&state=${done ? "done" : "cancelled"}` : `${scheme}://trips`;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-bg px-6">
@@ -35,7 +36,7 @@ export default async function PayAppReturnPage({ searchParams }: { searchParams:
         <p className="mt-3 text-sm leading-relaxed text-muted">
           {done
             ? `Thank you. We're confirming your booking now, and it will show in the ${brand.name} app in a moment.`
-            : "No money was taken. Your dates are still held for a short while. Go back to the app to try again or pay by bank transfer."}
+            : "No money was taken. Go back to the app to try again or pay by bank transfer."}
         </p>
         <a
           href={target}
