@@ -12,12 +12,13 @@ import { CancelDialog } from "@/components/account/CancelDialog";
 import { ReviewForm } from "@/components/account/ReviewForm";
 import { ChatEntry } from "@/components/chat/ChatEntry";
 import { getBankAccounts } from "@/lib/data/bankAccounts";
+import { rs } from "@/lib/listings";
 
 export const metadata = { title: "Booking — Esker" };
 
 const CANCELLABLE = ["awaiting_payment", "payment_collected", "handed_over", "awaiting_checkin"];
 const fmt = (d: string | null) => (d ? new Date(`${d}T00:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }) : "—");
-const pkr = (n: number) => `₨${n.toLocaleString("en-PK")}`;
+
 
 export default async function BookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -41,14 +42,14 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
       </Link>
 
       {/* Header */}
-      <div className="mt-4 overflow-hidden rounded-2xl border border-line bg-surface">
+      <div className="mt-4 overflow-hidden rounded-[22px] border border-line bg-surface">
         {photo && (
-          <div className="h-40 sm:h-48" style={{ backgroundColor: "#e7e1d6", backgroundImage: `url(${thumb(photo, 900, 70)})`, backgroundSize: "cover", backgroundPosition: "center" }} />
+          <div className="h-40 bg-surface-2 sm:h-48" style={{ backgroundImage: `url(${thumb(photo, 900, 70)})`, backgroundSize: "cover", backgroundPosition: "center" }} />
         )}
         <div className="p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h1 className="font-display text-xl font-semibold tracking-tight text-ink">{b.listing?.title ?? "Your stay"}</h1>
+              <h1 className="headline text-[34px] text-ink">{b.listing?.title ?? "Your stay"}</h1>
               {loc && (
                 <div className="mt-1 flex items-center gap-1 text-sm text-muted">
                   <MapPin size={13} /> {loc}
@@ -62,15 +63,15 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
 
       {/* Dates + money */}
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl border border-line bg-surface p-5">
+        <div className="rounded-[22px] border border-line bg-surface p-5">
           <Row label="Check-in" value={fmt(b.checkin)} />
           <Row label="Check-out" value={fmt(b.checkout)} />
           <Row label="Nights" value={String(b.nights ?? 0)} />
         </div>
-        <div className="rounded-2xl border border-line bg-surface p-5">
-          <Row label="Total" value={pkr(b.amount)} />
-          <Row label="Advance paid" value={pkr(b.advancePaid)} tone="green" />
-          <Row label="Balance" value={b.balance > 0 ? pkr(b.balance) : "Fully paid"} tone={b.balance > 0 ? "gold" : "green"} strong />
+        <div className="rounded-[22px] border border-line bg-surface p-5">
+          <Row label="Total" value={rs(b.amount)} />
+          <Row label="Advance paid" value={rs(b.advancePaid)} tone="green" />
+          <Row label="Balance" value={b.balance > 0 ? rs(b.balance) : "Fully paid"} tone={b.balance > 0 ? "brand" : "green"} strong />
         </div>
       </div>
 
@@ -89,13 +90,13 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
       )}
 
       {/* Timeline */}
-      <div className="mt-4 rounded-2xl border border-line bg-surface p-5">
-        <h2 className="mb-4 font-display text-base font-semibold tracking-tight text-ink">Status</h2>
+      <div className="mt-4 rounded-[22px] border border-line bg-surface p-5">
+        <h2 className="headline mb-4 text-2xl text-ink">Status</h2>
         <StatusTimeline status={b.status} />
       </div>
 
       {/* Actions */}
-      <div className="mt-4 flex flex-wrap items-center gap-4 rounded-2xl border border-line bg-surface p-5">
+      <div className="mt-4 flex flex-wrap items-center gap-4 rounded-[22px] border border-line bg-surface p-5">
         <ChatEntry label="Message us about this booking" bookingId={b.id} />
         <Link href={`/account/bookings/${b.id}/receipt`} className="inline-flex items-center gap-1.5 text-sm text-muted transition hover:text-ink">
           <FileText size={15} /> View receipt
@@ -110,12 +111,12 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
   );
 }
 
-function Row({ label, value, tone, strong }: { label: string; value: string; tone?: "green" | "gold"; strong?: boolean }) {
-  const color = tone === "green" ? "text-green" : tone === "gold" ? "text-gold-deep" : "text-ink";
+function Row({ label, value, tone, strong }: { label: string; value: string; tone?: "green" | "brand"; strong?: boolean }) {
+  const color = tone === "green" ? "text-green" : tone === "brand" ? "text-brand" : "text-ink";
   return (
     <div className="flex items-center justify-between py-1.5 text-sm">
       <span className="text-muted">{label}</span>
-      <span className={`tabular-nums ${color} ${strong ? "font-display font-semibold" : ""}`}>{value}</span>
+      <span className={`tnum ${color} ${strong ? "font-bold" : ""}`}>{value}</span>
     </div>
   );
 }

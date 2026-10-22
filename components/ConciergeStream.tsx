@@ -118,23 +118,23 @@ export function ConciergeStream({ query, listings }: { query: string; listings: 
       )}
 
       {/* Concierge reply — elegant, streamed (not a chat bubble) */}
-      <div className="flex items-start gap-3 border-l-2 border-gold pl-4">
-        <p className="font-display text-lg font-medium leading-relaxed tracking-tight text-ink sm:text-xl">
+      <div className="flex items-start gap-3 border-l-2 border-brand pl-4">
+        <p className="text-lg font-medium leading-relaxed tracking-tight text-ink sm:text-xl">
           {reply || (busy ? "Finding your stay" : "")}
-          {busy && <span className="ml-0.5 animate-pulse text-gold">▍</span>}
+          {busy && <span className="ml-0.5 animate-pulse text-brand">▍</span>}
         </p>
       </div>
 
       {/* Refine bar */}
-      <form onSubmit={submitRefine} className="mt-6 flex max-w-xl items-center gap-2 rounded-xl border border-line bg-surface p-1.5 focus-within:border-gold/50">
-        <Search size={17} className="ml-2 shrink-0 text-gold" />
+      <form onSubmit={submitRefine} className="mt-6 flex max-w-xl items-center gap-2 rounded-full border border-line bg-surface p-1.5 focus-within:border-brand/40 focus-within:ring-2 focus-within:ring-brand/40">
+        <Search size={17} className="ml-3 shrink-0 text-brand" />
         <input
           value={refine}
           onChange={(e) => setRefine(e.target.value)}
           placeholder="Refine — 'cheaper', 'add a pool', 'for 6 guests'…"
           className="min-w-0 flex-1 bg-transparent px-1 py-1.5 text-sm text-ink outline-none placeholder:text-dim"
         />
-        <button type="submit" disabled={busy} className="rounded-lg bg-gold px-4 py-2 text-sm font-medium text-ink transition hover:brightness-105 disabled:opacity-50">
+        <button type="submit" disabled={busy} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-warm transition hover:bg-brand-pressed disabled:opacity-50">
           Ask
         </button>
       </form>
@@ -145,9 +145,9 @@ export function ConciergeStream({ query, listings }: { query: string; listings: 
           <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {matches.map((l) => (
               <div key={l.id}>
-                <StayCard title={l.title} category={l.category ?? "Stay"} area={l.area ?? ""} city={l.city} price={l.price} priceUnit={l.price_unit} exclusive={l.esker_exclusive} photo={l.photo ?? undefined} href={stayPath(l)} />
+                <StayCard title={l.title} category={l.category ?? "Stay"} area={l.area ?? ""} city={l.city} price={l.price} priceUnit={l.price_unit} exclusive={l.esker_exclusive} photo={l.photo ?? undefined} href={stayPath(l)} size="compact" />
                 {l.why && (
-                  <p className="mt-1.5 flex items-start gap-1 px-1 text-xs text-gold-deep">
+                  <p className="mt-1.5 flex items-start gap-1 px-1 text-xs text-brand">
                     <Sparkles size={12} className="mt-0.5 shrink-0" /> {l.why}
                   </p>
                 )}
@@ -163,7 +163,7 @@ export function ConciergeStream({ query, listings }: { query: string; listings: 
                 type="button"
                 disabled={busy}
                 onClick={() => void ask(c, history)}
-                className="rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs text-muted transition hover:border-gold/40 hover:text-ink disabled:opacity-50"
+                className="rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs text-muted transition hover:border-line-hi hover:text-ink disabled:opacity-50"
               >
                 {c}
               </button>
@@ -173,9 +173,9 @@ export function ConciergeStream({ query, listings }: { query: string; listings: 
       ) : busy ? (
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="overflow-hidden rounded-2xl border border-line bg-surface">
-              <div className="aspect-[4/3] animate-pulse bg-surface-2" />
-              <div className="space-y-2 p-3.5">
+            <div key={i}>
+              <div className="aspect-[4/3] animate-pulse rounded-[22px] bg-surface-2" />
+              <div className="space-y-2 pt-6">
                 <div className="h-3.5 w-2/3 animate-pulse rounded bg-surface-2" />
                 <div className="h-3 w-1/2 animate-pulse rounded bg-surface-2" />
               </div>
@@ -184,7 +184,7 @@ export function ConciergeStream({ query, listings }: { query: string; listings: 
         </div>
       ) : reply ? (
         <p className="mt-8 text-sm text-muted">
-          Try refining above, or <a href="/stays" className="text-gold-deep hover:underline">browse all stays</a>.
+          Try refining above, or <a href="/stays" className="text-brand hover:underline">browse all stays</a>.
         </p>
       ) : null}
     </div>

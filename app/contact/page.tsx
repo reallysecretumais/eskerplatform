@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Phone, Mail, MessageCircle, MapPin, Clock } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
-import { EskerLogo } from "@/components/EskerLogo";
+import { SiteFooter } from "@/components/SiteFooter";
 import { getAccount } from "@/lib/auth";
 import { getListings, getMarkets } from "@/lib/data/listings";
 import { citiesText, liveCities } from "@/lib/geo";
@@ -22,18 +22,15 @@ export default async function ContactPage() {
 
   // Live operating cities (launch-cities fallback) — updates itself when a new
   // market's first listing publishes.
-  const operatingCities =
-    citiesText(liveCities(await getListings(), await getMarkets())) || brand.launchCities.join(" and ");
-
-  // Pretty-printed for display; the tel: link uses the raw E.164 value.
-  const phoneDisplay = "+92 332 5977626";
+  const cities = liveCities(await getListings(), await getMarkets());
+  const operatingCities = citiesText(cities) || brand.launchCities.join(" and ");
 
   return (
     <main className="min-h-full">
       <SiteNav theme="light" account={account} />
 
-      <div className="mx-auto max-w-3xl px-6 py-12">
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">Contact us</h1>
+      <div className="mx-auto max-w-3xl px-6 pb-16 pt-12">
+        <h1 className="headline text-[34px] text-ink sm:text-[40px]">Contact us</h1>
         <p className="mt-3 text-[15px] leading-relaxed text-muted">
           Questions about a stay, a booking, or a payment? Our guest support runs{" "}
           <strong className="text-ink">24/7</strong> — call or WhatsApp and a real person will
@@ -44,12 +41,12 @@ export default async function ContactPage() {
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
           <a
             href={`tel:${company.phone}`}
-            className="group rounded-2xl border border-line bg-surface p-5 transition hover:border-line-hi hover:shadow-sm"
+            className="group rounded-[22px] border border-line bg-surface p-5 transition hover:border-line-hi hover:shadow-sm"
           >
-            <Phone size={18} className="text-gold" />
+            <Phone size={18} className="text-brand" />
             <div className="mt-3 text-sm font-medium text-ink">Call us</div>
             <div className="mt-1 text-[15px] text-muted tnum group-hover:text-ink">
-              {phoneDisplay}
+              {company.phoneDisplay}
             </div>
             <div className="mt-1 text-xs text-dim">{company.hours}</div>
           </a>
@@ -58,28 +55,28 @@ export default async function ContactPage() {
             href={`https://wa.me/${company.whatsapp}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="group rounded-2xl border border-line bg-surface p-5 transition hover:border-line-hi hover:shadow-sm"
+            className="group rounded-[22px] border border-line bg-surface p-5 transition hover:border-line-hi hover:shadow-sm"
           >
-            <MessageCircle size={18} className="text-gold" />
+            <MessageCircle size={18} className="text-brand" />
             <div className="mt-3 text-sm font-medium text-ink">WhatsApp</div>
             <div className="mt-1 text-[15px] text-muted tnum group-hover:text-ink">
-              {phoneDisplay}
+              {company.phoneDisplay}
             </div>
             <div className="mt-1 text-xs text-dim">Fastest way to reach us</div>
           </a>
 
           <a
             href={`mailto:${support.email}`}
-            className="group rounded-2xl border border-line bg-surface p-5 transition hover:border-line-hi hover:shadow-sm"
+            className="group rounded-[22px] border border-line bg-surface p-5 transition hover:border-line-hi hover:shadow-sm"
           >
-            <Mail size={18} className="text-gold" />
+            <Mail size={18} className="text-brand" />
             <div className="mt-3 text-sm font-medium text-ink">Email</div>
             <div className="mt-1 text-[15px] text-muted group-hover:text-ink">{support.email}</div>
             <div className="mt-1 text-xs text-dim">We reply the same day</div>
           </a>
 
-          <div className="rounded-2xl border border-line bg-surface p-5">
-            <Clock size={18} className="text-gold" />
+          <div className="rounded-[22px] border border-line bg-surface p-5">
+            <Clock size={18} className="text-brand" />
             <div className="mt-3 text-sm font-medium text-ink">Check-in &amp; check-out</div>
             <div className="mt-1 text-[15px] text-muted tnum">
               {company.checkIn} / {company.checkOut}
@@ -91,9 +88,9 @@ export default async function ContactPage() {
         </div>
 
         {/* Registered address — deliberately framed so no guest turns up here */}
-        <div className="mt-8 rounded-2xl border border-line bg-surface p-5">
+        <div className="mt-8 rounded-[22px] border border-line bg-surface p-5">
           <div className="flex items-start gap-3">
-            <MapPin size={18} className="mt-0.5 shrink-0 text-gold" />
+            <MapPin size={18} className="mt-0.5 shrink-0 text-brand" />
             <div>
               <div className="text-sm font-medium text-ink">Registered office</div>
               <address className="mt-1 text-[15px] not-italic leading-relaxed text-muted">
@@ -118,14 +115,14 @@ export default async function ContactPage() {
 
         {/* Service area */}
         <div className="mt-8">
-          <h2 className="font-display text-lg font-semibold tracking-tight text-ink">
+          <h2 className="headline text-2xl text-ink">
             Where we operate
           </h2>
           <p className="mt-2 text-[15px] leading-relaxed text-muted">
             We manage premium short-stay properties across{" "}
             <strong className="text-ink">{operatingCities}</strong>, with{" "}
             {brand.expansionNote}.{" "}
-            <Link href="/stays" className="text-gold-deep underline hover:no-underline">
+            <Link href="/stays" className="text-brand underline hover:no-underline">
               Browse all stays
             </Link>
             .
@@ -134,22 +131,22 @@ export default async function ContactPage() {
 
         {/* Policies */}
         <div className="mt-8 border-t border-line pt-6">
-          <h2 className="font-display text-lg font-semibold tracking-tight text-ink">
+          <h2 className="headline text-2xl text-ink">
             Policies
           </h2>
           <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm">
-            <Link href="/legal/terms" className="text-gold-deep underline hover:no-underline">
+            <Link href="/legal/terms" className="text-brand underline hover:no-underline">
               Terms of Service
             </Link>
-            <Link href="/legal/privacy" className="text-gold-deep underline hover:no-underline">
+            <Link href="/legal/privacy" className="text-brand underline hover:no-underline">
               Privacy Policy
             </Link>
-            <Link href="/legal/cancellation" className="text-gold-deep underline hover:no-underline">
+            <Link href="/legal/cancellation" className="text-brand underline hover:no-underline">
               Cancellation &amp; Refund Policy
             </Link>
             <Link
               href="/legal/service-delivery"
-              className="text-gold-deep underline hover:no-underline"
+              className="text-brand underline hover:no-underline"
             >
               Service Delivery Policy
             </Link>
@@ -157,11 +154,7 @@ export default async function ContactPage() {
         </div>
       </div>
 
-      <footer className="border-t border-line">
-        <div className="mx-auto max-w-3xl px-6 py-8 text-sm text-muted">
-          <EskerLogo className="text-ink" />
-        </div>
-      </footer>
+      <SiteFooter cities={cities} />
     </main>
   );
 }

@@ -12,10 +12,10 @@ export function HostProfileCard({ name, avatarUrl, bio }: { name: string | null;
   const [state, action, pending] = useActionState(saveHostBio, null);
 
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5">
+    <div className="rounded-[22px] border border-line bg-surface p-5">
       <div className="flex items-center gap-2">
-        <UserRound size={16} className="text-gold-deep" />
-        <h2 className="font-display text-base font-semibold tracking-tight text-ink">Your host profile</h2>
+        <UserRound size={16} className="text-brand" />
+        <h2 className="text-base font-bold text-ink">Your host profile</h2>
       </div>
       <p className="mt-1 text-xs text-dim">Guests see this on your listings as “Hosted by {name?.split(" ")[0] || "you"}”.</p>
 
@@ -23,7 +23,7 @@ export function HostProfileCard({ name, avatarUrl, bio }: { name: string | null;
         <div className="shrink-0 text-center">
           <Avatar name={name} src={avatarUrl} size={56} />
           {!avatarUrl && (
-            <Link href="/account/profile" className="mt-1.5 block text-[11px] text-gold-deep hover:underline">Add a photo</Link>
+            <Link href="/account/profile" className="mt-1.5 block text-[11px] font-medium text-brand hover:text-brand-ink hover:underline">Add a photo</Link>
           )}
         </div>
         <form action={action} className="min-w-0 flex-1">
@@ -33,10 +33,10 @@ export function HostProfileCard({ name, avatarUrl, bio }: { name: string | null;
             rows={3}
             maxLength={300}
             placeholder="A warm line or two about you as a host — e.g. “I love hosting families and making check-in easy.”"
-            className="w-full resize-none rounded-xl border border-line bg-bg/40 px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-gold/50"
+            className="w-full resize-none rounded-xl border border-line bg-bg/40 px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-brand/40"
           />
           <div className="mt-2 flex items-center gap-3">
-            <button type="submit" disabled={pending} className="rounded-xl bg-ink px-4 py-2 text-sm font-medium text-bg transition hover:opacity-90 disabled:opacity-60">
+            <button type="submit" disabled={pending} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-warm transition-colors hover:bg-brand-pressed disabled:opacity-60">
               {pending ? "Saving…" : "Save profile"}
             </button>
             {state?.ok && (

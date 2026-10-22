@@ -28,10 +28,10 @@ export function StatusTimeline({ status }: { status: string }) {
             <div className="relative flex flex-col items-center">
               <span
                 className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] ${
-                  done ? "bg-green/15 text-green" : active ? "bg-gold/15 text-gold-deep ring-2 ring-gold/30" : "bg-surface-2 text-dim"
+                  done ? "bg-green/15 text-green" : active ? "bg-ice-tint text-brand-ink ring-2 ring-brand/40" : "bg-surface-2 text-dim"
                 }`}
               >
-                {done ? <Check size={13} /> : active ? <span className="h-1.5 w-1.5 rounded-full bg-gold-deep" /> : i + 1}
+                {done ? <Check size={13} /> : active ? <span className="h-1.5 w-1.5 rounded-full bg-brand" /> : <span className="tnum">{i + 1}</span>}
               </span>
               {!isLast && <span className={`mt-1 w-px flex-1 ${done ? "bg-green/40" : "bg-line"}`} />}
             </div>

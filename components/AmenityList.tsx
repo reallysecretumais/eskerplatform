@@ -55,7 +55,7 @@ export function AmenityList({ amenities }: { amenities: string[] }) {
         const Ic = iconFor(a);
         return (
           <span key={a} className="inline-flex items-center gap-2.5 text-sm text-ink">
-            <Ic size={17} className="shrink-0 text-gold" strokeWidth={1.75} /> {a}
+            <Ic size={17} className="shrink-0 text-brand" strokeWidth={1.8} /> {a}
           </span>
         );
       })}

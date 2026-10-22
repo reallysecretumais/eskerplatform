@@ -118,7 +118,7 @@ export default async function PrivateStayPage({ params }: { params: Promise<{ to
       <div className="mx-auto max-w-5xl px-6 py-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{unit.title}</h1>
+            <h1 className="headline text-[34px] text-ink sm:text-[40px]">{unit.title}</h1>
             {unit.area && (
               <div className="mt-1.5 flex items-center gap-1 text-sm text-muted">
                 <MapPin size={15} /> {unit.area}
@@ -127,7 +127,7 @@ export default async function PrivateStayPage({ params }: { params: Promise<{ to
           </div>
           {price && (
             <div className="shrink-0 sm:text-right">
-              <div className="font-display text-2xl font-semibold text-ink tnum">{price.amount}</div>
+              <div className="tnum text-2xl font-bold text-ink">{price.amount}</div>
               <div className="text-xs text-dim">per {price.unit}</div>
             </div>
           )}
@@ -140,7 +140,7 @@ export default async function PrivateStayPage({ params }: { params: Promise<{ to
         <div className="mt-6">
           <a
             href={ask}
-            className="inline-flex items-center gap-2 rounded-xl bg-ink px-5 py-3 text-sm font-medium text-bg transition hover:opacity-90"
+            className="inline-flex items-center gap-2 rounded-full bg-brand px-5 py-3 text-sm font-bold text-warm transition hover:bg-brand-pressed"
           >
             <MessageCircle size={16} /> Ask about your dates on WhatsApp
           </a>
@@ -151,12 +151,12 @@ export default async function PrivateStayPage({ params }: { params: Promise<{ to
             <div className="flex flex-wrap gap-5 text-sm text-ink">
               {unit.capacity ? (
                 <span className="inline-flex items-center gap-1.5">
-                  <Users size={16} className="text-gold" /> Sleeps {unit.capacity}
+                  <Users size={16} className="text-brand" /> Sleeps <span className="tnum">{unit.capacity}</span>
                 </span>
               ) : null}
               {unit.bedrooms ? (
                 <span className="inline-flex items-center gap-1.5">
-                  <BedDouble size={16} className="text-gold" /> {unit.bedrooms} bed{unit.bedrooms > 1 ? "s" : ""}
+                  <BedDouble size={16} className="text-brand" /> <span className="tnum">{unit.bedrooms}</span> bed{unit.bedrooms > 1 ? "s" : ""}
                 </span>
               ) : null}
             </div>
@@ -164,14 +164,14 @@ export default async function PrivateStayPage({ params }: { params: Promise<{ to
 
           {unit.description && (
             <section>
-              <h2 className="mb-2 font-display text-lg font-semibold tracking-tight text-ink">About this place</h2>
+              <h2 className="mb-2 headline text-2xl text-ink">About this place</h2>
               <p className="text-[15px] leading-relaxed text-muted">{unit.description}</p>
             </section>
           )}
 
           {unit.amenities.length > 0 && (
             <section>
-              <h2 className="mb-3 font-display text-lg font-semibold tracking-tight text-ink">Amenities</h2>
+              <h2 className="mb-3 headline text-2xl text-ink">Amenities</h2>
               <AmenityList amenities={unit.amenities} />
             </section>
           )}

@@ -22,18 +22,18 @@ export function BookingCalendar({ month, bookings }: { month: string; bookings: 
   const cells: (number | null)[] = [...Array<null>(lead).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
 
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5">
+    <div className="rounded-[22px] border border-line bg-surface p-5">
       <div className="flex items-center justify-between gap-3">
-        <div className="text-xs font-medium uppercase tracking-wider text-dim">Calendar</div>
+        <div className="label text-[11px] text-dim">Calendar</div>
         <div className="flex items-center gap-3 text-[11px] text-muted">
-          <span className="tabular-nums">{nights} {nights === 1 ? "night" : "nights"} booked</span>
-          <span className="flex items-center gap-1"><i className="inline-block h-2 w-2 rounded-full bg-gold-deep" /> Occupied</span>
+          <span className="tnum">{nights} {nights === 1 ? "night" : "nights"} booked</span>
+          <span className="flex items-center gap-1"><i className="inline-block h-2 w-2 rounded-full bg-brand" /> Occupied</span>
         </div>
       </div>
 
       <div className="mt-4 grid grid-cols-7 gap-1">
         {WEEKDAYS.map((w) => (
-          <div key={w} className="pb-1 text-center text-[10px] font-medium uppercase tracking-wide text-dim">{w}</div>
+          <div key={w} className="label pb-1 text-center text-[10px] text-dim">{w}</div>
         ))}
         {cells.map((d, i) => {
           if (d === null) return <div key={`b${i}`} className="h-9" />;
@@ -47,13 +47,13 @@ export function BookingCalendar({ month, bookings }: { month: string; bookings: 
           const isToday = ds === todayStr;
           const tone = occupied
             ? isArrival
-              ? "bg-gold-deep font-medium text-white"
-              : "bg-gold/20 text-ink"
+              ? "bg-brand font-semibold text-warm"
+              : "bg-ice-band font-medium text-brand-ink"
             : "text-muted";
           return (
             <div
               key={d}
-              className={`flex h-9 items-center justify-center rounded-lg text-[12.5px] tabular-nums ${tone} ${isToday ? "ring-1 ring-gold-deep" : ""}`}
+              className={`flex h-9 items-center justify-center tnum rounded-lg text-[12.5px] ${tone} ${isToday ? "ring-[1.5px] ring-brand ring-offset-1 ring-offset-surface" : ""}`}
             >
               {d}
             </div>

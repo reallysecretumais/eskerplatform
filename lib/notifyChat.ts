@@ -39,10 +39,10 @@ export async function notifyChatEmail(opts: {
     const first = (opts.name ?? "").split(" ")[0] || "there";
     const link = opts.link.startsWith("http") ? opts.link : `${SITE_URL}${opts.link}`;
     const subject = opts.headline;
-    const html = `<div style="font-family:Inter,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;">
-      <div style="font-family:Georgia,serif;font-size:20px;font-weight:700;color:#211f1a;">${brand.name}</div>
-      <p style="color:#211f1a;font-size:15px;line-height:1.6;">Hi ${first} — ${opts.headline.charAt(0).toLowerCase()}${opts.headline.slice(1)}.</p>
-      <a href="${link}" style="display:inline-block;background:#9c7d2e;color:#fff;padding:11px 20px;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;">${opts.cta}</a>
+    const html = `<div style="font-family:Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;">
+      <div style="font-family:Helvetica,Arial,sans-serif;font-size:20px;font-weight:700;color:#0B0B0B;">${brand.name}</div>
+      <p style="color:#0B0B0B;font-size:15px;line-height:1.6;">Hi ${first} — ${opts.headline.charAt(0).toLowerCase()}${opts.headline.slice(1)}.</p>
+      <a href="${link}" style="display:inline-block;background:#2638A8;color:#F4F3EF;padding:11px 20px;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;">${opts.cta}</a>
       <p style="color:#6b675e;font-size:12px;line-height:1.6;margin-top:18px;">You're receiving this because of your conversations on ${SITE_URL.replace(/^https?:\/\//, "")}.</p>
     </div>`;
     const text = `Hi ${first} — ${opts.headline} ${link}`;

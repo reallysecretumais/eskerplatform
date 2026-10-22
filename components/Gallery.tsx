@@ -32,7 +32,7 @@ export function Gallery({
   const showVideo = () => { setVideoFirst(true); setOpen(true); };
 
   if (photos.length === 0) {
-    return <div className="flex h-[340px] items-center justify-center rounded-2xl bg-surface-2 text-sm text-dim sm:h-[460px]">Photos coming soon</div>;
+    return <div className="flex h-[340px] items-center justify-center rounded-[28px] bg-surface-2 text-sm text-dim sm:h-[460px]">Photos coming soon</div>;
   }
 
   const grid = photos.length >= 5;
@@ -45,7 +45,7 @@ export function Gallery({
 
   return (
     <>
-      <div className="relative overflow-hidden rounded-2xl">
+      <div className="relative overflow-hidden rounded-[28px]">
         {grid ? (
           // Phones get the collage too: lead photo on top, then a 2×2 of the
           // next four. Previously the tiles were `hidden sm:block`, so a phone
@@ -76,7 +76,7 @@ export function Gallery({
           <button
             type="button"
             onClick={showVideo}
-            className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-lg border border-line bg-white/95 px-3 py-1.5 text-sm font-medium text-ink shadow-sm transition hover:bg-white"
+            className="absolute bottom-4 left-4 inline-flex h-9 items-center gap-1.5 rounded-full bg-ink/55 px-4 text-[13px] font-semibold text-warm backdrop-blur-sm transition-colors hover:bg-ink/70"
           >
             <Play size={14} /> Watch video
           </button>
@@ -86,9 +86,9 @@ export function Gallery({
           <button
             type="button"
             onClick={show}
-            className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-lg border border-line bg-white/95 px-3 py-1.5 text-sm font-medium text-ink shadow-sm transition hover:bg-white"
+            className="absolute bottom-4 right-4 inline-flex h-9 items-center gap-1.5 rounded-full bg-ink/55 px-4 text-[13px] font-semibold text-warm backdrop-blur-sm transition-colors hover:bg-ink/70"
           >
-            <LayoutGrid size={14} /> Show all {photos.length} photos
+            <LayoutGrid size={14} /> <span>Show all <span className="tnum">{photos.length}</span> photos</span>
           </button>
         )}
       </div>
@@ -96,8 +96,8 @@ export function Gallery({
       {open && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/90" onClick={() => setOpen(false)}>
           <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3">
-            <span className="text-sm text-white/80">{title}</span>
-            <button type="button" onClick={() => setOpen(false)} aria-label="Close gallery" className="rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20">
+            <span className="text-sm text-warm/80">{title}</span>
+            <button type="button" onClick={() => setOpen(false)} aria-label="Close gallery" className="grid h-10 w-10 place-items-center rounded-full bg-warm/10 text-warm transition-colors hover:bg-warm/20">
               <X size={20} />
             </button>
           </div>
@@ -115,10 +115,10 @@ export function Gallery({
                 playsInline
                 poster={thumb(photos[0], 1200, 80)}
                 src={video}
-                className="w-full rounded-xl bg-black"
+                className="w-full rounded-[18px] bg-ink"
               />
             )}
-            <img src={thumb(photos[0], 1400, 82)} alt={alt(0)} loading="eager" decoding="async" className="w-full rounded-xl" />
+            <img src={thumb(photos[0], 1400, 82)} alt={alt(0)} loading="eager" decoding="async" className="w-full rounded-[18px]" />
             {video && !videoFirst && (
               <video
                 controls
@@ -126,11 +126,11 @@ export function Gallery({
                 playsInline
                 poster={thumb(photos[0], 1200, 80)}
                 src={video}
-                className="w-full rounded-xl bg-black"
+                className="w-full rounded-[18px] bg-ink"
               />
             )}
             {photos.slice(1).map((p, i) => (
-              <img key={i} src={thumb(p, 1400, 82)} alt={alt(i)} loading={i < 1 ? "eager" : "lazy"} decoding="async" className="w-full rounded-xl" />
+              <img key={i} src={thumb(p, 1400, 82)} alt={alt(i)} loading={i < 1 ? "eager" : "lazy"} decoding="async" className="w-full rounded-[18px]" />
             ))}
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { thumb } from "@/lib/img";
 
-// Account avatar: the uploaded photo, or a clean gold-tinted initials circle.
+// Account avatar: the uploaded photo, or a clean ice-tinted initials circle.
 // Works in server and client components (no client-only deps).
 export function Avatar({ name, src, size = 40, className = "" }: { name?: string | null; src?: string | null; size?: number; className?: string }) {
   const initials =
@@ -29,7 +29,7 @@ export function Avatar({ name, src, size = 40, className = "" }: { name?: string
   return (
     <span
       aria-hidden
-      className={`inline-flex items-center justify-center rounded-full bg-gold/15 font-display font-semibold text-gold-deep ${className}`}
+      className={`inline-flex items-center justify-center rounded-full bg-ice-tint font-bold text-brand-ink ${className}`}
       style={{ height: size, width: size, fontSize: Math.round(size * 0.4) }}
     >
       {initials}

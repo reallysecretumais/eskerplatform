@@ -22,12 +22,12 @@ export function PakistanDetails({ facts }: { facts?: string | null }) {
 
   return (
     <section>
-      <h2 className="mb-3 font-display text-lg font-semibold tracking-tight text-ink">Built for Pakistan</h2>
+      <h2 className="headline mb-4 text-2xl">Built for Pakistan</h2>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {items.map(({ Icon, title, sub }) => (
-          <div key={title} className="rounded-xl border border-line bg-surface p-3.5">
-            <Icon size={18} className="text-gold" strokeWidth={1.5} />
-            <div className="mt-2 text-sm font-medium text-ink">{title}</div>
+          <div key={title} className="rounded-[18px] bg-surface p-4 shadow-[0_1px_0_var(--color-line)]">
+            <Icon size={20} className="text-brand" strokeWidth={1.8} />
+            <div className="mt-2.5 text-[15px] font-semibold text-ink">{title}</div>
             <div className="text-xs text-muted">{sub}</div>
           </div>
         ))}
@@ -35,11 +35,11 @@ export function PakistanDetails({ facts }: { facts?: string | null }) {
 
       {bullets.length > 0 && (
         <div className="mt-5">
-          <h3 className="mb-2 text-sm font-medium text-ink">Good to know</h3>
+          <h3 className="mb-2 text-[15px] font-bold text-ink">Good to know</h3>
           <ul className="space-y-1.5">
             {bullets.map((b, i) => (
               <li key={i} className="flex gap-2 text-sm text-muted">
-                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-gold" />
+                <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-brand" />
                 {b}
               </li>
             ))}

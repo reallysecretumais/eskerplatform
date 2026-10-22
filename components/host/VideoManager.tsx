@@ -75,15 +75,15 @@ export function VideoManager({ listingId, videoUrl }: { listingId: string; video
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5">
+    <div className="rounded-[22px] border border-line bg-surface p-5">
       <div className="flex items-center gap-2">
-        <Video size={16} className="text-gold-deep" />
-        <h3 className="text-sm font-medium text-ink">Video walkthrough</h3>
+        <Video size={16} className="text-brand" />
+        <h3 className="text-sm font-bold text-ink">Video walkthrough</h3>
         <span className="text-xs text-dim">Optional</span>
       </div>
       <p className="mt-1.5 text-xs leading-relaxed text-muted">
         A short clip walking through the place — guests trust it far more than photos alone.
-        Up to 16MB. MP4 plays everywhere.
+        Up to <span className="tnum">16MB</span>. MP4 plays everywhere.
       </p>
 
       <input
@@ -101,7 +101,7 @@ export function VideoManager({ listingId, videoUrl }: { listingId: string; video
           preload="metadata"
           playsInline
           src={videoUrl}
-          className="mt-4 max-h-72 w-full rounded-xl bg-black"
+          className="mt-4 max-h-72 w-full rounded-xl bg-ink"
         />
       )}
 
@@ -110,7 +110,7 @@ export function VideoManager({ listingId, videoUrl }: { listingId: string; video
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={busy}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-bg px-4 py-2 text-sm font-medium text-ink transition hover:bg-surface disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-full border border-line-hi bg-surface px-4 py-2 text-sm font-medium text-ink transition hover:bg-surface-2 disabled:opacity-50"
         >
           {videoUrl ? <RefreshCw size={15} /> : <Video size={15} />}
           {busy ? "Uploading…" : videoUrl ? "Replace video" : "Add a video"}
@@ -124,7 +124,7 @@ export function VideoManager({ listingId, videoUrl }: { listingId: string; video
             <Trash2 size={14} /> Remove
           </button>
         )}
-        {msg && <span className="text-xs text-red-600">{msg}</span>}
+        {msg && <span className="text-xs text-red">{msg}</span>}
       </div>
 
       {busy && (

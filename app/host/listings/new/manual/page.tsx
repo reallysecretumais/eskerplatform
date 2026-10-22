@@ -18,7 +18,7 @@ export default async function NewListingManualPage() {
       <Link href="/host/listings/new" className="inline-flex items-center gap-1 text-sm text-muted transition hover:text-ink">
         <ChevronLeft size={16} /> Back
       </Link>
-      <h1 className="mt-3 font-display text-2xl font-semibold tracking-tight text-ink">List your place</h1>
+      <h1 className="mt-3 headline text-[30px] text-ink sm:text-[34px]">List your place</h1>
       <p className="mt-1 text-sm text-muted">The basics first — then photos (they matter most), availability and guest info.</p>
 
       <div className="mt-6">

@@ -58,7 +58,7 @@ export function TokenReviewForm({
   // Saved view
   if (!editing && saved) {
     return (
-      <div className="rounded-2xl border border-gold/30 bg-gradient-to-br from-gold/[0.07] to-transparent p-5">
+      <div className="rounded-[22px] border border-brand/40 bg-ice-tint p-5">
         <div className="flex items-center justify-between">
           <div className="inline-flex items-center gap-1.5 text-sm font-medium text-green">
             <Check size={15} /> Your review is in — thank you
@@ -77,7 +77,7 @@ export function TokenReviewForm({
           <div className="flex items-center gap-2 text-sm text-muted">
             <span className="w-28 shrink-0 text-xs">The stay</span>
             <StarsDisplay value={saved.stay_rating ?? saved.rating} size={14} />
-            <span className="font-display text-sm font-semibold text-ink tabular-nums">
+            <span className="tnum text-sm font-semibold text-ink">
               {(saved.stay_rating ?? saved.rating).toFixed(2).replace(/\.?0+$/, "")}
             </span>
           </div>
@@ -89,10 +89,10 @@ export function TokenReviewForm({
 
   // Edit / create view
   return (
-    <div className="overflow-hidden rounded-2xl border border-line bg-surface">
+    <div className="overflow-hidden rounded-[22px] border border-line bg-surface">
       <div className="flex items-center gap-2 border-b border-line bg-surface-2/50 px-5 py-3">
-        <Sparkles size={16} className="text-gold-deep" />
-        <span className="font-display text-base font-semibold tracking-tight text-ink">
+        <Sparkles size={16} className="text-brand" />
+        <span className="text-base font-bold text-ink">
           {saved ? "Edit your review" : "Two quick ratings"}
         </span>
       </div>
@@ -116,7 +116,7 @@ export function TokenReviewForm({
           rows={3}
           maxLength={2000}
           placeholder="A few words, if you like — what made it special? (optional)"
-          className="mt-4 w-full resize-none rounded-xl border border-line bg-bg/40 px-3.5 py-3 text-sm text-ink outline-none transition placeholder:text-dim focus:border-gold/50"
+          className="mt-4 w-full resize-none rounded-xl border border-line bg-bg/40 px-3.5 py-3 text-sm text-ink outline-none transition placeholder:text-dim focus:border-brand/40 focus:ring-2 focus:ring-brand/40"
         />
 
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -125,14 +125,14 @@ export function TokenReviewForm({
             onChange={(e) => setName(e.target.value)}
             maxLength={60}
             placeholder="Your name — shown with the review"
-            className="w-full rounded-xl border border-line bg-bg/40 px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-gold/50"
+            className="w-full rounded-xl border border-line bg-bg/40 px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-brand/40 focus:ring-2 focus:ring-brand/40"
           />
           <input
             value={location}
             onChange={(e) => setLocation(e.target.value)}
             maxLength={60}
             placeholder="Your city (optional)"
-            className="w-full rounded-xl border border-line bg-bg/40 px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-gold/50"
+            className="w-full rounded-xl border border-line bg-bg/40 px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-brand/40 focus:ring-2 focus:ring-brand/40"
           />
         </div>
 
@@ -143,7 +143,7 @@ export function TokenReviewForm({
             type="button"
             onClick={post}
             disabled={pending}
-            className="rounded-xl bg-ink px-5 py-2.5 text-sm font-medium text-bg transition hover:opacity-90 disabled:opacity-60"
+            className="rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-warm transition hover:bg-brand-pressed disabled:opacity-60"
           >
             {pending ? "Sending…" : saved ? "Update review" : "Send ratings"}
           </button>

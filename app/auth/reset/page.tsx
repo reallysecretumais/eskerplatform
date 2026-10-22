@@ -33,7 +33,7 @@ export default function ResetPasswordPage() {
     }
   };
 
-  const input = "w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-gold/60";
+  const input = "w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-brand/40";
 
   return (
     <main className="flex min-h-full items-center justify-center px-6 py-16">
@@ -41,7 +41,7 @@ export default function ResetPasswordPage() {
         <Link href="/" className="mb-8 flex justify-center text-ink">
           <EskerLogo />
         </Link>
-        <h1 className="text-center font-display text-2xl font-semibold tracking-tight text-ink">Set a new password</h1>
+        <h1 className="headline text-center text-[34px] text-ink">Set a new password</h1>
         <p className="mt-1 text-center text-sm text-muted">Choose a new password for your Esker account.</p>
 
         {done ? (
@@ -49,7 +49,7 @@ export default function ResetPasswordPage() {
         ) : (
           <form onSubmit={submit} className="mt-6 space-y-3">
             <input className={input} type="password" placeholder="New password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required minLength={6} />
-            <button type="submit" disabled={busy} className="w-full rounded-xl bg-gold px-5 py-2.5 text-sm font-medium text-ink transition hover:brightness-105 disabled:opacity-50">
+            <button type="submit" disabled={busy} className="w-full rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-warm transition hover:bg-brand-pressed disabled:opacity-50">
               {busy ? "Updating…" : "Update password"}
             </button>
             {error && <p className="text-sm text-red">{error}</p>}

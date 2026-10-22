@@ -61,7 +61,7 @@ export const GET = guard(async () => {
     // ── Money rules, so the app never hardcodes a percentage ────────
     money: {
       currency: "PKR",
-      symbol: "₨",
+      symbol: "Rs",
       minAdvance: MIN_ADVANCE,
       advancePctExclusive: advancePct(true),
       advancePctStandard: advancePct(false),

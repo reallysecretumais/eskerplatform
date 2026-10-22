@@ -67,11 +67,11 @@ export function PhotoManager({ listingId, photos }: { listingId: string; photos:
   const enough = order.length >= MIN_LISTING_PHOTOS;
 
   return (
-    <div className="rounded-2xl border border-line bg-surface p-6">
+    <div className="rounded-[22px] border border-line bg-surface p-6">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="font-display text-base font-semibold tracking-tight text-ink">Photos</h2>
+        <h2 className="text-base font-bold text-ink">Photos</h2>
         <span className={`text-xs ${enough ? "text-dim" : "text-orange"}`}>
-          {order.length}/{MAX_LISTING_PHOTOS} · {enough ? "drag to reorder · first is your cover" : `add ${MIN_LISTING_PHOTOS - order.length} more to submit`}
+          <span className="tnum">{order.length}/{MAX_LISTING_PHOTOS}</span> · {enough ? "drag to reorder · first is your cover" : `add ${MIN_LISTING_PHOTOS - order.length} more to submit`}
         </span>
       </div>
 
@@ -86,23 +86,23 @@ export function PhotoManager({ listingId, photos }: { listingId: string; photos:
             onPointerCancel={onUp}
             style={{ touchAction: "none" }}
             className={`group relative cursor-grab overflow-hidden rounded-xl border transition active:cursor-grabbing ${
-              dragIdx === i ? "border-gold ring-2 ring-gold/40 opacity-90" : "border-line"
+              dragIdx === i ? "border-brand ring-2 ring-brand/40 opacity-90" : "border-line"
             }`}
           >
-            <div className="aspect-[4/3]" style={{ backgroundColor: "#e7e1d6", backgroundImage: `url(${thumb(url, 480, 65)})`, backgroundSize: "cover", backgroundPosition: "center" }} />
+            <div className="aspect-[4/3]" style={{ backgroundColor: "var(--color-surface-2)", backgroundImage: `url(${thumb(url, 480, 65)})`, backgroundSize: "cover", backgroundPosition: "center" }} />
             {i === 0 && (
-              <span className="absolute left-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white backdrop-blur">Cover</span>
+              <span className="absolute left-2 top-2 label rounded-full bg-ink/55 px-2 py-0.5 text-[10px] text-warm backdrop-blur">Cover</span>
             )}
-            <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-black/40 text-white/90 opacity-0 backdrop-blur transition group-hover:opacity-100 [@media(hover:none)]:opacity-100" title="Drag to reorder">
+            <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-ink/45 text-warm opacity-0 backdrop-blur transition group-hover:opacity-100 [@media(hover:none)]:opacity-100" title="Drag to reorder">
               <GripVertical size={12} />
             </span>
-            <div className="absolute inset-x-0 bottom-0 flex justify-end gap-1 bg-gradient-to-t from-black/55 to-transparent p-2 opacity-0 transition group-hover:opacity-100 [@media(hover:none)]:opacity-100">
+            <div className="absolute inset-x-0 bottom-0 flex justify-end gap-1 p-2 opacity-0 transition group-hover:opacity-100 [@media(hover:none)]:opacity-100">
               {i !== 0 && (
-                <button type="button" disabled={busy} onClick={() => run(() => setListingCover(listingId, url))} title="Make cover" className="grid h-7 w-7 place-items-center rounded-full bg-white/90 text-ink transition hover:bg-white">
+                <button type="button" disabled={busy} onClick={() => run(() => setListingCover(listingId, url))} title="Make cover" className="grid h-7 w-7 place-items-center rounded-full bg-surface/90 text-ink transition hover:bg-surface">
                   <Star size={13} />
                 </button>
               )}
-              <button type="button" disabled={busy} onClick={() => run(() => removeListingPhoto(listingId, url))} title="Remove" className="grid h-7 w-7 place-items-center rounded-full bg-white/90 text-red transition hover:bg-white">
+              <button type="button" disabled={busy} onClick={() => run(() => removeListingPhoto(listingId, url))} title="Remove" className="grid h-7 w-7 place-items-center rounded-full bg-surface/90 text-red transition hover:bg-surface">
                 <Trash2 size={13} />
               </button>
             </div>
@@ -122,7 +122,7 @@ export function PhotoManager({ listingId, photos }: { listingId: string; photos:
       </div>
 
       {state && !state.ok && <p className="mt-3 text-sm text-red">{state.message}</p>}
-      {order.length === 0 && <p className="mt-3 text-xs text-dim">Add at least {MIN_LISTING_PHOTOS} bright, landscape photos — listings with great photos get approved (and booked) faster.</p>}
+      {order.length === 0 && <p className="mt-3 text-xs text-dim">Add at least <span className="tnum">{MIN_LISTING_PHOTOS}</span> bright, landscape photos — listings with great photos get approved (and booked) faster.</p>}
     </div>
   );
 }

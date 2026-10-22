@@ -19,12 +19,12 @@ export function PhoneVerifyCard({ verified, phone }: { verified: boolean; phone:
 
   if (done) {
     return (
-      <div className="rounded-2xl border border-green/30 bg-green/[0.06] p-5">
+      <div className="rounded-[22px] border border-green/30 bg-green/[0.06] p-5">
         <div className="flex items-center gap-2.5">
           <BadgeCheck size={20} className="text-green" />
           <div>
             <div className="text-sm font-medium text-ink">WhatsApp number verified</div>
-            {phone && <div className="text-xs text-muted">{phone}</div>}
+            {phone && <div className="tnum text-xs text-muted">{phone}</div>}
           </div>
         </div>
       </div>
@@ -70,13 +70,13 @@ export function PhoneVerifyCard({ verified, phone }: { verified: boolean; phone:
     }
   };
 
-  const input = "w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-gold/60";
+  const input = "w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-brand/40";
 
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5">
+    <div className="rounded-[22px] border border-line bg-surface p-5">
       <div className="flex items-center gap-2.5">
-        <span className="grid h-9 w-9 place-items-center rounded-full bg-gold/12">
-          <MessageCircle size={18} className="text-gold-deep" />
+        <span className="grid h-9 w-9 place-items-center rounded-full bg-ice-tint">
+          <MessageCircle size={18} className="text-brand-ink" />
         </span>
         <div>
           <div className="text-sm font-medium text-ink">Verify your WhatsApp number</div>
@@ -98,7 +98,7 @@ export function PhoneVerifyCard({ verified, phone }: { verified: boolean; phone:
           <button
             type="submit"
             disabled={busy || !num.trim()}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gold px-5 py-2.5 text-sm font-medium text-ink transition hover:brightness-105 disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-warm transition hover:bg-brand-pressed disabled:opacity-50"
           >
             {busy && <Loader2 size={14} className="animate-spin" />} Send code
           </button>
@@ -118,13 +118,13 @@ export function PhoneVerifyCard({ verified, phone }: { verified: boolean; phone:
             inputMode="numeric"
             autoComplete="one-time-code"
             aria-label="Verification code"
-            className={`${input} tracking-[0.4em] sm:flex-1`}
+            className={`${input} tnum tracking-[0.4em] sm:flex-1`}
           />
           <button
             type="button"
             onClick={() => void verify()}
             disabled={busy || code.length !== 6}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gold px-5 py-2.5 text-sm font-medium text-ink transition hover:brightness-105 disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-warm transition hover:bg-brand-pressed disabled:opacity-50"
           >
             {busy && <Loader2 size={14} className="animate-spin" />} Verify
           </button>

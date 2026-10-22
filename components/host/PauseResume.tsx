@@ -26,7 +26,7 @@ export function PauseResume({ listingId, status }: { listingId: string; status: 
         type="button"
         onClick={toggle}
         disabled={pending}
-        className="inline-flex items-center gap-1.5 rounded-xl border border-line px-3.5 py-2 text-sm text-muted transition hover:text-ink disabled:opacity-60"
+        className="inline-flex items-center gap-1.5 rounded-full border border-line-hi px-3.5 py-2 text-sm font-medium text-ink transition hover:bg-surface-2 disabled:opacity-60"
       >
         {paused ? <Play size={14} /> : <Pause size={14} />}
         {pending ? "Working…" : paused ? "Resume listing" : "Pause listing"}

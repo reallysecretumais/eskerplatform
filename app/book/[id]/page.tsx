@@ -8,7 +8,8 @@ import { getAccount } from "@/lib/auth";
 import { formatPrice } from "@/lib/listings";
 import { advanceAmount, advanceLabel as advancePctLabel } from "@/lib/payments";
 import { isSafepayConfigured } from "@/lib/safepay";
-import { thumb } from "@/lib/img";
+import { crop } from "@/lib/img";
+import { stayPath } from "@/lib/slug";
 import { TrackEvent } from "@/components/TrackEvent";
 import type { Metadata } from "next";
 import { getBankAccounts } from "@/lib/data/bankAccounts";
@@ -79,11 +80,11 @@ export default async function BookPage({
       <SiteNav theme="light" account={account} />
       <TrackEvent event="InitiateCheckout" params={{ content_ids: [id], value: advance, currency: "PKR" }} />
 
-      <div className="mx-auto max-w-5xl px-6 py-8">
-        <Link href={`/stays/${id}`} className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink">
+      <div className="mx-auto max-w-[1104px] px-5 py-8 sm:px-6">
+        <Link href={stayPath(listing)} className="inline-flex items-center gap-1 text-sm font-semibold text-muted hover:text-ink">
           <ArrowLeft size={15} /> Back to the stay
         </Link>
-        <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Confirm and pay</h1>
+        <h1 className="headline mt-4 text-[clamp(34px,4.4vw,44px)]">Confirm and pay</h1>
 
         <div className="mt-6 grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
@@ -92,12 +93,17 @@ export default async function BookPage({
 
           {/* Order summary */}
           <aside className="lg:sticky lg:top-24 lg:self-start">
-            <div className="overflow-hidden rounded-2xl border border-line bg-surface">
-              <div className="relative h-36" style={{ backgroundColor: "#e7e1d6", backgroundImage: listing.photos?.[0] ? `url(${thumb(listing.photos[0], 600, 72)})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }} />
-              <div className="space-y-3 p-4">
+            <div className="overflow-hidden rounded-[22px] bg-surface shadow-[0_1px_0_var(--color-line)]">
+              <div className="relative h-40 bg-surface-2">
+                {listing.photos?.[0] && (
+                  // eslint-disable-next-line @next/next/no-img-element -- Supabase transforms are the image CDN
+                  <img src={crop(listing.photos[0], 720, 320)} alt={listing.title} className="h-full w-full object-cover" />
+                )}
+              </div>
+              <div className="space-y-3 p-5">
                 <div>
-                  <div className="text-sm font-medium text-ink">{listing.title}</div>
-                  <div className="text-xs text-muted">{listing.category} · {listing.area}</div>
+                  <div className="text-[17px] font-bold leading-tight text-ink">{listing.title}</div>
+                  <div className="mt-0.5 text-sm text-dim">{[listing.category, [listing.area, listing.city].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}</div>
                 </div>
                 <div className="space-y-1.5 border-t border-line pt-3 text-sm">
                   <Row label="Check-in" value={fmt(checkin)} />
@@ -105,16 +111,16 @@ export default async function BookPage({
                   <Row label={`${formatPrice(price, unit).amount} × ${nights} ${nights === 1 ? "night" : "nights"}`} value={totalLabel} />
                 </div>
                 <div className="flex items-baseline justify-between border-t border-line pt-3">
-                  <span className="text-sm text-muted">Total</span>
-                  <span className="text-sm text-ink tnum">{totalLabel}</span>
+                  <span className="text-sm font-semibold text-ink">Total</span>
+                  <span className="tnum text-[15px] font-bold text-ink">{totalLabel}</span>
                 </div>
-                <div className="rounded-xl bg-surface-2/60 p-3">
+                <div className="rounded-[18px] bg-ice-tint p-4">
                   <div className="flex items-baseline justify-between">
-                    <span className="text-sm font-medium text-ink">Advance due now <span className="text-muted">({pctLabel})</span></span>
-                    <span className="font-display text-lg font-semibold text-gold-deep tnum">{advanceLabel}</span>
+                    <span className="text-sm font-semibold text-brand-ink">Pay now <span className="font-medium">({pctLabel})</span></span>
+                    <span className="tnum text-xl font-bold text-brand">{advanceLabel}</span>
                   </div>
-                  <div className="mt-1 flex items-baseline justify-between text-xs text-muted">
-                    <span>Balance at check-in</span>
+                  <div className="mt-1.5 flex items-baseline justify-between text-[13px] text-brand-ink">
+                    <span>At check-in</span>
                     <span className="tnum">{balanceLabel}</span>
                   </div>
                 </div>

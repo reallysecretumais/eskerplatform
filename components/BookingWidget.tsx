@@ -4,8 +4,8 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Minus, Plus, MessageCircle, Bell } from "lucide-react";
 import type { BusyRange } from "@/lib/data/listings";
-import { formatPrice } from "@/lib/listings";
-import { brand } from "@/lib/brand";
+import { NF, formatPrice } from "@/lib/listings";
+import { company } from "@/lib/contact";
 import { requestExternalDates } from "@/app/book/actions";
 import { AccountGateModal } from "@/components/AccountGateModal";
 import { enablePush, pushSupported } from "@/lib/pushClient";
@@ -141,7 +141,7 @@ export function BookingWidget({
   const waText = encodeURIComponent(
     `Hi Esker! I'm interested in "${title}".${ci && co ? ` Dates: ${fmtDay(ci)}–${fmtDay(co)}.` : ""} Could you share your best price?`,
   );
-  const waHref = brand.whatsapp ? `https://wa.me/${brand.whatsapp}?text=${waText}` : null;
+  const waHref = `https://wa.me/${company.whatsapp}?text=${waText}`;
 
   const reserve = () => {
     if (!canReserve) {
@@ -189,26 +189,31 @@ export function BookingWidget({
 
   return (
     <>
-      <div ref={ref} id="book" className="rounded-2xl border border-line bg-surface p-5 shadow-sm">
+      <div ref={ref} id="book" className="rounded-[22px] bg-surface p-5 shadow-[0_1px_0_var(--color-line)] sm:p-6">
         <div className="flex items-baseline justify-between">
-          <span className="font-display text-xl font-semibold text-ink tnum">{priceFmt}</span>
-          <span className="text-xs text-dim">per {unitLabel}</span>
+          <span className="tnum text-[24px] font-semibold tracking-[-0.01em] text-ink">
+            <span className="mr-1 text-[15px] font-medium text-brand">Rs</span>
+            {NF.format(price)}
+          </span>
+          <span className="label text-[10.5px] text-dim">/ {unitLabel}</span>
         </div>
 
         {/* Calendar */}
         <div className="mt-4">
           <div className="mb-2 flex items-center justify-between">
-            <button type="button" onClick={() => move(-1)} disabled={atCurrentMonth} className="rounded-md p-1 text-muted hover:bg-surface-2 disabled:opacity-30" aria-label="Previous month">
-              <ChevronLeft size={16} />
+            <button type="button" onClick={() => move(-1)} disabled={atCurrentMonth} className="grid h-10 w-10 place-items-center rounded-full text-ink hover:bg-surface-2 disabled:opacity-30" aria-label="Previous month">
+              <ChevronLeft size={18} strokeWidth={1.8} />
             </button>
-            <span className="text-sm font-medium text-ink">{first.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</span>
-            <button type="button" onClick={() => move(1)} className="rounded-md p-1 text-muted hover:bg-surface-2" aria-label="Next month">
-              <ChevronRight size={16} />
+            <span className="text-[15px] font-bold text-ink">{first.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</span>
+            <button type="button" onClick={() => move(1)} className="grid h-10 w-10 place-items-center rounded-full text-ink hover:bg-surface-2" aria-label="Next month">
+              <ChevronRight size={18} strokeWidth={1.8} />
             </button>
           </div>
-          <div className="grid grid-cols-7 gap-1 text-center">
+          {/* Calendar (BUILD_REFERENCE): days in Manrope, range ends as Esker Blue
+              circles, the nights between on the ice band. */}
+          <div className="tnum grid grid-cols-7 gap-y-1 text-center">
             {WEEKDAYS.map((w) => (
-              <div key={w} className="py-1 text-[11px] text-dim">{w}</div>
+              <div key={w} className="label py-1 text-[10.5px] text-dim">{w}</div>
             ))}
             {cells.map((d, i) => {
               if (d === null) return <div key={i} />;
@@ -219,14 +224,14 @@ export function BookingWidget({
                   type="button"
                   disabled={st === "disabled"}
                   onClick={() => pick(new Date(view.y, view.m, d))}
-                  className={`h-8 rounded-md text-[13px] transition ${
+                  className={`mx-auto grid h-10 w-full max-w-10 place-items-center text-[13px] font-semibold transition-colors ${
                     st === "edge"
-                      ? "bg-ink font-medium text-white"
+                      ? "rounded-full bg-brand text-warm"
                       : st === "in"
-                        ? "bg-gold/15 text-ink"
+                        ? "max-w-none bg-ice-band text-brand-ink"
                         : st === "disabled"
-                          ? "text-dim/40 line-through"
-                          : "text-ink hover:bg-surface-2"
+                          ? "text-dim/45 line-through"
+                          : "rounded-full text-ink hover:bg-surface-2"
                   }`}
                 >
                   {d}
@@ -237,8 +242,8 @@ export function BookingWidget({
         </div>
 
         {/* Slot/hour quantity, or guests */}
-        <div className="mt-4 flex items-center justify-between border-t border-line pt-4 text-sm">
-          <span className="text-muted">{isNight ? "Guests" : unit === "hour" ? "Hours" : "Blocks"}</span>
+        <div className="mt-4 flex items-center justify-between border-t border-line pt-4 text-[15px]">
+          <span className="font-semibold text-ink">{isNight ? "Guests" : unit === "hour" ? "Hours" : "Blocks"}</span>
           <Stepper
             value={isNight ? guests : qty}
             min={1}
@@ -251,9 +256,9 @@ export function BookingWidget({
         {units > 0 && (
           <div className="mt-4 flex items-baseline justify-between border-t border-line pt-4">
             <span className="text-sm text-muted">
-              {priceFmt} × {units} {isNight ? (units === 1 ? "night" : "nights") : unitLabel + (units === 1 ? "" : "s")}
+              <span className="tnum">{priceFmt}</span> × <span className="tnum">{units}</span> {isNight ? (units === 1 ? "night" : "nights") : unitLabel + (units === 1 ? "" : "s")}
             </span>
-            <span className="font-display text-lg font-semibold text-ink tnum">{totalFmt}</span>
+            <span className="tnum text-lg font-bold text-ink">{totalFmt}</span>
           </div>
         )}
 
@@ -261,7 +266,7 @@ export function BookingWidget({
           type="button"
           onClick={reserve}
           disabled={asking}
-          className="mt-4 w-full rounded-xl bg-gold px-5 py-3 text-sm font-medium text-ink transition hover:brightness-105 disabled:opacity-60"
+          className="mt-5 h-[58px] w-full rounded-full bg-brand px-5 text-base font-bold text-warm transition-colors hover:bg-brand-pressed disabled:opacity-60"
         >
           {asking
             ? "Sending…"
@@ -280,7 +285,7 @@ export function BookingWidget({
           </p>
         )}
         {askMsg && (
-          <p className={`mt-2 rounded-lg border px-3 py-2 text-center text-xs leading-relaxed ${askMsg.ok ? "border-green/40 bg-green/[0.06] text-green" : "border-red/40 bg-red/[0.06] text-red"}`}>
+          <p className={`mt-3 rounded-[14px] px-3 py-2.5 text-center text-[13px] leading-relaxed ${askMsg.ok ? "bg-ice-tint text-brand-ink" : "bg-red/[0.08] text-red"}`}>
             {askMsg.text}
           </p>
         )}
@@ -295,7 +300,7 @@ export function BookingWidget({
               setPushState(r === "enabled" ? "on" : r === "denied" ? "denied" : "off");
             }}
             disabled={pushState === "on"}
-            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-line px-3 py-2 text-xs text-muted transition hover:text-ink disabled:opacity-70"
+            className="mt-2 flex h-10 w-full items-center justify-center gap-1.5 rounded-full px-3 text-[13px] font-semibold text-ink shadow-[inset_0_0_0_1.5px_var(--color-line-hi)] transition-colors hover:text-brand disabled:opacity-70"
           >
             <Bell size={13} />
             {pushState === "on"
@@ -315,18 +320,18 @@ export function BookingWidget({
         />
 
         {reserved && (
-          <div className="mt-3 rounded-xl border border-gold/30 bg-gold/[0.06] p-3 text-sm text-ink">
+          <div className="mt-3 rounded-[18px] bg-ice-tint p-4 text-sm text-ink">
             <p className="font-medium">Your selection</p>
             <p className="mt-1 text-muted">
-              {isNight && ci && co ? `${fmtDay(ci)} – ${fmtDay(co)} · ${nights} ${nights === 1 ? "night" : "nights"} · ${guests} guests` : `${day ? fmtDay(day) : ""} · ${qty} ${unitLabel}${qty === 1 ? "" : "s"}`} · <span className="font-medium text-ink">{totalFmt}</span>
+              {isNight && ci && co ? `${fmtDay(ci)} – ${fmtDay(co)} · ${nights} ${nights === 1 ? "night" : "nights"} · ${guests} guests` : `${day ? fmtDay(day) : ""} · ${qty} ${unitLabel}${qty === 1 ? "" : "s"}`} · <span className="tnum font-bold text-ink">{totalFmt}</span>
             </p>
             {/* Slot/hourly checkout isn't online yet — the team locks it in on WhatsApp. */}
-            {brand.whatsapp ? (
+            {company.whatsapp ? (
               <a
-                href={`https://wa.me/${brand.whatsapp}?text=${encodeURIComponent(`Hi Esker! I'd like to book "${title}"${day ? ` on ${fmtDay(day)}` : ""} — ${qty} ${unitLabel}${qty === 1 ? "" : "s"} (${totalFmt}).`)}`}
+                href={`https://wa.me/${company.whatsapp}?text=${encodeURIComponent(`Hi Esker! I'd like to book "${title}"${day ? ` on ${fmtDay(day)}` : ""} — ${qty} ${unitLabel}${qty === 1 ? "" : "s"} (${totalFmt}).`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-ink px-3 py-2 text-xs font-medium text-white transition hover:opacity-90"
+                className="mt-3 inline-flex h-10 items-center gap-1.5 rounded-full bg-brand px-4 text-[13px] font-semibold text-warm transition-colors hover:bg-brand-pressed"
               >
                 <MessageCircle size={13} /> Message us to lock this slot — replies in minutes
               </a>
@@ -337,7 +342,7 @@ export function BookingWidget({
         )}
 
         {waHref && (
-          <a href={waHref} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-1.5 text-sm text-muted hover:text-ink">
+          <a href={waHref} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-1.5 text-sm font-semibold text-muted hover:text-brand">
             <MessageCircle size={15} /> Request a price
           </a>
         )}
@@ -346,11 +351,11 @@ export function BookingWidget({
       {/* Mobile sticky reserve bar */}
       <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-line bg-bg/95 px-5 py-3 backdrop-blur lg:hidden">
         <div>
-          <div className="font-display text-base font-semibold text-ink tnum">{units > 0 ? totalFmt : priceFmt}</div>
-          <div className="text-[11px] text-dim">{units > 0 ? `${units} ${unitLabel}${units === 1 ? "" : "s"}` : `per ${unitLabel}`}</div>
+          <div className="tnum text-[17px] font-bold text-ink">{units > 0 ? totalFmt : priceFmt}</div>
+          <div className="label text-[10.5px] text-dim">{units > 0 ? `${units} ${unitLabel}${units === 1 ? "" : "s"}` : `/ ${unitLabel}`}</div>
         </div>
-        <button type="button" onClick={reserve} className="rounded-xl bg-gold px-6 py-2.5 text-sm font-medium text-ink transition hover:brightness-105">
-          {canReserve ? "Reserve" : "Select dates"}
+        <button type="button" onClick={reserve} className="inline-flex h-12 items-center rounded-full bg-brand px-7 text-[15px] font-bold text-warm transition-colors hover:bg-brand-pressed">
+          {canReserve ? (bookMode === "request" ? "Request" : "Reserve") : isNight ? "Select dates" : "Select a day"}
         </button>
       </div>
     </>
@@ -360,12 +365,13 @@ export function BookingWidget({
 function Stepper({ value, min, max, onChange }: { value: number; min: number; max: number; onChange: (v: number) => void }) {
   return (
     <div className="flex items-center gap-3">
-      <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min} className="rounded-full border border-line p-1 text-ink disabled:opacity-30" aria-label="Decrease">
-        <Minus size={14} />
+      {/* Stepper (BUILD_REFERENCE): minus is an outline circle, plus solid black. */}
+      <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min} className="grid h-9 w-9 place-items-center rounded-full text-ink shadow-[inset_0_0_0_1.5px_var(--color-line-hi)] disabled:opacity-30" aria-label="Decrease">
+        <Minus size={15} strokeWidth={2} />
       </button>
-      <span className="w-5 text-center text-sm tnum text-ink">{value}</span>
-      <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max} className="rounded-full border border-line p-1 text-ink disabled:opacity-30" aria-label="Increase">
-        <Plus size={14} />
+      <span className="tnum w-7 text-center text-xl font-bold text-ink">{value}</span>
+      <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max} className="grid h-9 w-9 place-items-center rounded-full bg-ink text-warm disabled:opacity-30" aria-label="Increase">
+        <Plus size={15} strokeWidth={2} />
       </button>
     </div>
   );

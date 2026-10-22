@@ -32,17 +32,17 @@ export default async function ListingPreviewPage({ params }: { params: Promise<{
         <Link href={`/host/listings/${listing.id}`} className="inline-flex items-center gap-1 text-sm text-muted transition hover:text-ink">
           <ChevronLeft size={16} /> Back to editing
         </Link>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/12 px-3 py-1 text-xs font-medium text-gold-deep">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-ice-tint px-3 py-1 text-xs font-medium text-brand-ink">
           <Eye size={13} /> Preview — this is how guests will see it
         </span>
       </div>
 
       {/* Guest-facing content */}
-      <div className="rounded-2xl border border-line bg-surface p-5 sm:p-7">
+      <div className="rounded-[22px] border border-line bg-surface p-5 sm:p-7">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            {listing.category && <div className="mb-2 text-xs uppercase tracking-wider text-dim">{listing.category}</div>}
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{listing.title}</h1>
+            {listing.category && <div className="label mb-2 text-[11px] text-dim">{listing.category}</div>}
+            <h1 className="headline text-[30px] text-ink sm:text-[34px]">{listing.title}</h1>
             {listing.area && (
               <div className="mt-1.5 flex items-center gap-1 text-sm text-muted">
                 <MapPin size={15} /> {listing.area}
@@ -50,7 +50,7 @@ export default async function ListingPreviewPage({ params }: { params: Promise<{
             )}
           </div>
           <div className="shrink-0 sm:text-right">
-            <div className="font-display text-2xl font-semibold text-ink tnum">{amount}</div>
+            <div className="tnum text-2xl font-bold text-ink">{amount}</div>
             <div className="text-xs text-dim">per {unit}</div>
           </div>
         </div>
@@ -66,20 +66,20 @@ export default async function ListingPreviewPage({ params }: { params: Promise<{
         </div>
 
         <div className="mt-6 flex flex-wrap gap-5 text-sm text-ink">
-          {listing.capacity ? <span className="inline-flex items-center gap-1.5"><Users size={16} className="text-gold" /> Sleeps {listing.capacity}</span> : null}
-          {listing.bedrooms ? <span className="inline-flex items-center gap-1.5"><BedDouble size={16} className="text-gold" /> {listing.bedrooms} bed{listing.bedrooms > 1 ? "s" : ""}</span> : null}
+          {listing.capacity ? <span className="inline-flex items-center gap-1.5"><Users size={16} className="text-brand" /> Sleeps <span className="tnum">{listing.capacity}</span></span> : null}
+          {listing.bedrooms ? <span className="inline-flex items-center gap-1.5"><BedDouble size={16} className="text-brand" /> <span className="tnum">{listing.bedrooms}</span> bed{listing.bedrooms > 1 ? "s" : ""}</span> : null}
         </div>
 
         {listing.description && (
           <section className="mt-6">
-            <h2 className="mb-2 font-display text-lg font-semibold tracking-tight text-ink">About this place</h2>
+            <h2 className="mb-2 headline text-2xl text-ink">About this place</h2>
             <p className="text-[15px] leading-relaxed text-muted">{listing.description}</p>
           </section>
         )}
 
         {listing.amenities.length > 0 && (
           <section className="mt-6">
-            <h2 className="mb-3 font-display text-lg font-semibold tracking-tight text-ink">Amenities</h2>
+            <h2 className="mb-3 headline text-2xl text-ink">Amenities</h2>
             <AmenityList amenities={listing.amenities} />
           </section>
         )}

@@ -87,7 +87,7 @@ export function PhoneOtpForm({
     }
   };
 
-  const input = "w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-gold/60";
+  const input = "w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-brand/40";
 
   return step === "phone" ? (
     <form onSubmit={send} className="space-y-3">
@@ -107,7 +107,7 @@ export function PhoneOtpForm({
       <button
         type="submit"
         disabled={busy || !num.trim() || (showName && !name.trim())}
-        className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-gold px-5 py-2.5 text-sm font-medium text-ink transition hover:brightness-105 disabled:opacity-50"
+        className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-warm transition hover:bg-brand-pressed disabled:opacity-50"
       >
         {busy ? <Loader2 size={14} className="animate-spin" /> : <MessageCircle size={14} />} {busy ? "Sending…" : cta}
       </button>
@@ -118,7 +118,7 @@ export function PhoneOtpForm({
     <div className="space-y-3">
       <input
         ref={codeRef}
-        className={`${input} text-center tracking-[0.4em]`}
+        className={`${input} tnum text-center tracking-[0.4em]`}
         value={code}
         onChange={(e) => {
           const v = e.target.value.replace(/\D/g, "").slice(0, 6);
@@ -135,7 +135,7 @@ export function PhoneOtpForm({
         type="button"
         onClick={() => void verify()}
         disabled={busy || code.length !== 6}
-        className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-gold px-5 py-2.5 text-sm font-medium text-ink transition hover:brightness-105 disabled:opacity-50"
+        className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-warm transition hover:bg-brand-pressed disabled:opacity-50"
       >
         {busy && <Loader2 size={14} className="animate-spin" />} {busy ? "Checking…" : "Verify & continue"}
       </button>
@@ -158,7 +158,7 @@ export function PhoneOtpForm({
         <div className="rounded-lg border border-line bg-surface-2/60 px-3 py-2.5 text-center">
           <p className="text-xs text-muted">Code still not here? WhatsApp can be slow — or the message may not have gone through.</p>
           {onUseEmail && (
-            <button type="button" onClick={onUseEmail} className="mt-1.5 text-xs font-medium text-gold-deep hover:underline">
+            <button type="button" onClick={onUseEmail} className="mt-1.5 text-xs font-semibold text-brand hover:text-brand-ink">
               Use email instead
             </button>
           )}

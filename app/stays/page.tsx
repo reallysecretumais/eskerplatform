@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Search, Sparkles } from "lucide-react";
+import { Search } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { StayCard } from "@/components/StayCard";
 import { ConciergeStream } from "@/components/ConciergeStream";
@@ -50,9 +50,9 @@ export default async function StaysPage({ searchParams }: { searchParams: Promis
     return (
       <main className="min-h-full pb-16">
         <SiteNav theme="light" account={account} />
-        <div className="mx-auto max-w-6xl px-6 py-8">
-          <div className="mb-5 flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-gold-deep">
-            <Sparkles size={14} /> AI concierge
+        <div className="mx-auto max-w-[1248px] px-5 py-8 sm:px-6">
+          <div className="label mb-5 flex items-center gap-2 text-xs text-brand">
+            <span className="h-[7px] w-[7px] rounded-full bg-brand" aria-hidden /> AI concierge
           </div>
           <ConciergeStream query={sp.q} listings={slimListings(listings)} />
         </div>
@@ -125,8 +125,8 @@ export default async function StaysPage({ searchParams }: { searchParams: Promis
   return (
     <main className="min-h-full pb-16">
       <SiteNav theme="light" account={account} />
-      <div className="mx-auto max-w-6xl px-6 py-8">
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">{heading}</h1>
+      <div className="mx-auto max-w-[1248px] px-5 py-8 sm:px-6 sm:py-10">
+        <h1 className="headline text-[clamp(34px,4vw,52px)]">{heading}</h1>
 
         <ConciergeBar />
 
@@ -152,7 +152,7 @@ export default async function StaysPage({ searchParams }: { searchParams: Promis
             later is a data insert rather than a redesign. */}
         {cityGroups.map(([city, areas]) => (
           <div key={city || "unknown"} className="mt-4">
-            {city && <div className="mb-2 text-[11px] uppercase tracking-[0.18em] text-dim">{city}</div>}
+            {city && <div className="label mb-2 text-[11px] text-dim">{city}</div>}
             <div className="flex flex-wrap gap-2">
               {areas.map((a) => {
                 // Where a real landing page exists for this area, the pill links
@@ -173,7 +173,7 @@ export default async function StaysPage({ searchParams }: { searchParams: Promis
           </div>
         ))}
 
-        <p className="mb-4 mt-6 text-sm text-muted">
+        <p className="label mb-6 mt-8 text-[11px] text-dim">
           {results.length} {results.length === 1 ? "stay" : "stays"}
         </p>
 
@@ -181,10 +181,10 @@ export default async function StaysPage({ searchParams }: { searchParams: Promis
           // Unfiltered multi-market browse: one section per market so two
           // cities' inventories never shuffle together in a single grid.
           marketSections.map(({ market, listings: mls }) => (
-            <div key={market.slug} className="mb-8">
-              <div className="mb-3 flex items-baseline justify-between">
-                <h2 className="text-[11px] uppercase tracking-[0.18em] text-dim">{market.name}</h2>
-                <Link href={withMarket({ ...keepFilters, market: market.slug })} className="text-xs text-muted hover:text-ink">
+            <div key={market.slug} className="mb-12">
+              <div className="mb-5 flex items-baseline justify-between">
+                <h2 className="headline text-2xl">{market.name}</h2>
+                <Link href={withMarket({ ...keepFilters, market: market.slug })} className="text-[15px] font-bold text-brand hover:text-brand-ink">
                   See all{noFilter && !sp.amenity ? ` ${market.count}` : ""}
                 </Link>
               </div>
@@ -194,9 +194,9 @@ export default async function StaysPage({ searchParams }: { searchParams: Promis
         ) : results.length > 0 ? (
           <StaysGrid listings={results} />
         ) : (
-          <div className="rounded-2xl border border-line bg-surface px-6 py-16 text-center">
+          <div className="rounded-[22px] bg-surface-2 px-6 py-16 text-center">
             <p className="text-ink">No stays match that yet.</p>
-            <Link href="/stays" className="mt-3 inline-block text-sm text-gold-deep hover:underline">View all stays</Link>
+            <Link href="/stays" className="mt-3 inline-block text-[15px] font-bold text-brand hover:text-brand-ink">View all stays</Link>
           </div>
         )}
       </div>
@@ -208,15 +208,19 @@ export default async function StaysPage({ searchParams }: { searchParams: Promis
 // into AI mode.
 function ConciergeBar({ q = "" }: { q?: string }) {
   return (
-    <form action="/stays" className="mt-5 flex max-w-xl items-center gap-2 rounded-xl border border-line bg-surface p-1.5 focus-within:border-gold/50">
-      <Search size={17} className="ml-2 shrink-0 text-gold" />
+    <form
+      action="/stays"
+      className="mt-6 flex h-[58px] max-w-[640px] items-center gap-3 rounded-full bg-surface pl-5 pr-[7px] shadow-[inset_0_0_0_1px_var(--color-line)] focus-within:shadow-[inset_0_0_0_1.5px_var(--color-brand)]"
+    >
+      <Search size={18} strokeWidth={2} className="shrink-0 text-ink" aria-hidden />
       <input
         name="q"
         defaultValue={q}
-        placeholder="Tell the concierge what you're looking for…"
-        className="min-w-0 flex-1 bg-transparent px-1 py-1.5 text-sm text-ink outline-none placeholder:text-dim"
+        placeholder="Describe it in your own words…"
+        aria-label="Describe the stay you're looking for"
+        className="min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-dim"
       />
-      <button type="submit" className="rounded-lg bg-gold px-4 py-2 text-sm font-medium text-ink transition hover:brightness-105">
+      <button type="submit" className="inline-flex h-11 shrink-0 items-center rounded-full bg-brand px-5 text-[15px] font-bold text-warm transition-colors hover:bg-brand-pressed">
         Ask Esker
       </button>
     </form>
@@ -226,7 +230,7 @@ function ConciergeBar({ q = "" }: { q?: string }) {
 /** The one results grid, shared by the sectioned (multi-market) and flat renders. */
 function StaysGrid({ listings }: { listings: Awaited<ReturnType<typeof getListings>> }) {
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+    <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
       {listings.map((l) => (
         <StayCard key={l.id} title={l.title} category={l.category ?? "Stay"} area={l.area ?? ""} city={l.city} price={l.price} priceUnit={l.price_unit} exclusive={l.esker_exclusive} photo={l.photos?.[0] ?? undefined} href={stayPath(l)} />
       ))}
@@ -238,8 +242,8 @@ function Pill({ label, href, active }: { label: string; href: string; active: bo
   return (
     <Link
       href={href}
-      className={`rounded-full border px-4 py-1.5 text-sm transition ${
-        active ? "border-ink bg-ink text-white" : "border-line bg-surface text-muted hover:border-line-hi hover:text-ink"
+      className={`inline-flex h-[38px] items-center rounded-full px-4 text-sm font-semibold transition-colors ${
+        active ? "bg-brand text-warm" : "text-ink shadow-[inset_0_0_0_1.5px_var(--color-line-hi)] hover:text-brand"
       }`}
     >
       {label}

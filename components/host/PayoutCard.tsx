@@ -31,9 +31,9 @@ export function PayoutCard({ initial }: { initial: string }) {
   const isBank = method === "Bank transfer";
 
   return (
-    <div className="rounded-2xl border border-line bg-surface">
+    <div className="rounded-[22px] border border-line bg-surface">
       <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-3 px-5 py-4 text-left">
-        <Wallet size={17} className="shrink-0 text-gold-deep" />
+        <Wallet size={17} className="shrink-0 text-brand" />
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium text-ink">Getting paid</div>
           <div className="text-xs text-dim">
@@ -63,7 +63,7 @@ export function PayoutCard({ initial }: { initial: string }) {
                 maxLength={40}
                 inputMode={isBank ? "text" : "tel"}
                 placeholder={isBank ? "PK.. IBAN or account no." : "03xx xxxxxxx"}
-                className={input}
+                className={`${input} tnum`}
               />
             </label>
           </div>
@@ -73,7 +73,7 @@ export function PayoutCard({ initial }: { initial: string }) {
           </label>
 
           <div className="flex items-center gap-3">
-            <button type="submit" disabled={pending} className="rounded-xl bg-ink px-4 py-2 text-sm font-medium text-bg transition hover:opacity-90 disabled:opacity-60">
+            <button type="submit" disabled={pending} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-warm transition-colors hover:bg-brand-pressed disabled:opacity-60">
               {pending ? "Saving…" : "Save"}
             </button>
             {state?.ok && (
@@ -90,4 +90,4 @@ export function PayoutCard({ initial }: { initial: string }) {
   );
 }
 
-const input = "w-full rounded-xl border border-line bg-bg/40 px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-gold/50";
+const input = "w-full rounded-xl border border-line bg-bg/40 px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-brand/40";

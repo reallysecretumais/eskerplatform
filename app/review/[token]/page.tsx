@@ -29,14 +29,14 @@ export default async function ReviewByTokenPage({ params }: { params: Promise<{ 
     return (
       <main className="min-h-full">
         <div className="mx-auto max-w-lg px-6 py-20 text-center">
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">This link isn&apos;t valid</h1>
+          <h1 className="headline text-[34px] text-ink">This link isn&apos;t valid</h1>
           <p className="mt-3 text-sm leading-relaxed text-muted">
             It may have been mistyped, or the stay it belongs to hasn&apos;t finished yet. If you think this is a
             mistake, just reply to our WhatsApp message and we&apos;ll send you a fresh one.
           </p>
           <Link
             href="/"
-            className="mt-6 inline-block rounded-xl border border-line bg-surface px-5 py-2.5 text-sm font-medium text-ink transition hover:border-gold/50"
+            className="mt-6 inline-block rounded-full border border-line-hi bg-surface px-5 py-2.5 text-sm font-semibold text-ink transition hover:border-ink"
           >
             Browse {brand.name} stays
           </Link>
@@ -52,12 +52,12 @@ export default async function ReviewByTokenPage({ params }: { params: Promise<{ 
     <main className="min-h-full pb-16">
       <div className="mx-auto max-w-lg px-6 py-8">
         {/* The stay being reviewed */}
-        <div className="overflow-hidden rounded-2xl border border-line bg-surface">
+        <div className="overflow-hidden rounded-[22px] border border-line bg-surface">
           {stay.property.photo && (
             <div
               className="h-40 sm:h-48"
               style={{
-                backgroundColor: "#e7e1d6",
+                backgroundColor: "var(--color-surface-2)",
                 backgroundImage: `url(${thumb(stay.property.photo, 900, 70)})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
@@ -65,8 +65,8 @@ export default async function ReviewByTokenPage({ params }: { params: Promise<{ 
             />
           )}
           <div className="p-5">
-            <div className="text-[11px] font-medium uppercase tracking-wider text-gold-deep">Rate your stay</div>
-            <h1 className="mt-1 font-display text-xl font-semibold tracking-tight text-ink">{stay.property.name}</h1>
+            <div className="label text-[11px] text-brand">Rate your stay</div>
+            <h1 className="headline mt-1.5 text-2xl text-ink">{stay.property.name}</h1>
             <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
               {stay.property.area && (
                 <span className="inline-flex items-center gap-1">
@@ -75,7 +75,7 @@ export default async function ReviewByTokenPage({ params }: { params: Promise<{ 
               )}
               {dates && (
                 <span className="inline-flex items-center gap-1">
-                  <CalendarDays size={13} /> {dates}
+                  <CalendarDays size={13} /> <span className="tnum">{dates}</span>
                 </span>
               )}
             </div>

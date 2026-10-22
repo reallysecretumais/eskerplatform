@@ -32,7 +32,7 @@ export function MessagesBadge({ className = "" }: { className?: string }) {
 
   if (count <= 0) return null;
   return (
-    <span className={`inline-flex min-w-[18px] items-center justify-center rounded-full bg-gold px-1.5 text-[10px] font-semibold leading-[18px] text-ink ${className}`}>
+    <span className={`inline-flex min-w-[18px] items-center justify-center tnum rounded-full bg-brand px-1.5 text-[10px] font-bold leading-[18px] text-warm ${className}`}>
       {count > 9 ? "9+" : count}
     </span>
   );

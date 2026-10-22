@@ -79,12 +79,12 @@ export function AvatarCropper({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60" onClick={onCancel} aria-hidden />
-      <div className="relative w-full max-w-sm rounded-2xl border border-line bg-surface p-5 shadow-2xl">
+      <div className="absolute inset-0 bg-ink/55" onClick={onCancel} aria-hidden />
+      <div className="relative w-full max-w-sm rounded-[22px] border border-line bg-surface p-5 shadow-2xl">
         <button type="button" onClick={onCancel} className="absolute right-4 top-4 text-dim hover:text-ink" aria-label="Cancel">
           <X size={18} />
         </button>
-        <h3 className="font-display text-lg font-semibold tracking-tight text-ink">Adjust your photo</h3>
+        <h3 className="headline text-2xl text-ink">Adjust your photo</h3>
         <p className="mt-0.5 text-xs text-dim">Drag to position · slide to zoom.</p>
 
         <div className="mt-4 flex justify-center">
@@ -114,16 +114,16 @@ export function AvatarCropper({
             step={0.01}
             value={zoom}
             onChange={(e) => setZoom(Number(e.target.value))}
-            className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-line-hi accent-[var(--color-gold,#C9A84C)]"
+            className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-line-hi accent-brand"
             aria-label="Zoom"
           />
         </div>
 
         <div className="mt-5 flex gap-3">
-          <button type="button" onClick={onCancel} className="flex-1 rounded-xl border border-line px-4 py-2.5 text-sm text-muted transition hover:text-ink">
+          <button type="button" onClick={onCancel} className="flex-1 rounded-full border border-line-hi px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-surface-2">
             Cancel
           </button>
-          <button type="button" onClick={save} disabled={!img} className="flex-1 rounded-xl bg-ink px-4 py-2.5 text-sm font-medium text-bg transition hover:opacity-90 disabled:opacity-60">
+          <button type="button" onClick={save} disabled={!img} className="flex-1 rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-warm transition hover:bg-brand-pressed disabled:opacity-60">
             Save photo
           </button>
         </div>

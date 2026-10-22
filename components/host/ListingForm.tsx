@@ -85,13 +85,13 @@ export function ListingForm({
         </Field>
         <div className="grid grid-cols-3 gap-4">
           <Field label="Bedrooms">
-            <input name="bedrooms" type="number" min={0} max={20} defaultValue={existing?.bedrooms ?? ""} placeholder="2" className={input} />
+            <input name="bedrooms" type="number" min={0} max={20} defaultValue={existing?.bedrooms ?? ""} placeholder="2" className={`${input} tnum`} />
           </Field>
           <Field label="Sleeps">
-            <input name="capacity" type="number" min={1} max={40} defaultValue={existing?.capacity ?? ""} placeholder="4" className={input} />
+            <input name="capacity" type="number" min={1} max={40} defaultValue={existing?.capacity ?? ""} placeholder="4" className={`${input} tnum`} />
           </Field>
-          <Field label="Price / night (₨)">
-            <input name="price" type="number" min={1000} step={100} required defaultValue={existing?.price || ""} placeholder="15000" className={input} />
+          <Field label="Price / night (Rs)">
+            <input name="price" type="number" min={1000} step={100} required defaultValue={existing?.price || ""} placeholder="15000" className={`${input} tnum`} />
           </Field>
         </div>
       </Section>
@@ -105,7 +105,7 @@ export function ListingForm({
                 key={a}
                 type="button"
                 onClick={() => toggle(a)}
-                className={`rounded-full border px-3.5 py-1.5 text-sm transition ${on ? "border-gold/50 bg-gold/10 text-gold-deep" : "border-line text-muted hover:text-ink"}`}
+                className={`rounded-full border px-3.5 py-1.5 text-sm transition ${on ? "border-brand/40 bg-ice-tint text-brand-ink" : "border-line text-muted hover:text-ink"}`}
               >
                 {a}
               </button>
@@ -121,7 +121,7 @@ export function ListingForm({
             placeholder="Add your own…"
             className={`${input} flex-1`}
           />
-          <button type="button" onClick={addCustom} className="rounded-xl border border-line px-3.5 text-muted transition hover:text-ink" aria-label="Add amenity">
+          <button type="button" onClick={addCustom} className="rounded-full border border-line-hi px-3.5 text-ink transition hover:bg-surface-2" aria-label="Add amenity">
             <Plus size={16} />
           </button>
         </div>
@@ -141,7 +141,7 @@ export function ListingForm({
       </Section>
 
       <div className="flex items-center gap-3">
-        <button type="submit" disabled={pending} className="rounded-xl bg-ink px-6 py-2.5 text-sm font-medium text-bg transition hover:opacity-90 disabled:opacity-60">
+        <button type="submit" disabled={pending} className="rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-warm transition-colors hover:bg-brand-pressed disabled:opacity-60">
           {pending ? "Saving…" : isEdit ? "Save changes" : "Save & continue to photos"}
         </button>
         {state?.ok && isEdit && (
@@ -156,12 +156,12 @@ export function ListingForm({
   );
 }
 
-const input = "w-full rounded-xl border border-line bg-bg/40 px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-gold/50";
+const input = "w-full rounded-xl border border-line bg-bg/40 px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-brand/40";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-line bg-surface p-6">
-      <h2 className="mb-4 font-display text-base font-semibold tracking-tight text-ink">{title}</h2>
+    <section className="rounded-[22px] border border-line bg-surface p-6">
+      <h2 className="mb-4 text-base font-bold text-ink">{title}</h2>
       {children}
     </section>
   );

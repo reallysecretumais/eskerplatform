@@ -8,7 +8,7 @@ export function PasswordForm() {
   const [state, action, pending] = useActionState(changePassword, null);
 
   return (
-    <form action={action} className="rounded-2xl border border-line bg-surface p-6">
+    <form action={action} className="rounded-[22px] border border-line bg-surface p-6">
       <label className="mb-4 block">
         <span className="mb-1.5 block text-sm font-medium text-ink">New password</span>
         <input type="password" name="password" required minLength={8} autoComplete="new-password" className={input} placeholder="At least 8 characters" />
@@ -19,7 +19,7 @@ export function PasswordForm() {
       </label>
 
       <div className="mt-2 flex items-center gap-3">
-        <button type="submit" disabled={pending} className="rounded-xl bg-ink px-4 py-2 text-sm font-medium text-bg transition hover:opacity-90 disabled:opacity-60">
+        <button type="submit" disabled={pending} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-warm transition hover:bg-brand-pressed disabled:opacity-60">
           {pending ? "Updating…" : "Update password"}
         </button>
         {state?.ok && (
@@ -33,4 +33,4 @@ export function PasswordForm() {
   );
 }
 
-const input = "w-full rounded-xl border border-line bg-bg/40 px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-gold/50";
+const input = "w-full rounded-xl border border-line bg-bg/40 px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-brand/40";

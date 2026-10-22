@@ -9,7 +9,7 @@ import { loadThread, type ChatContext } from "@/app/chat/actions";
 import type { ChatMessage } from "@/lib/data/chat";
 import { brand } from "@/lib/brand";
 
-// The floating chat entry — a quiet gold bubble, bottom-right, on every page
+// The floating chat entry — a quiet black bubble, bottom-right, on every page
 // (except checkout, where nothing should compete with payment). Opens a
 // slide-over panel hosting the shared ChatThread. Signed-out visitors get a
 // warm sign-in card with a WhatsApp fallback.
@@ -53,6 +53,8 @@ export function ChatLauncher({ signedIn, initialUnread }: { signedIn: boolean; i
   // /invest is the private investor page — a guest chat bubble has no place there.
   const p = pathname ?? "";
   if (/^\/(login|signup|auth|messages|invest)/.test(p) || /^\/book\/[^/]+\/?$/.test(p)) return null;
+  // A stay page has its own fixed Reserve bar on phones; sit above it, not on it.
+  const overBar = /^\/stays\/[^/]+\/?$/.test(p);
 
   return (
     <>
@@ -62,12 +64,12 @@ export function ChatLauncher({ signedIn, initialUnread }: { signedIn: boolean; i
           type="button"
           onClick={() => setOpen(true)}
           aria-label={`Message ${brand.name}`}
-          className="fixed bottom-5 right-5 z-40 grid h-13 w-13 place-items-center rounded-full bg-ink text-white shadow-lg shadow-black/25 transition hover:scale-105"
+          className={`fixed right-5 z-40 grid ${overBar ? "bottom-[92px] lg:bottom-5" : "bottom-5"} h-13 w-13 place-items-center rounded-full bg-ink text-warm shadow-lg shadow-black/25 transition hover:scale-105`}
           style={{ height: 52, width: 52 }}
         >
-          <MessageCircle size={22} className="text-gold" />
+          <MessageCircle size={22} className="text-warm" />
           {unread > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-gold px-1 text-[10px] font-semibold text-ink">
+            <span className="tnum absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1 text-[10px] font-bold text-warm shadow-[0_0_0_2px_var(--color-bg)]">
               {unread > 9 ? "9+" : unread}
             </span>
           )}
@@ -77,18 +79,18 @@ export function ChatLauncher({ signedIn, initialUnread }: { signedIn: boolean; i
       {/* Slide-over panel */}
       {open && (
         <div className="voice-in fixed inset-0 z-50 flex items-end justify-end sm:items-stretch sm:p-5">
-          <button type="button" aria-label="Close chat" onClick={() => setOpen(false)} className="absolute inset-0 bg-black/25 sm:bg-transparent" />
-          <div className="relative flex h-[86dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-line bg-bg shadow-2xl shadow-black/20 sm:ml-auto sm:h-auto sm:max-h-[640px] sm:w-[390px] sm:rounded-2xl">
+          <button type="button" aria-label="Close chat" onClick={() => setOpen(false)} className="absolute inset-0 bg-ink/25 sm:bg-transparent" />
+          <div className="relative flex h-[86dvh] w-full flex-col overflow-hidden rounded-t-[22px] border border-line bg-bg shadow-2xl shadow-black/20 sm:ml-auto sm:h-auto sm:max-h-[640px] sm:w-[390px] sm:rounded-[22px]">
             {/* Header */}
-            <div className="flex items-center gap-2.5 border-b border-line bg-ink px-4 py-3 text-white">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-gold/20">
-                <Sparkles size={15} className="text-gold" />
+            <div className="flex items-center gap-2.5 border-b border-dark-line bg-ink px-4 py-3 text-warm">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-warm/10">
+                <Sparkles size={15} className="text-ice" />
               </span>
               <div className="min-w-0">
                 <div className="text-sm font-semibold">{brand.name}</div>
-                <div className="text-[11px] text-white/70">Instant answers · the team is close behind</div>
+                <div className="text-[11px] text-ash">Instant answers · the team is close behind</div>
               </div>
-              <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="ml-auto rounded-full p-1.5 text-white/80 transition hover:bg-white/10 hover:text-white">
+              <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="ml-auto rounded-full p-1.5 text-ash transition hover:bg-warm/10 hover:text-warm">
                 <X size={17} />
               </button>
             </div>
@@ -101,12 +103,12 @@ export function ChatLauncher({ signedIn, initialUnread }: { signedIn: boolean; i
               )
             ) : (
               <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-12 text-center">
-                <Sparkles size={22} className="text-gold" />
+                <Sparkles size={22} className="text-brand" />
                 <p className="text-sm font-medium text-ink">Message {brand.name}</p>
                 <p className="max-w-[240px] text-xs text-muted">Sign in to chat — instant answers, and the team is always close behind.</p>
                 <Link
                   href={`/login?next=${encodeURIComponent(pathname || "/")}`}
-                  className="mt-1 rounded-xl bg-gold px-5 py-2.5 text-sm font-medium text-ink transition hover:brightness-105"
+                  className="mt-1 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-warm transition hover:bg-brand-pressed"
                 >
                   Sign in to start
                 </Link>

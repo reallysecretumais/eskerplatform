@@ -456,18 +456,13 @@ export function VoiceConcierge({ listings, onClose }: { listings: SlimListing[];
 
   const overlay = (
     <div
-      className="voice-in fixed inset-0 z-[60] flex flex-col overflow-hidden text-white"
-      style={{ background: "radial-gradient(120% 85% at 50% 32%, #1a1712 0%, #0c0a07 56%, #060504 100%)" }}
+      className="voice-in fixed inset-0 z-[60] flex flex-col overflow-hidden bg-ink text-warm"
     >
-      {/* gold aura — radial gradient (no blur filter), the only thing behind the orb */}
-      <div
-        className="pointer-events-none absolute left-1/2 top-[34%] h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-        style={{ background: "radial-gradient(circle, rgba(201,168,76,0.22) 0%, rgba(201,168,76,0.06) 38%, rgba(201,168,76,0) 64%)" }}
-      />
+      {/* Flat black scene — no aura behind the orb (Esker Blue: no glows). */}
 
       {/* close only */}
       <div className="relative z-10 flex justify-end px-6 pt-6">
-        <button type="button" onClick={end} aria-label="Close" className="rounded-full bg-white/10 p-2.5 text-white/80 transition hover:bg-white/20">
+        <button type="button" onClick={end} aria-label="Close" className="rounded-full bg-warm/10 p-2.5 text-warm/80 transition hover:bg-warm/20">
           <X size={18} />
         </button>
       </div>
@@ -480,17 +475,17 @@ export function VoiceConcierge({ listings, onClose }: { listings: SlimListing[];
 
         <div className="mt-7 flex min-h-[2.25rem] max-w-lg items-start justify-center">
           {muted && reply ? (
-            <p dir="auto" className="rise font-display text-xl font-medium leading-relaxed tracking-tight text-white/90 sm:text-2xl">
+            <p dir="auto" className="rise text-xl font-medium leading-relaxed tracking-tight text-warm/90 sm:text-2xl">
               {reply}
             </p>
           ) : statusLabel ? (
-            <span className="inline-flex items-center gap-2 text-sm font-medium tracking-wide text-white/60">
+            <span className="inline-flex items-center gap-2 text-sm font-medium tracking-wide text-ash">
               {statusLabel}
               {showDots && (
                 <span className="inline-flex gap-1">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" />
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold [animation-delay:160ms]" />
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold [animation-delay:320ms]" />
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ice" />
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ice [animation-delay:160ms]" />
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ice [animation-delay:320ms]" />
                 </span>
               )}
             </span>
@@ -498,7 +493,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: SlimListing[];
         </div>
 
         {!hasAsked && (phase === "listening" || phase === "idle") && (
-          <p className="rise mt-3 text-xs text-white/40">Try: “pool ke saath ghar this weekend”</p>
+          <p className="rise mt-3 text-xs text-ash-label">Try: “pool ke saath ghar this weekend”</p>
         )}
       </div>
 
@@ -514,19 +509,19 @@ export function VoiceConcierge({ listings, onClose }: { listings: SlimListing[];
                   href={stayPath(l)}
                   onClick={end}
                   style={{ animationDelay: `${i * 90}ms` }}
-                  className="card-float group w-36 shrink-0 overflow-hidden rounded-2xl border border-white/15 bg-white/[0.08] shadow-[0_16px_36px_-12px_rgba(0,0,0,0.6)] transition hover:border-gold/50 hover:bg-white/15 sm:w-44"
+                  className="card-float group w-36 shrink-0 overflow-hidden rounded-[22px] border border-dark-line bg-warm/[0.06] transition hover:border-ice/50 hover:bg-warm/10 sm:w-44"
                 >
                   <div
-                    className="relative aspect-[4/3] bg-white/5"
+                    className="relative aspect-[4/3] bg-warm/5"
                     style={{ backgroundImage: l.photo ? `url(${thumb(l.photo, 500, 70)})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }}
                   >
-                    {l.esker_exclusive && <span className="absolute left-2 top-2 rounded-md bg-gold px-2 py-0.5 text-[10px] font-medium text-ink">Exclusive</span>}
+                    {l.esker_exclusive && <span className="label absolute left-2 top-2 rounded-full bg-ink/45 px-2 py-0.5 text-[10px] tracking-[0.1em] text-warm shadow-[inset_0_0_0_1px_rgba(244,243,239,0.3)]">Exclusive</span>}
                   </div>
                   <div className="p-2.5 text-left">
-                    <div className="truncate text-sm font-medium text-white">{l.title}</div>
-                    <div className="text-xs text-white/55">{l.area ?? ""}</div>
-                    <div className="mt-1 text-sm text-gold tnum">
-                      {amount}<span className="text-white/45"> / {unit}</span>
+                    <div className="truncate text-sm font-bold text-warm">{l.title}</div>
+                    <div className="text-xs text-ash">{l.area ?? ""}</div>
+                    <div className="mt-1 text-sm text-ice tnum">
+                      {amount}<span className="text-ash-label"> / {unit}</span>
                     </div>
                   </div>
                 </Link>
@@ -539,16 +534,16 @@ export function VoiceConcierge({ listings, onClose }: { listings: SlimListing[];
       {/* controls — minimal */}
       <div className="relative z-10 flex flex-col items-center gap-3 px-6 pb-9 pt-3">
         {showInput && (
-          <form onSubmit={submitTyped} className="flex w-full max-w-md items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-2 focus-within:border-gold/50">
+          <form onSubmit={submitTyped} className="flex w-full max-w-md items-center gap-2 rounded-full border border-dark-line bg-warm/10 px-3 py-2 focus-within:border-ice/50">
             <input
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
               dir="auto"
               autoFocus
               placeholder="Type your question…"
-              className="min-w-0 flex-1 bg-transparent px-1 text-sm text-white outline-none placeholder:text-white/45"
+              className="min-w-0 flex-1 bg-transparent px-1 text-sm text-warm outline-none placeholder:text-ash-label"
             />
-            <button type="submit" aria-label="Send" className="shrink-0 rounded-full bg-gold p-1.5 text-ink transition hover:brightness-105">
+            <button type="submit" aria-label="Send" className="shrink-0 rounded-full bg-brand p-1.5 text-warm transition hover:bg-brand-pressed">
               <Send size={15} />
             </button>
           </form>
@@ -560,7 +555,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: SlimListing[];
             onClick={toggleMute}
             aria-pressed={muted}
             title={muted ? "Voice off" : "Voice on"}
-            className={`grid h-11 w-11 place-items-center rounded-full transition ${muted ? "bg-white/8 text-white/50" : "bg-gold/20 text-gold"}`}
+            className={`grid h-11 w-11 place-items-center rounded-full transition ${muted ? "bg-warm/8 text-warm/50" : "bg-ice text-brand-ink"}`}
           >
             {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
           </button>
@@ -569,7 +564,7 @@ export function VoiceConcierge({ listings, onClose }: { listings: SlimListing[];
             onClick={() => setShowInput((s) => !s)}
             aria-pressed={showInput}
             title="Type instead"
-            className={`grid h-11 w-11 place-items-center rounded-full transition ${showInput ? "bg-gold/20 text-gold" : "bg-white/8 text-white/70"}`}
+            className={`grid h-11 w-11 place-items-center rounded-full transition ${showInput ? "bg-ice text-brand-ink" : "bg-warm/8 text-warm/70"}`}
           >
             <Keyboard size={18} />
           </button>

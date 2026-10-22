@@ -17,8 +17,8 @@ export default async function HostMessagesPage() {
 
   return (
     <>
-      <h1 className="mb-4 font-display text-2xl font-semibold tracking-tight text-ink">Messages</h1>
-      <div className="flex h-[68dvh] min-h-[460px] flex-col overflow-hidden rounded-2xl border border-line bg-surface lg:h-[calc(100dvh-13rem)]">
+      <h1 className="mb-4 headline text-[30px] text-ink sm:text-[34px]">Messages</h1>
+      <div className="flex h-[68dvh] min-h-[460px] flex-col overflow-hidden rounded-[22px] border border-line bg-surface lg:h-[calc(100dvh-13rem)]">
         <HostInbox threads={threads} firstMessages={first} />
       </div>
     </>

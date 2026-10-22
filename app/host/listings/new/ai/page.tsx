@@ -18,7 +18,7 @@ export default async function NewListingAiPage() {
       <Link href="/host/listings/new" className="inline-flex items-center gap-1 text-sm text-muted transition hover:text-ink">
         <ChevronLeft size={16} /> Back
       </Link>
-      <h1 className="mt-3 font-display text-2xl font-semibold tracking-tight text-ink">Tell me about your place</h1>
+      <h1 className="mt-3 headline text-[30px] text-ink sm:text-[34px]">Tell me about your place</h1>
       <p className="mt-1 text-sm text-muted">Chat naturally — English ya Roman Urdu, dono chalte hain. Your listing builds itself on the right.</p>
 
       <div className="mt-6">

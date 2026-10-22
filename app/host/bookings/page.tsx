@@ -3,10 +3,10 @@ import { CalendarDays } from "lucide-react";
 import { requireAccount } from "@/lib/auth";
 import { getHostBookings, type HostStay } from "@/lib/data/host";
 import { StatusBadge } from "@/components/account/StatusBadge";
+import { rs } from "@/lib/listings";
 
 export const metadata = { title: "Bookings — Esker" };
 
-const pkr = (n: number) => `₨${n.toLocaleString("en-PK")}`;
 const fmt = (d: string | null) => (d ? new Date(`${d}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—");
 const isPast = (b: HostStay) => b.status === "checked_out" || b.status === "cancelled";
 
@@ -22,11 +22,11 @@ export default async function HostBookingsPage() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Bookings</h1>
+      <h1 className="headline text-[30px] text-ink sm:text-[34px]">Bookings</h1>
       <p className="mt-1 text-sm text-muted">Every stay across your listings. Esker collects and verifies payments; you host.</p>
 
       {bookings.length === 0 ? (
-        <div className="mt-6 rounded-2xl border border-line bg-surface p-8 text-center">
+        <div className="mt-6 rounded-[22px] border border-line bg-surface p-8 text-center">
           <CalendarDays size={20} className="mx-auto text-dim" />
           <p className="mt-2 text-sm text-muted">No bookings yet — they&apos;ll appear here as guests book your listings.</p>
         </div>
@@ -43,14 +43,14 @@ export default async function HostBookingsPage() {
 function Section({ title, rows, empty }: { title: string; rows: HostStay[]; empty: string }) {
   return (
     <section className="mt-8">
-      <h2 className="mb-3 font-display text-lg font-semibold tracking-tight text-ink">{title}</h2>
+      <h2 className="mb-3 headline text-2xl text-ink">{title}</h2>
       {rows.length === 0 ? (
         <p className="text-sm text-dim">{empty}</p>
       ) : (
         <div className="space-y-3">
           {rows.map((b) => (
-            <div key={b.id} className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4">
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gold/15 font-display text-sm font-semibold text-gold-deep">
+            <div key={b.id} className="flex items-center gap-4 rounded-[22px] border border-line bg-surface p-4">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-ice-tint text-sm font-bold text-brand-ink">
                 {b.guestFirstName[0]?.toUpperCase() ?? "G"}
               </div>
               <div className="min-w-0 flex-1">
@@ -58,13 +58,13 @@ function Section({ title, rows, empty }: { title: string; rows: HostStay[]; empt
                   {b.guestFirstName} · {b.listingTitle}
                 </div>
                 <div className="text-xs text-muted">
-                  {fmt(b.checkin)} – {fmt(b.checkout)} · {b.nights ?? 0} {b.nights === 1 ? "night" : "nights"}
+                  <span className="tnum">{fmt(b.checkin)} – {fmt(b.checkout)}</span> · <span className="tnum">{b.nights ?? 0}</span> {b.nights === 1 ? "night" : "nights"}
                 </div>
                 <div className="mt-1"><StatusBadge status={b.status} /></div>
               </div>
               <div className="shrink-0 text-right">
-                <div className="font-display text-sm font-semibold text-ink tabular-nums">{pkr(b.amount)}</div>
-                <div className="text-[11px] text-dim tabular-nums">{b.advancePaid > 0 ? `${pkr(b.advancePaid)} collected` : "advance pending"}</div>
+                <div className="tnum text-sm font-bold text-ink">{rs(b.amount)}</div>
+                <div className="tnum text-[11px] text-dim">{b.advancePaid > 0 ? `${rs(b.advancePaid)} collected` : "advance pending"}</div>
               </div>
             </div>
           ))}

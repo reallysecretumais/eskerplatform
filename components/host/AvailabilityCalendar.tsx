@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { blockDates, unblockDates } from "@/app/host/actions";
 import type { CalendarBooking, CalendarBlock } from "@/lib/data/host";
 
-// The host's availability calendar. Bookings show read-only (gold); the host
+// The host's availability calendar. Bookings show read-only (ice band); the host
 // taps two free days to block a range (first tap = start, second = end night),
 // and taps a blocked range to open it up again. End dates are exclusive,
 // checkout-style, so "block 12–14" keeps the 14th free.
@@ -91,25 +91,25 @@ export function AvailabilityCalendar({
   };
 
   return (
-    <div className="rounded-2xl border border-line bg-surface p-6">
+    <div className="rounded-[22px] border border-line bg-surface p-6">
       <div className="flex items-baseline justify-between">
-        <h2 className="font-display text-base font-semibold tracking-tight text-ink">Availability</h2>
+        <h2 className="text-base font-bold text-ink">Availability</h2>
         <span className="text-xs text-dim">Tap two free days to block them</span>
       </div>
 
       <div className="mt-4 flex items-center justify-between">
-        <button type="button" onClick={() => shift(-1)} className="rounded-lg p-1.5 text-muted transition hover:bg-surface-2 hover:text-ink" aria-label="Previous month">
+        <button type="button" onClick={() => shift(-1)} className="rounded-full p-1.5 text-muted transition hover:bg-surface-2 hover:text-ink" aria-label="Previous month">
           <ChevronLeft size={16} />
         </button>
-        <span className="text-sm font-medium text-ink">{monthLabel}</span>
-        <button type="button" onClick={() => shift(1)} className="rounded-lg p-1.5 text-muted transition hover:bg-surface-2 hover:text-ink" aria-label="Next month">
+        <span className="tnum text-sm font-semibold text-ink">{monthLabel}</span>
+        <button type="button" onClick={() => shift(1)} className="rounded-full p-1.5 text-muted transition hover:bg-surface-2 hover:text-ink" aria-label="Next month">
           <ChevronRight size={16} />
         </button>
       </div>
 
       <div className="mt-3 grid grid-cols-7 gap-1 text-center">
         {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => (
-          <div key={d} className="pb-1 text-[10px] font-medium uppercase tracking-wider text-dim">{d}</div>
+          <div key={d} className="label pb-1 text-[10px] text-dim">{d}</div>
         ))}
         {grid.map((d, i) =>
           d === null ? (
@@ -129,26 +129,26 @@ export function AvailabilityCalendar({
       </div>
 
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10.5px] text-dim">
-        <Legend cls="bg-gold/25" label="Booked" />
+        <Legend cls="bg-ice-band" label="Booked" />
         <Legend cls="bg-surface-2 line-through-dim" label="Blocked by you" strike />
-        <Legend cls="ring-1 ring-gold" label="Selecting" />
+        <Legend cls="ring-1 ring-brand" label="Selecting" />
       </div>
 
       {selStart && !confirm && (
         <p className="mt-3 text-sm text-muted">
-          Blocking from <span className="font-medium text-ink">{fmtShort(selStart)}</span> — tap the last night to finish
+          Blocking from <span className="tnum font-medium text-ink">{fmtShort(selStart)}</span> — tap the last night to finish
           <button type="button" onClick={() => setSelStart(null)} className="ml-2 text-xs text-dim underline">cancel</button>
         </p>
       )}
 
       {confirm && (
-        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-gold/30 bg-gold/5 px-4 py-3">
+        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-ice-tint px-4 py-3">
           <span className="text-sm text-ink">
-            Block <span className="font-medium">{fmtShort(confirm.start)} – {fmtShort(addDays(confirm.end, -1))}</span>?
+            Block <span className="tnum font-medium">{fmtShort(confirm.start)} – {fmtShort(addDays(confirm.end, -1))}</span>?
           </span>
           <div className="ml-auto flex gap-2">
-            <button type="button" onClick={() => setConfirm(null)} className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted transition hover:text-ink">Cancel</button>
-            <button type="button" onClick={doBlock} disabled={pending} className="rounded-lg bg-ink px-3.5 py-1.5 text-xs font-medium text-bg transition hover:opacity-90 disabled:opacity-60">
+            <button type="button" onClick={() => setConfirm(null)} className="rounded-full border border-line-hi bg-surface px-3 py-1.5 text-xs font-medium text-ink transition hover:bg-surface-2">Cancel</button>
+            <button type="button" onClick={doBlock} disabled={pending} className="rounded-full bg-brand px-3.5 py-1.5 text-xs font-semibold text-warm transition-colors hover:bg-brand-pressed disabled:opacity-60">
               {pending ? "Blocking…" : "Block dates"}
             </button>
           </div>
@@ -158,11 +158,11 @@ export function AvailabilityCalendar({
       {unblock && (
         <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface-2/60 px-4 py-3">
           <span className="text-sm text-ink">
-            Open up <span className="font-medium">{fmtShort(unblock.start)} – {fmtShort(addDays(unblock.end, -1))}</span>?
+            Open up <span className="tnum font-medium">{fmtShort(unblock.start)} – {fmtShort(addDays(unblock.end, -1))}</span>?
           </span>
           <div className="ml-auto flex gap-2">
-            <button type="button" onClick={() => setUnblock(null)} className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted transition hover:text-ink">Keep blocked</button>
-            <button type="button" onClick={doUnblock} disabled={pending} className="inline-flex items-center gap-1 rounded-lg bg-ink px-3.5 py-1.5 text-xs font-medium text-bg transition hover:opacity-90 disabled:opacity-60">
+            <button type="button" onClick={() => setUnblock(null)} className="rounded-full border border-line-hi bg-surface px-3 py-1.5 text-xs font-medium text-ink transition hover:bg-surface-2">Keep blocked</button>
+            <button type="button" onClick={doUnblock} disabled={pending} className="inline-flex items-center gap-1 rounded-full bg-brand px-3.5 py-1.5 text-xs font-semibold text-warm transition-colors hover:bg-brand-pressed disabled:opacity-60">
               <X size={12} /> {pending ? "Opening…" : "Unblock"}
             </button>
           </div>
@@ -176,9 +176,9 @@ export function AvailabilityCalendar({
 
 function DayCell({ date, past, booked, blocked, selected, onTap }: { date: string; past: boolean; booked: boolean; blocked: boolean; selected: boolean; onTap: () => void }) {
   const n = Number(date.slice(8, 10));
-  const base = "aspect-square rounded-lg text-[12px] tabular-nums transition select-none";
+  const base = "tnum aspect-square rounded-lg text-[12px] transition select-none";
   if (past) return <div className={`${base} grid place-items-center text-line-hi`}>{n}</div>;
-  if (booked) return <div className={`${base} grid place-items-center bg-gold/25 font-medium text-gold-deep`} title="Booked">{n}</div>;
+  if (booked) return <div className={`${base} grid place-items-center bg-ice-band font-semibold text-brand-ink`} title="Booked">{n}</div>;
   return (
     <button
       type="button"
@@ -187,7 +187,7 @@ function DayCell({ date, past, booked, blocked, selected, onTap }: { date: strin
         blocked
           ? "bg-surface-2 text-dim line-through hover:bg-surface-2/70"
           : selected
-            ? "bg-gold/10 text-ink ring-1 ring-gold"
+            ? "bg-ice-tint font-medium text-brand-ink ring-1 ring-brand"
             : "text-ink hover:bg-surface-2"
       }`}
       title={blocked ? "Blocked by you — tap to open" : "Tap to start a block"}

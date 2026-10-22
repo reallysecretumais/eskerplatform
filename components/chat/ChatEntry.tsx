@@ -25,7 +25,7 @@ export function ChatEntry({
     <button
       type="button"
       onClick={open}
-      className={`inline-flex items-center gap-1.5 text-sm text-gold-deep transition hover:underline ${className}`}
+      className={`inline-flex items-center gap-1.5 text-sm font-semibold text-brand transition hover:text-brand-ink ${className}`}
     >
       <MessageCircle size={15} /> {label}
     </button>

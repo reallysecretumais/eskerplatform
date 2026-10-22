@@ -13,7 +13,7 @@
  *
  *   ✗ what we currently have    ("a studio, two 2BHKs and a penthouse")
  *   ✗ counts                    ("all four", "our three apartments")
- *   ✗ prices or positioning     ("from ₨21,000", "the affordable option")
+ *   ✗ prices or positioning     ("from Rs 21,000", "the affordable option")
  *   ✗ amenity lists             ("WiFi, AC, backup power, parking")
  *   ✗ booking terms             ("rates are quoted per night")
  *

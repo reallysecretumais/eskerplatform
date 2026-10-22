@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect, permanentRedirect } from "next/navigation";
-import { ArrowLeft, ArrowRight, MapPin, Users, BedDouble, ShieldCheck } from "lucide-react";
+import { ArrowLeft, MapPin, Users, BedDouble, ShieldCheck } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { StayCard } from "@/components/StayCard";
 import { areaLandingFor } from "@/lib/landings";
@@ -24,7 +24,7 @@ import { getWebsiteAi } from "@/lib/settings";
 import { HostCard } from "@/components/HostCard";
 import { getReviews } from "@/lib/data/reviews";
 import { getAccount } from "@/lib/auth";
-import { formatPrice } from "@/lib/listings";
+import { NF } from "@/lib/listings";
 import { brand } from "@/lib/brand";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -81,7 +81,6 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
     listing.source === "external" ? (await getExternalBookability(id)).mode : "instant";
 
   const conciergeOn = (await getWebsiteAi()).concierge.enabled;
-  const { amount, unit } = formatPrice(listing.price, listing.price_unit);
 
   // Related stays: same area first (the most useful comparison a guest can
   // make), then same category, closest in price. Pure over the cached list.
@@ -111,28 +110,34 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
       {listing.source !== "external" && <TrackListingView id={id} />}
       <SiteNav theme="light" account={account} />
 
-      <div className="mx-auto max-w-5xl px-6 py-8">
-        <Link href="/stays" className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink">
+      <div className="mx-auto max-w-[1104px] px-5 py-8 sm:px-6">
+        <Link href="/stays" className="inline-flex items-center gap-1 text-sm font-semibold text-muted hover:text-ink">
           <ArrowLeft size={15} /> All stays
         </Link>
 
         {/* Title row */}
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="mb-2 flex flex-wrap items-center gap-2">
+            <div className="mb-3 flex flex-wrap items-center gap-3">
               {listing.esker_exclusive && (
-                <span className="rounded-md bg-gold px-2 py-0.5 text-[11px] font-medium text-ink">Esker Exclusive</span>
+                <span className="label inline-flex h-7 items-center rounded-full bg-ice-tint px-3 text-[11px] tracking-[0.1em] text-brand-ink">Exclusive</span>
               )}
-              {listing.category && <span className="text-xs uppercase tracking-wider text-dim">{listing.category}</span>}
+              {listing.category && <span className="label text-[11px] text-dim">{listing.category}</span>}
             </div>
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{listing.title}</h1>
-            <div className="mt-1.5 flex items-center gap-1 text-sm text-muted">
-              <MapPin size={15} /> {listing.area}
-            </div>
+            <h1 className="headline text-[clamp(34px,4.4vw,48px)]">{listing.title}</h1>
+            {(listing.area || listing.city) && (
+              <div className="mt-2 flex items-center gap-1.5 text-[15px] text-muted">
+                <MapPin size={16} strokeWidth={1.8} /> {[listing.area, listing.city].filter(Boolean).join(", ")}
+              </div>
+            )}
           </div>
-          <div className="shrink-0 sm:text-right">
-            <div className="font-display text-2xl font-semibold text-ink tnum">{amount}</div>
-            <div className="text-xs text-dim">per {unit}</div>
+          {/* Price: "Rs" at ~0.65x in Esker Blue, the unit in small caps (BUILD_REFERENCE "Prices"). */}
+          <div className="shrink-0 sm:text-right" aria-label={`${NF.format(listing.price)} rupees per ${listing.price_unit}`}>
+            <div className="tnum text-[28px] font-semibold leading-none tracking-[-0.01em] text-ink" aria-hidden>
+              <span className="mr-1 text-[18px] font-medium text-brand">Rs</span>
+              {NF.format(listing.price)}
+            </div>
+            <div className="label mt-1.5 text-[10.5px] text-dim" aria-hidden>/ {listing.price_unit}</div>
           </div>
         </div>
 
@@ -161,25 +166,29 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
         <div className="mt-8 grid gap-8 lg:grid-cols-3">
           <div className="space-y-8 lg:order-1 lg:col-span-2">
             {/* Quick facts */}
-            <div className="flex flex-wrap gap-5 text-sm text-ink">
+            <div className="flex flex-wrap gap-5 text-[15px] text-ink">
               {listing.capacity ? (
-                <span className="inline-flex items-center gap-1.5"><Users size={16} className="text-gold" /> Sleeps {listing.capacity}</span>
+                <span className="inline-flex items-center gap-1.5"><Users size={17} strokeWidth={1.8} className="text-brand" /> Sleeps <span className="tnum">{listing.capacity}</span></span>
               ) : null}
               {listing.bedrooms ? (
-                <span className="inline-flex items-center gap-1.5"><BedDouble size={16} className="text-gold" /> {listing.bedrooms} bed{listing.bedrooms > 1 ? "s" : ""}</span>
+                <span className="inline-flex items-center gap-1.5"><BedDouble size={17} strokeWidth={1.8} className="text-brand" /> <span className="tnum">{listing.bedrooms}</span> bed{listing.bedrooms > 1 ? "s" : ""}</span>
               ) : null}
               {listing.type ? <span className="text-muted">{listing.type}</span> : null}
             </div>
 
             {/* Esker Exclusive guarantee */}
+            {/* Run by Esker: the tier's promise (app REBUILD_PLAN 3.1). It varies
+                by TIER only; whether a stay is Esker's own or resold is never shown. */}
             {listing.esker_exclusive && (
-              <div className="flex items-start gap-3 rounded-2xl border border-gold/30 bg-gold/[0.06] p-4">
-                <ShieldCheck size={20} className="mt-0.5 shrink-0 text-gold" strokeWidth={1.75} />
+              <div className="flex items-start gap-4 rounded-[22px] bg-surface p-5 shadow-[0_1px_0_var(--color-line)]">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-ice-tint">
+                  <ShieldCheck size={20} className="text-brand" strokeWidth={1.8} />
+                </span>
                 <div>
-                  <div className="font-display text-base font-semibold tracking-tight text-ink">Esker Exclusive</div>
-                  <p className="mt-0.5 text-sm text-muted">
-                    Professionally managed by Esker — inspected and run to a guaranteed standard. Pay with{" "}
-                    {brand.payments.slice(0, 3).join(", ")}; your payment is held securely and released after check-in.
+                  <div className="label text-[10.5px] text-dim">The Esker Standard</div>
+                  <div className="mt-1 text-lg font-bold leading-tight stretch-88">Run by Esker</div>
+                  <p className="mt-1 text-[15px] leading-snug text-muted">
+                    Inspected and managed by our own team. Esker holds your advance until you check in.
                   </p>
                 </div>
               </div>
@@ -188,15 +197,15 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
             {/* Description */}
             {listing.description && (
               <section>
-                <h2 className="mb-2 font-display text-lg font-semibold tracking-tight text-ink">About this place</h2>
-                <p className="text-[15px] leading-relaxed text-muted">{listing.description}</p>
+                <h2 className="headline mb-3 text-2xl">About this place</h2>
+                <p className="text-base leading-[1.55] text-muted">{listing.description}</p>
               </section>
             )}
 
             {/* Amenities */}
             {listing.amenities && listing.amenities.length > 0 && (
               <section>
-                <h2 className="mb-3 font-display text-lg font-semibold tracking-tight text-ink">Amenities</h2>
+                <h2 className="headline mb-4 text-2xl">Amenities</h2>
                 <AmenityList amenities={listing.amenities} />
               </section>
             )}
@@ -218,17 +227,17 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
                 listing is a dead end for a guest OR a crawler. */}
             {related.length > 0 && (
               <section>
-                <div className="mb-3 flex items-baseline justify-between">
-                  <h2 className="font-display text-lg font-semibold tracking-tight text-ink">
+                <div className="mb-5 flex items-baseline justify-between">
+                  <h2 className="headline text-2xl">
                     {listing.area ? `More stays in ${listing.area}` : "More stays"}
                   </h2>
                   {areaPage && (
-                    <Link href={`/${areaPage.slug}`} className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink">
-                      See all <ArrowRight size={14} />
+                    <Link href={`/${areaPage.slug}`} className="text-[15px] font-bold text-brand hover:text-brand-ink">
+                      See all →
                     </Link>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3">
                   {related.map((r) => (
                     <StayCard
                       key={r.id}
@@ -241,6 +250,7 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
                       exclusive={r.esker_exclusive}
                       photo={r.photos?.[0] ?? undefined}
                       href={stayPath(r)}
+                      size="compact"
                     />
                   ))}
                 </div>

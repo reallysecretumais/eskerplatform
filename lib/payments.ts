@@ -1,3 +1,4 @@
+import { rs } from "@/lib/listings";
 // Guests send the advance into one of Esker's accounts from any Easypaisa /
 // JazzCash / bank transfer / SadaPay, then upload a screenshot of the transfer.
 //
@@ -53,7 +54,7 @@ export function advanceAmount(total: number, eskerExclusive: boolean): number {
 }
 
 // Honest headline for the advance: the policy % normally, but "minimum" when the
-// ₨2,000 floor lifted it above that %, or "full amount" for a sub-2k total.
+// Rs 2,000 floor lifted it above that %, or "full amount" for a sub-2k total.
 export function advanceLabel(total: number, eskerExclusive: boolean): string {
   const adv = advanceAmount(total, eskerExclusive);
   if (adv >= total) return "full amount";
@@ -117,7 +118,7 @@ export function cancellationQuote(checkin: string, advancePaid: number, now: Dat
 
   const refund = Math.floor(collected * refundPct);
   const retained = collected - refund;
-  const pkr = (n: number) => `₨${n.toLocaleString("en-PK")}`;
+  const pkr = rs;
   const label =
     refundPct === 1
       ? collected > 0

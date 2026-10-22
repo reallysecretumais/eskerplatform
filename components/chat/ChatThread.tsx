@@ -15,7 +15,7 @@ function linkify(text: string | null, mine: boolean): React.ReactNode {
   if (!text) return text;
   return text.split(URL_SPLIT).map((part, i) =>
     IS_URL.test(part) ? (
-      <a key={i} href={part} className={`underline underline-offset-2 ${mine ? "text-ink" : "text-gold-deep"} break-all hover:opacity-80`}>
+      <a key={i} href={part} className={`underline underline-offset-2 ${mine ? "text-warm" : "text-brand"} break-all hover:opacity-80`}>
         {part}
       </a>
     ) : (
@@ -25,7 +25,7 @@ function linkify(text: string | null, mine: boolean): React.ReactNode {
 }
 
 // The shared chat engine — used by both the floating panel and /messages.
-// Guest bubbles right (gold-tinted); Esker replies left, labeled "Esker AI" ✨
+// Guest bubbles right (Esker Blue); Esker replies left, labeled "Esker AI" ✨
 // or "Esker team"; system lines centered and subtle. New messages arrive live
 // over Supabase realtime (RLS-scoped to this guest's thread).
 
@@ -147,7 +147,7 @@ export function ChatThread({
       <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-4 py-4">
         {visible.length === 0 && (
           <div className="py-8 text-center">
-            <Sparkles size={20} className="mx-auto text-gold" />
+            <Sparkles size={20} className="mx-auto text-brand" />
             <p className="mt-2 text-sm font-medium text-ink">Message {brand.name} Support</p>
             <p className="mx-auto mt-1 max-w-[250px] text-xs text-muted">
               Ask about a stay, your booking, or anything else — our team replies right here, usually within a few hours.
@@ -167,12 +167,12 @@ export function ChatThread({
           return (
             <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
               <div
-                className={`max-w-[82%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${
-                  mine ? "rounded-br-md bg-gold/15 text-ink" : "rounded-bl-md border border-line bg-surface text-ink"
+                className={`max-w-[82%] px-3.5 py-2 text-sm leading-relaxed ${
+                  mine ? "rounded-[22px_22px_6px_22px] bg-brand text-warm" : "rounded-[22px_22px_22px_6px] border border-line bg-surface text-ink"
                 }`}
               >
                 {!mine && (
-                  <div className="mb-0.5 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-gold-deep">
+                  <div className="label mb-0.5 flex items-center gap-1 text-[10px] text-brand">
                     {m.sender_kind === "ai" ? (
                       <>
                         <Sparkles size={10} /> {brand.name} AI
@@ -185,7 +185,7 @@ export function ChatThread({
                   </div>
                 )}
                 <p className="whitespace-pre-wrap">{linkify(m.body, mine)}</p>
-                <div className={`mt-0.5 text-[10px] ${mine ? "text-right" : ""} text-dim`}>{fmtTime(m.created_at)}</div>
+                <div className={`tnum mt-0.5 text-[10px] ${mine ? "text-right text-ice-soft" : "text-dim"}`}>{fmtTime(m.created_at)}</div>
               </div>
             </div>
           );
@@ -198,7 +198,7 @@ export function ChatThread({
 
       {/* Composer */}
       <div className="border-t border-line px-3 pb-3 pt-2">
-        <form onSubmit={submit} className="flex items-center gap-2 rounded-xl border border-line bg-surface p-1.5 focus-within:border-gold/50">
+        <form onSubmit={submit} className="flex items-center gap-2 rounded-full border border-line bg-surface p-1.5 pl-2.5 focus-within:border-brand/40">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -210,7 +210,7 @@ export function ChatThread({
             type="submit"
             disabled={!input.trim() || busy}
             aria-label="Send"
-            className="rounded-lg bg-gold p-2 text-ink transition hover:brightness-105 disabled:opacity-40"
+            className="rounded-full bg-brand p-2 text-warm transition hover:bg-brand-pressed disabled:opacity-40"
           >
             <SendHorizonal size={16} />
           </button>

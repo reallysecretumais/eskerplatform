@@ -54,10 +54,10 @@ export function AccountNav({ mode, showPartner = false, partnerPropertyCount = 0
     const base = compact
       ? `flex shrink-0 items-center gap-2 rounded-full px-3.5 py-2 text-sm whitespace-nowrap transition`
       : `flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition`;
-    const cls = active ? "bg-gold/12 text-gold-deep font-medium" : "text-muted hover:bg-surface-2 hover:text-ink";
+    const cls = active ? "bg-ice-tint text-brand-ink font-semibold" : "text-muted hover:bg-surface-2 hover:text-ink";
     return (
       <Link key={it.href} href={it.href} className={`${base} ${cls}`}>
-        <it.icon size={17} className={active ? "text-gold-deep" : "text-dim"} />
+        <it.icon size={17} className={active ? "text-brand-ink" : "text-dim"} />
         {it.label}
       </Link>
     );
@@ -106,9 +106,9 @@ function ModeSwitch({ mode, showPartner = false }: { mode: Mode; showPartner?: b
       key={href}
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`flex flex-1 items-center justify-center rounded-lg px-1.5 py-1.5 text-[13px] leading-none whitespace-nowrap transition-colors ${
+      className={`flex flex-1 items-center justify-center rounded-full px-1.5 py-2 text-[13px] leading-none whitespace-nowrap transition-colors ${
         active
-          ? "bg-bg font-semibold text-ink shadow-sm ring-1 ring-line/70"
+          ? "bg-brand font-semibold text-warm"
           : "font-medium text-muted hover:text-ink"
       }`}
     >
@@ -116,7 +116,7 @@ function ModeSwitch({ mode, showPartner = false }: { mode: Mode; showPartner?: b
     </Link>
   );
   return (
-    <div className="flex items-stretch gap-1 rounded-xl border border-line bg-surface-2 p-1">
+    <div className="flex items-stretch gap-1 rounded-full border border-line bg-surface-2 p-1">
       {item(mode === "guest", "/account", "Guest")}
       {item(mode === "host", "/host", "Hosting")}
       {showPartner && item(mode === "partner", "/partner", "Partner")}

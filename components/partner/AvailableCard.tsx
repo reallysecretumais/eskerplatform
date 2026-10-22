@@ -1,7 +1,7 @@
 import { Wallet } from "lucide-react";
 import type { PartnerAvailable } from "@/lib/data/partner";
+import { rs } from "@/lib/listings";
 
-const pkr = (n: number) => `₨${n.toLocaleString("en-PK")}`;
 const monthLabel = (m: string) => new Date(`${m}-01T00:00:00`).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 
 // The single number a partner most wants: what they can actually withdraw right
@@ -10,11 +10,11 @@ const monthLabel = (m: string) => new Date(`${m}-01T00:00:00`).toLocaleDateStrin
 export function AvailableCard({ available }: { available: PartnerAvailable }) {
   const has = available.amount > 0;
   return (
-    <div className="rounded-2xl border border-gold/30 bg-gradient-to-br from-gold/[0.09] to-transparent p-5">
-      <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-gold-deep">
+    <div className="rounded-[22px] border border-brand/40 bg-surface p-5">
+      <div className="label flex items-center gap-1.5 text-[11px] text-brand">
         <Wallet size={14} /> Available to withdraw
       </div>
-      <div className="mt-1.5 font-display text-3xl font-semibold tabular-nums text-ink">{pkr(available.amount)}</div>
+      <div className="tnum mt-1.5 text-3xl font-bold text-ink">{rs(available.amount)}</div>
       <p className="mt-2 text-xs leading-relaxed text-muted">
         {has
           ? `Your settled earnings through ${monthLabel(available.throughMonth)}, less payouts already made. `

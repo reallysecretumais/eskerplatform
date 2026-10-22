@@ -10,10 +10,10 @@ import {
 } from "@/lib/data/partner";
 import { PropertyDashboard } from "@/components/partner/PropertyDashboard";
 import { brand } from "@/lib/brand";
+import { rs } from "@/lib/listings";
 
 export const metadata = { title: "Partner — Esker" };
 
-const pkr = (n: number) => `₨${n.toLocaleString("en-PK")}`;
 const monthLabel = (m: string) => new Date(`${m}-01T00:00:00`).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 
 export default async function PartnerHome({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
@@ -43,13 +43,13 @@ export default async function PartnerHome({ searchParams }: { searchParams: Prom
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Your portfolio</h1>
-      <p className="mt-1 text-sm text-muted">Welcome back, {firstName}. Across your properties — {monthLabel(month)}.</p>
+      <h1 className="headline text-[30px] text-ink sm:text-[34px]">Your portfolio</h1>
+      <p className="mt-1 text-sm text-muted">Welcome back, {firstName}. Across your properties — <span className="tnum">{monthLabel(month)}</span>.</p>
 
       <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Hero label={`Net · ${monthLabel(month).split(" ")[0]}`} value={pkr(totalNet)} />
-        <Hero label="Your share this month" value={pkr(totalShare)} accent />
-        <Hero label="Available to withdraw" value={pkr(totalAvailable)} accent icon={<Wallet size={14} />} />
+        <Hero label={`Net · ${monthLabel(month).split(" ")[0]}`} value={rs(totalNet)} />
+        <Hero label="Your share this month" value={rs(totalShare)} accent />
+        <Hero label="Available to withdraw" value={rs(totalAvailable)} accent icon={<Wallet size={14} />} />
       </div>
 
       <div className="mt-6 space-y-4">
@@ -57,19 +57,19 @@ export default async function PartnerHome({ searchParams }: { searchParams: Prom
           <Link
             key={s!.property.id}
             href={`/partner/properties/${s!.property.id}`}
-            className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4 transition hover:border-line-hi"
+            className="flex items-center gap-4 rounded-[22px] border border-line bg-surface p-4 transition hover:border-line-hi"
           >
             <div
               className="h-16 shrink-0 overflow-hidden rounded-lg"
-              style={{ width: 84, backgroundColor: "#e7e1d6", backgroundImage: s!.property.photo ? `url(${s!.property.photo})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }}
+              style={{ width: 84, backgroundColor: "var(--color-surface-2)", backgroundImage: s!.property.photo ? `url(${s!.property.photo})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }}
             />
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium text-ink">{s!.property.title}</div>
               <div className="text-xs text-muted">{s!.property.area ?? ""}</div>
               <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-xs">
-                <span className="text-muted">Net <span className="tabular-nums text-ink">{pkr(s!.performance?.net ?? 0)}</span></span>
-                <span className="text-muted">{s!.performance?.inRecovery ? "To recovery" : "Your share"} <span className="tabular-nums text-gold-deep">{pkr(s!.performance?.yourShare ?? 0)}</span></span>
-                {s!.available.amount > 0 && <span className="text-muted">Available <span className="tabular-nums text-gold-deep">{pkr(s!.available.amount)}</span></span>}
+                <span className="text-muted">Net <span className="tnum font-semibold text-ink">{rs(s!.performance?.net ?? 0)}</span></span>
+                <span className="text-muted">{s!.performance?.inRecovery ? "To recovery" : "Your share"} <span className="tnum font-semibold text-brand">{rs(s!.performance?.yourShare ?? 0)}</span></span>
+                {s!.available.amount > 0 && <span className="text-muted">Available <span className="tnum font-semibold text-brand">{rs(s!.available.amount)}</span></span>}
               </div>
             </div>
             <ArrowRight size={16} className="shrink-0 text-dim" />
@@ -82,12 +82,12 @@ export default async function PartnerHome({ searchParams }: { searchParams: Prom
 
 function Hero({ label, value, accent = false, icon }: { label: string; value: string; accent?: boolean; icon?: React.ReactNode }) {
   return (
-    <div className={`rounded-2xl border p-4 ${accent ? "border-gold/30 bg-gradient-to-br from-gold/[0.07] to-transparent" : "border-line bg-surface"}`}>
-      <div className={`flex items-center gap-1.5 text-[11px] uppercase tracking-wider ${accent ? "text-gold-deep" : "text-dim"}`}>
+    <div className={`rounded-[22px] border bg-surface p-4 ${accent ? "border-brand/40" : "border-line"}`}>
+      <div className={`label flex items-center gap-1.5 text-[10.5px] ${accent ? "text-brand" : "text-dim"}`}>
         {icon}
         {label}
       </div>
-      <div className="mt-1.5 font-display text-xl font-semibold tabular-nums text-ink">{value}</div>
+      <div className="tnum mt-1.5 text-xl font-bold text-ink">{value}</div>
     </div>
   );
 }
@@ -95,9 +95,9 @@ function Hero({ label, value, accent = false, icon }: { label: string; value: st
 function NoProperties() {
   return (
     <div>
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Partner</h1>
-      <div className="mt-8 rounded-2xl border border-line bg-surface p-8 text-center">
-        <LineChart size={22} className="mx-auto text-gold-deep" />
+      <h1 className="headline text-[30px] text-ink sm:text-[34px]">Partner</h1>
+      <div className="mt-8 rounded-[22px] border border-line bg-surface p-8 text-center">
+        <LineChart size={22} className="mx-auto text-brand" />
         <p className="mt-2 text-sm text-muted">No properties are linked to your account yet. Esker will set this up for you.</p>
       </div>
     </div>
@@ -107,10 +107,10 @@ function NoProperties() {
 function PartnerFallback() {
   return (
     <div>
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Partner access</h1>
-      <div className="mt-6 rounded-2xl border border-gold/30 bg-gold/5 p-6">
-        <div className="flex items-center gap-2 font-display text-base font-semibold tracking-tight text-ink">
-          <ShieldCheck size={17} className="text-gold-deep" /> Arranged by Esker
+      <h1 className="headline text-[30px] text-ink sm:text-[34px]">Partner access</h1>
+      <div className="mt-6 rounded-[22px] bg-ice-tint p-6">
+        <div className="flex items-center gap-2 text-base font-bold text-brand-ink">
+          <ShieldCheck size={17} className="text-brand" /> Arranged by Esker
         </div>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
           The partner portal shows a live, read-only view of your property&apos;s performance, your share, and your payouts.
@@ -118,7 +118,7 @@ function PartnerFallback() {
         </p>
         <a
           href={`https://wa.me/${brand.whatsapp}`}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-sm font-medium text-bg transition hover:opacity-90"
+          className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-warm transition-colors hover:bg-brand-pressed"
         >
           Contact Esker <ArrowRight size={15} />
         </a>

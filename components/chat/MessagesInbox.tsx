@@ -64,11 +64,11 @@ export function MessagesInbox({ threads, firstMessages }: { threads: ThreadSumma
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="truncate text-sm font-medium text-ink">{t.title}</span>
-                  <span className="ml-auto shrink-0 text-[10px] text-dim">{fmtWhen(t.lastAt)}</span>
+                  <span className="tnum ml-auto shrink-0 text-[10px] text-dim">{fmtWhen(t.lastAt)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="truncate text-xs text-muted">{t.lastPreview ?? (t.kind === "esker" ? "Ask us anything" : "Message the host")}</span>
-                  {unread && <span className="ml-auto grid h-4 min-w-4 shrink-0 place-items-center rounded-full bg-gold px-1 text-[10px] font-semibold text-ink">{t.unread}</span>}
+                  {unread && <span className="ml-auto grid h-4 min-w-4 shrink-0 place-items-center rounded-full bg-brand px-1 text-[10px] font-bold text-warm tnum">{t.unread}</span>}
                 </div>
               </div>
             </button>
@@ -103,10 +103,10 @@ function ThreadAvatar({ kind, small }: { kind: "esker" | "host"; small?: boolean
   const s = small ? 30 : 38;
   return (
     <span
-      className="grid shrink-0 place-items-center rounded-full"
-      style={{ height: s, width: s, background: kind === "esker" ? "rgba(201,168,76,0.16)" : "rgba(33,31,26,0.08)" }}
+      className={`grid shrink-0 place-items-center rounded-full ${kind === "esker" ? "bg-ice-tint" : "bg-surface-2"}`}
+      style={{ height: s, width: s }}
     >
-      {kind === "esker" ? <Sparkles size={small ? 14 : 17} className="text-gold-deep" /> : <Home size={small ? 14 : 17} className="text-ink" />}
+      {kind === "esker" ? <Sparkles size={small ? 14 : 17} className="text-brand-ink" /> : <Home size={small ? 14 : 17} className="text-ink" />}
     </span>
   );
 }

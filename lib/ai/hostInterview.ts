@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { INTERVIEW_OPENER, type InterviewFields, type ChatMsg } from "./hostInterviewShared";
+import { rs } from "@/lib/listings";
 
 // ── The host-listing interview engine ────────────────────────────────────────
 // A conversational interviewer that turns a 2-minute chat into a draft listing.
@@ -113,7 +114,7 @@ export async function getPriceBands(): Promise<string> {
       const key = `${r.category ?? "Stay"} in ${r.area ?? "Islamabad"}`;
       groups.set(key, [...(groups.get(key) ?? []), Number(r.price)]);
     }
-    const fmt = (n: number) => `₨${Math.round(n).toLocaleString("en-PK")}`;
+    const fmt = rs;
     return [...groups.entries()]
       .map(([k, prices]) => {
         const min = Math.min(...prices), max = Math.max(...prices);

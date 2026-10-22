@@ -17,6 +17,7 @@ import {
 import { getCoveredAreas } from "@/lib/data/host";
 import { PAYOUT_METHODS, MIN_LISTING_PHOTOS, MAX_LISTING_PHOTOS } from "@/lib/hostConstants";
 import { isVideoExt } from "@/lib/videoClient";
+import { rs } from "@/lib/listings";
 
 export type ActionResult = { ok: boolean; message: string; id?: string };
 
@@ -107,7 +108,7 @@ function parseListing(formData: FormData): { ok: true; v: ListingInput } | { ok:
   if (title.length < 4) return { ok: false, message: "Give your place a name (at least 4 characters)." };
   if (!category) return { ok: false, message: "Pick a category." };
   if (!areaId) return { ok: false, message: "Pick the area your place is in." };
-  if (price < 1000) return { ok: false, message: "Enter a nightly price of at least ₨1,000." };
+  if (price < 1000) return { ok: false, message: `Enter a nightly price of at least ${rs(1000)}.` };
   if (description.length < 40) return { ok: false, message: "Describe your place in a few sentences (at least 40 characters)." };
 
   return {
@@ -246,7 +247,7 @@ export async function submitListing(listingId: string): Promise<ActionResult> {
   const { data: acct } = await admin.from("accounts").select("name").eq("id", accountId).maybeSingle();
   await notifyStaff(admin, {
     title: `New host listing to review — ${l.public_title}`,
-    body: `${acct?.name || "A host"} · ${l.kind ?? "Listing"} in ${l.area ?? "?"} · ₨${Number(l.nightly_rate || 0).toLocaleString("en-PK")}/night`,
+    body: `${acct?.name || "A host"} · ${l.kind ?? "Listing"} in ${l.area ?? "?"} · ${rs(Number(l.nightly_rate || 0))} / night`,
     link: `/properties/${listingId}`,
   });
 

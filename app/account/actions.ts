@@ -10,6 +10,7 @@ import { sendEmail } from "@/lib/email";
 import { toE164Pk } from "@/lib/otp";
 import { issueOtp, checkOtp } from "@/lib/otpFlow";
 import { notifyStaff } from "@/lib/notifyStaff";
+import { rs } from "@/lib/listings";
 
 export type ActionResult = { ok: boolean; message: string };
 
@@ -17,8 +18,6 @@ export type ActionResult = { ok: boolean; message: string };
 const CANCELLABLE = ["awaiting_payment", "payment_collected", "handed_over", "awaiting_checkin"];
 const DOC_BUCKET = "guest-docs";
 const MAX_BYTES = 10 * 1024 * 1024;
-
-const pkr = (n: number) => `₨${Math.round(n).toLocaleString("en-PK")}`;
 
 function fileExt(file: File): string {
   const fromName = file.name.split(".").pop();
@@ -258,7 +257,7 @@ export async function cancelMyBooking(bookingId: string): Promise<CancelResult> 
   }
 
   const stamp = new Date().toLocaleString("en-GB", { timeZone: "Asia/Karachi" });
-  const note = `${b.notes ? `${b.notes}\n` : ""}Cancelled by guest via website (${stamp}). Policy: ${quote.tier}. Refund due ${pkr(refund)}, retained ${pkr(retained)}. ${refund > 0 ? "Send the refund to the guest." : "No refund due."}`;
+  const note = `${b.notes ? `${b.notes}\n` : ""}Cancelled by guest via website (${stamp}). Policy: ${quote.tier}. Refund due ${rs(refund)}, retained ${rs(retained)}. ${refund > 0 ? "Send the refund to the guest." : "No refund due."}`;
   const { error } = await admin
     .from("bookings")
     .update({ status: "cancelled", cancel_fee: retained, notes: note })
@@ -270,14 +269,14 @@ export async function cancelMyBooking(bookingId: string): Promise<CancelResult> 
   const title = String(listing?.title ?? "a stay");
   await notifyStaff(admin, {
     title: `Website cancellation — ${title}`,
-    body: refund > 0 ? `Guest cancelled · refund ${pkr(refund)} to send (kept ${pkr(retained)})` : `Guest cancelled · no refund due`,
+    body: refund > 0 ? `Guest cancelled · refund ${rs(refund)} to send (kept ${rs(retained)})` : `Guest cancelled · no refund due`,
     link: `/bookings/${bookingId}`,
   });
 
   try {
     const { data: acct } = await admin.from("accounts").select("email, name, notify_email").eq("id", accountId).maybeSingle();
     if (acct?.email && acct.notify_email !== false) {
-      const line = refund > 0 ? `We'll refund ${pkr(refund)} to your original payment method within 5–7 working days.` : `As per our policy, no refund applies to this cancellation.`;
+      const line = refund > 0 ? `We'll refund ${rs(refund)} to your original payment method within 5–7 working days.` : `As per our policy, no refund applies to this cancellation.`;
       await sendEmail({
         to: acct.email,
         subject: `Your Esker booking is cancelled — ${title}`,
@@ -336,7 +335,7 @@ export async function submitBalancePayment(_prev: ActionResult | null, formData:
   const { data: listing } = await admin.from("public_listings").select("title").eq("id", b.property_id).maybeSingle();
   await notifyStaff(admin, {
     title: `Balance payment uploaded — ${String(listing?.title ?? "a stay")}`,
-    body: `Guest uploaded ${pkr(balance)} balance proof — verify it`,
+    body: `Guest uploaded ${rs(balance)} balance proof — verify it`,
     link: `/bookings/${bookingId}`,
   });
 

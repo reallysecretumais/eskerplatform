@@ -59,10 +59,10 @@ export function AvatarUpload({ name, src }: { name: string | null; src: string |
   }
 
   return (
-    <div className="flex items-center gap-5 rounded-2xl border border-line bg-surface p-6">
+    <div className="flex items-center gap-5 rounded-[22px] border border-line bg-surface p-6">
       <button type="button" onClick={() => inputRef.current?.click()} className="group relative shrink-0" title="Change photo" disabled={pending}>
         <Avatar name={name} src={src} size={72} className={pending ? "opacity-60" : ""} />
-        <span className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border-2 border-surface bg-ink text-bg transition group-hover:scale-105">
+        <span className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border-2 border-surface bg-ink text-warm transition group-hover:scale-105">
           <Camera size={14} />
         </span>
       </button>

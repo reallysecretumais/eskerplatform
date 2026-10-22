@@ -10,6 +10,7 @@ import { notifyBookingReceived } from "@/lib/notifyGuest";
 import { capiEvent } from "@/lib/analytics";
 import { getExternalBookability, hasAuthorizedRequest, refreshExternalCalendar } from "@/lib/data/externalBooking";
 import { notifyStaff } from "@/lib/notifyStaff";
+import { rs } from "@/lib/listings";
 
 const ACTIVE = ["awaiting_payment", "payment_collected", "handed_over", "awaiting_checkin", "currently_staying", "needs_attention"];
 // Unpaid WEBSITE holds free their dates after this long (matches the
@@ -279,7 +280,7 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
 
   // 6. Create the booking (screenshot path: awaiting team verification;
   //    Safepay path: awaiting the gateway webhook, which settles it hands-free).
-  const note = `Website booking — ${advanceLabel(amount, exclusive)} advance ₨${advance.toLocaleString("en-PK")} of ₨${amount.toLocaleString("en-PK")} (balance ₨${balance.toLocaleString("en-PK")} due at check-in). ${
+  const note = `Website booking — ${advanceLabel(amount, exclusive)} advance ${rs(advance)} of ${rs(amount)} (balance ${rs(balance)} due at check-in). ${
     viaSafepay ? "Paying by Safepay — confirms automatically when the gateway settles." : "Verify the payment screenshot."
   }${email ? ` Email: ${email}.` : ""}${idNote}`;
   const { data: booking, error: bErr } = await admin

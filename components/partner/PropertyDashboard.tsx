@@ -23,7 +23,7 @@ export function PropertyDashboard({ data, months, monthBase }: { data: PartnerDa
     <div>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">{property.title}</h1>
+          <h1 className="headline text-[30px] text-ink sm:text-[34px]">{property.title}</h1>
           <p className="mt-1 text-sm text-muted">
             {property.area ?? ""}
             {property.status ? ` · ${cap(property.status)}` : ""}
@@ -33,7 +33,7 @@ export function PropertyDashboard({ data, months, monthBase }: { data: PartnerDa
       </div>
 
       {!performance ? (
-        <div className="mt-6 rounded-2xl border border-line bg-surface p-6 text-center text-sm text-muted">
+        <div className="mt-6 rounded-[22px] border border-line bg-surface p-6 text-center text-sm text-muted">
           No performance is recorded for this month yet.
         </div>
       ) : (
@@ -50,9 +50,9 @@ export function PropertyDashboard({ data, months, monthBase }: { data: PartnerDa
           <div>
             <Link
               href={`/partner/properties/${property.id}/statement/${month}`}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-medium text-ink transition hover:border-line-hi"
+              className="inline-flex items-center gap-1.5 rounded-full border border-line-hi bg-surface px-4 py-2 text-sm font-semibold text-ink transition hover:bg-surface-2"
             >
-              <FileText size={15} className="text-gold-deep" /> Download statement
+              <FileText size={15} className="text-brand" /> Download statement
             </Link>
           </div>
         </div>
@@ -63,12 +63,12 @@ export function PropertyDashboard({ data, months, monthBase }: { data: PartnerDa
       </section>
 
       <section className="mt-8">
-        <h2 className="mb-3 font-display text-lg font-semibold tracking-tight text-ink">Bookings</h2>
+        <h2 className="mb-3 headline text-2xl text-ink">Bookings</h2>
         <BookingList bookings={bookings} />
       </section>
 
       <section className="mt-8">
-        <h2 className="mb-3 font-display text-lg font-semibold tracking-tight text-ink">Payouts</h2>
+        <h2 className="mb-3 headline text-2xl text-ink">Payouts</h2>
         <PayoutList payouts={payouts} />
       </section>
     </div>

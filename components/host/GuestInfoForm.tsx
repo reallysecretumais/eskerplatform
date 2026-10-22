@@ -12,10 +12,10 @@ export function GuestInfoForm({ listingId, info }: { listingId: string; info: Li
   const [state, action, pending] = useActionState(saveGuestInfo, null);
 
   return (
-    <form action={action} className="rounded-2xl border border-line bg-surface p-6">
+    <form action={action} className="rounded-[22px] border border-line bg-surface p-6">
       <div className="flex items-center gap-2">
-        <KeyRound size={16} className="text-gold-deep" />
-        <h2 className="font-display text-base font-semibold tracking-tight text-ink">Guest info</h2>
+        <KeyRound size={16} className="text-brand" />
+        <h2 className="text-base font-bold text-ink">Guest info</h2>
       </div>
       <p className="mt-1 text-xs text-dim">Check-in details stay private (shared with confirmed guests). Public facts help guests — and our AI concierge — answer questions before booking.</p>
 
@@ -44,7 +44,7 @@ export function GuestInfoForm({ listingId, info }: { listingId: string; info: Li
 
       <div className="mt-4 flex items-center gap-3">
         <input type="hidden" name="listingId" value={listingId} />
-        <button type="submit" disabled={pending} className="rounded-xl bg-ink px-5 py-2.5 text-sm font-medium text-bg transition hover:opacity-90 disabled:opacity-60">
+        <button type="submit" disabled={pending} className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-warm transition-colors hover:bg-brand-pressed disabled:opacity-60">
           {pending ? "Saving…" : "Save guest info"}
         </button>
         {state?.ok && (
@@ -58,7 +58,7 @@ export function GuestInfoForm({ listingId, info }: { listingId: string; info: Li
   );
 }
 
-const input = "w-full rounded-xl border border-line bg-bg/40 px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-gold/50";
+const input = "w-full rounded-xl border border-line bg-bg/40 px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-brand/40";
 const area = `${input} resize-none`;
 
 function Field({ label, hint, children }: { label: string; hint: string; children: React.ReactNode }) {

@@ -1,13 +1,13 @@
 // Read-only fractional star display (e.g. 4.75 shows four full + a three-quarter
 // star). Same star path as the interactive input so they match visually. Uses a
-// clipped gold layer over an empty base.
+// clipped Esker Blue layer over an empty base.
 export function StarsDisplay({ value, size = 14 }: { value: number; size?: number }) {
   const pct = (Math.min(5, Math.max(0, value)) / 5) * 100;
   return (
     <span className="relative inline-flex" aria-label={`${value} out of 5`}>
       <Row size={size} className="text-line-hi" />
       <span className="absolute inset-0 overflow-hidden" style={{ width: `${pct}%` }}>
-        <Row size={size} className="text-gold" filled />
+        <Row size={size} className="text-brand" filled />
       </span>
     </span>
   );

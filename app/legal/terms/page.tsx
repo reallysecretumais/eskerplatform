@@ -17,13 +17,13 @@ export default function TermsOfService() {
       <h2>Payment</h2>
       <p>
         We take an advance to secure your booking — 25% of the total for standard stays, 50% for Esker Exclusive — with the balance due at or before check-in. Payment is made by bank transfer, Easypaisa, JazzCash, or SadaPay and verified from your uploaded screenshot. Your advance is held and applied to your stay. Refunds follow our{" "}
-        <a href="/legal/cancellation" className="text-gold-deep underline hover:no-underline">Cancellation &amp; Refund Policy</a>.
+        <a href="/legal/cancellation" className="text-brand underline hover:no-underline">Cancellation &amp; Refund Policy</a>.
       </p>
 
       <h2>Identity verification</h2>
       <p>
         First-time guests provide a valid CNIC or passport. We may decline a booking if identity can&apos;t be verified or the document is invalid/expired. Documents are handled per our{" "}
-        <a href="/legal/privacy" className="text-gold-deep underline hover:no-underline">Privacy Policy</a>.
+        <a href="/legal/privacy" className="text-brand underline hover:no-underline">Privacy Policy</a>.
       </p>
 
       <h2>Your stay</h2>

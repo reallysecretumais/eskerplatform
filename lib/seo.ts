@@ -5,6 +5,7 @@ import { support } from "@/lib/payments";
 import { thumb, ogCrop } from "@/lib/img";
 import { stayPath } from "@/lib/slug";
 import type { PublicListing } from "@/lib/data/listings";
+import { rs } from "@/lib/listings";
 
 // Central SEO config. Re-skinnable: everything reads from `brand`. Set
 // NEXT_PUBLIC_SITE_URL in prod (defaults to the live domain).
@@ -110,7 +111,7 @@ export function listingSummary(l: PublicListing): string {
     l.booking_mode === "nightly"
       ? `${bed}${cat} for rent on a daily basis${where ? ` in ${where}` : ""}`
       : `${cat}${where ? ` in ${where}` : ""}, booked by the ${l.price_unit}`;
-  const price = `From ₨${l.price.toLocaleString("en-PK")} per ${l.price_unit}`;
+  const price = `From ${rs(l.price)} per ${l.price_unit}`;
   const sleeps = l.capacity ? `, sleeps ${l.capacity}` : "";
   const amen = (l.amenities ?? []).slice(0, 3).join(", ");
   const exclusive = l.esker_exclusive ? ` ${brand.exclusiveTier} — professionally managed.` : "";

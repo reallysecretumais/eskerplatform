@@ -136,9 +136,10 @@ export function CheckoutForm({
     }
   };
 
-  const label = "mb-1 block text-sm font-medium text-ink";
-  const input = "w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-gold/60";
-  const file = "w-full rounded-xl border border-dashed border-line bg-surface px-3.5 py-2.5 text-sm text-muted file:mr-3 file:rounded-md file:border-0 file:bg-ink file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white";
+  const label = "mb-1.5 block text-sm font-semibold text-ink";
+  const input = "h-12 w-full rounded-[14px] border border-line bg-surface px-4 text-[15px] text-ink outline-none transition-colors placeholder:text-dim focus:border-brand";
+  const file = "w-full rounded-[14px] border border-dashed border-line-hi bg-surface px-3.5 py-3 text-sm text-muted file:mr-3 file:h-9 file:rounded-full file:border-0 file:bg-ink file:px-4 file:text-[13px] file:font-semibold file:text-warm";
+  const heading = "headline text-2xl";
 
   return (
     <form ref={formRef} onSubmit={submit} className="space-y-8">
@@ -146,11 +147,11 @@ export function CheckoutForm({
       <input type="hidden" name="checkin" value={checkin} />
       <input type="hidden" name="checkout" value={checkout} />
 
-      {error && <div className="rounded-xl border border-red/40 bg-red/[0.06] p-3 text-sm text-red">{error}</div>}
+      {error && <div className="rounded-[14px] bg-red/[0.08] p-3.5 text-sm text-red">{error}</div>}
 
       {/* Guest details */}
       <section>
-        <h2 className="font-display text-lg font-semibold tracking-tight text-ink">Your details</h2>
+        <h2 className={heading}>Your details</h2>
         <div className="mt-3 space-y-3">
           <div>
             <label className={label}>Full name</label>
@@ -171,18 +172,18 @@ export function CheckoutForm({
 
       {/* ID — first time only */}
       <section>
-        <h2 className="font-display text-lg font-semibold tracking-tight text-ink">ID verification</h2>
+        <h2 className={heading}>ID verification</h2>
         <p className="mt-1 text-sm text-muted">Must be valid and unexpired. Just for your first booking with Esker; next time, log in and skip this.</p>
 
         {/* Document type — a passport is one page; a CNIC has a front and back. */}
         <input type="hidden" name="docType" value={docType} />
-        <div className="mt-3 inline-flex rounded-xl border border-line bg-surface p-1 text-sm">
+        <div className="mt-3 inline-flex rounded-full bg-surface-2 p-1 text-sm">
           {(["cnic", "passport"] as const).map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => selectDocType(t)}
-              className={`rounded-lg px-3.5 py-1.5 font-medium transition ${docType === t ? "bg-ink text-white" : "text-muted hover:text-ink"}`}
+              className={`h-9 rounded-full px-4 font-semibold transition-colors ${docType === t ? "bg-surface text-ink shadow-[0_1px_0_var(--color-line)]" : "text-muted hover:text-ink"}`}
             >
               {t === "cnic" ? "CNIC" : "Passport"}
             </button>
@@ -207,9 +208,9 @@ export function CheckoutForm({
 
       {/* Payment */}
       <section>
-        <h2 className="font-display text-lg font-semibold tracking-tight text-ink">Payment</h2>
+        <h2 className={heading}>Payment</h2>
         <p className="mt-1 text-sm text-muted">
-          Pay the <span className="font-medium text-ink">{pctLabel} advance — {advanceLabel}</span> now to secure your booking (balance {balanceLabel} at check-in).
+          Pay the <span className="font-semibold text-ink">{pctLabel} advance, <span className="tnum">{advanceLabel}</span></span>, now to secure your booking. The balance, <span className="tnum">{balanceLabel}</span>, is paid at check-in.
         </p>
 
         {/* Method choice — online-first when Safepay is live on this deployment. */}
@@ -219,20 +220,26 @@ export function CheckoutForm({
             <button
               type="button"
               onClick={() => setPayMethod("safepay")}
-              className={`rounded-xl border p-3 text-left transition ${payMethod === "safepay" ? "border-gold bg-gold/10" : "border-line bg-surface hover:border-gold/40"}`}
+              aria-pressed={payMethod === "safepay"}
+              className={payRow(payMethod === "safepay")}
             >
-              <div className="text-sm font-medium text-ink">
-                Pay online now <span className="ml-1 rounded bg-gold/15 px-1.5 py-0.5 text-[10px] text-gold-deep">Recommended</span>
+              <div className="flex items-center gap-2 text-[15px] font-semibold text-ink">
+                <Tick on={payMethod === "safepay"} />
+                Pay online now <span className="label rounded-full bg-ice-tint px-2 py-0.5 text-[9.5px] tracking-[0.1em] text-brand-ink">Recommended</span>
               </div>
-              <div className="mt-0.5 text-xs text-muted">Card · wallet · Raast — secure Safepay checkout, confirms instantly.</div>
+              <div className="mt-1 pl-7 text-[13px] text-muted">Card · wallet · Raast — secure Safepay checkout, confirms instantly.</div>
             </button>
             <button
               type="button"
               onClick={() => setPayMethod("transfer")}
-              className={`rounded-xl border p-3 text-left transition ${payMethod === "transfer" ? "border-gold bg-gold/10" : "border-line bg-surface hover:border-gold/40"}`}
+              aria-pressed={payMethod === "transfer"}
+              className={payRow(payMethod === "transfer")}
             >
-              <div className="text-sm font-medium text-ink">Bank transfer</div>
-              <div className="mt-0.5 text-xs text-muted">Send to an Esker account and upload your screenshot.</div>
+              <div className="flex items-center gap-2 text-[15px] font-semibold text-ink">
+                <Tick on={payMethod === "transfer"} />
+                Bank transfer
+              </div>
+              <div className="mt-1 pl-7 text-[13px] text-muted">Send to an Esker account and upload your screenshot.</div>
             </button>
           </div>
         )}
@@ -251,14 +258,14 @@ export function CheckoutForm({
 
         <div className={payMethod === "safepay" ? "hidden" : "mt-3 space-y-2"}>
           {accounts.map((a) => (
-            <div key={a.id} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3">
+            <div key={a.id} className="flex items-center justify-between gap-3 rounded-[20px] bg-surface p-4 shadow-[0_1px_0_var(--color-line)]">
               <div className="min-w-0">
-                <div className="text-sm font-medium text-ink">
-                  {a.title} · {a.bank} {a.primary && <span className="ml-1 rounded bg-gold/15 px-1.5 py-0.5 text-[10px] text-gold-deep">Primary</span>}
+                <div className="text-sm font-semibold text-ink">
+                  {a.title} · {a.bank} {a.primary && <span className="label ml-1 rounded-full bg-ice-tint px-2 py-0.5 text-[9.5px] tracking-[0.1em] text-brand-ink">Primary</span>}
                 </div>
-                <div className="truncate text-sm text-muted tnum">{a.iban}</div>
+                <div className="tnum truncate text-sm text-muted">{a.iban}</div>
               </div>
-              <button type="button" onClick={() => copy(a.iban)} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-xs text-ink transition hover:bg-surface-2">
+              <button type="button" onClick={() => copy(a.iban)} className="inline-flex h-9 shrink-0 items-center gap-1 rounded-full px-3.5 text-[13px] font-semibold text-ink shadow-[inset_0_0_0_1.5px_var(--color-line-hi)] transition-colors hover:text-brand">
                 {copied === a.iban ? <Check size={13} className="text-green" /> : <Copy size={13} />} {copied === a.iban ? "Copied" : "Copy"}
               </button>
             </div>
@@ -274,21 +281,19 @@ export function CheckoutForm({
           <input name="proof" type="file" accept="image/*" className={file} required={payMethod !== "safepay"} />
         </div>
 
-        <p className="mt-3 inline-flex items-start gap-1.5 text-xs text-muted">
-          <ShieldCheck size={14} className="mt-0.5 shrink-0 text-gold" />
+        <p className="mt-4 flex items-start gap-2 rounded-[14px] bg-ice-tint px-3.5 py-3 text-[13px] text-brand-ink">
+          <ShieldCheck size={15} className="mt-0.5 shrink-0" />
           Your advance is held securely and goes toward your stay. The balance is paid at check-in.
         </p>
       </section>
 
       <div>
-        <button type="submit" disabled={busy || idBlocking} className="w-full rounded-xl bg-gold px-5 py-3 text-sm font-medium text-ink transition hover:brightness-105 disabled:opacity-50">
+        <button type="submit" disabled={busy || idBlocking} className="h-[58px] w-full rounded-full bg-brand px-5 text-base font-bold text-warm transition-colors hover:bg-brand-pressed disabled:opacity-50">
           {busy
             ? payMethod === "safepay" ? "Taking you to secure payment…" : "Confirming…"
             : frontStatus === "checking" || backStatus === "checking"
               ? "Checking your ID…"
-              : payMethod === "safepay"
-                ? `Continue to secure payment — ${advanceLabel}`
-                : `Pay ${advanceLabel} advance & confirm`}
+              : `Pay ${advanceLabel} advance`}
         </button>
         {idBlocking && frontStatus !== "checking" && backStatus !== "checking" && (
           <p className="mt-2 text-center text-xs text-red">Please upload a valid ID above to continue.</p>
@@ -300,12 +305,27 @@ export function CheckoutForm({
         </p>
         <p className="mt-3 text-center text-xs text-muted">
           By confirming, you agree to Esker&apos;s{" "}
-          <Link href="/legal/terms" className="text-gold-deep underline hover:no-underline">Terms</Link>,{" "}
-          <Link href="/legal/cancellation" className="text-gold-deep underline hover:no-underline">Cancellation Policy</Link>, and{" "}
-          <Link href="/legal/privacy" className="text-gold-deep underline hover:no-underline">Privacy Policy</Link>.
+          <Link href="/legal/terms" className="text-brand underline hover:no-underline">Terms</Link>,{" "}
+          <Link href="/legal/cancellation" className="text-brand underline hover:no-underline">Cancellation Policy</Link>, and{" "}
+          <Link href="/legal/privacy" className="text-brand underline hover:no-underline">Privacy Policy</Link>.
         </p>
       </div>
     </form>
+  );
+}
+
+// Payment row (BUILD_REFERENCE): white, radius 20; selected = a 2px Esker Blue
+// ring and a filled check.
+const payRow = (on: boolean) =>
+  `min-h-16 rounded-[20px] bg-surface p-4 text-left transition-shadow ${
+    on ? "shadow-[inset_0_0_0_2px_var(--color-brand)]" : "shadow-[inset_0_0_0_1px_var(--color-line)] hover:shadow-[inset_0_0_0_1px_var(--color-line-hi)]"
+  }`;
+
+function Tick({ on }: { on: boolean }) {
+  return (
+    <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full ${on ? "bg-brand text-warm" : "shadow-[inset_0_0_0_1.5px_var(--color-line-hi)]"}`} aria-hidden>
+      {on && <Check size={12} strokeWidth={3} />}
+    </span>
   );
 }
 

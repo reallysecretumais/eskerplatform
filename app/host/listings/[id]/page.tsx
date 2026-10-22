@@ -53,10 +53,10 @@ export default async function EditListingPage({
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">{listing.title}</h1>
+          <h1 className="headline text-[30px] text-ink sm:text-[34px]">{listing.title}</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-3">
             <ListingStatusBadge status={listing.status} />
-            <Link href={`/host/listings/${listing.id}/preview`} className="inline-flex items-center gap-1 text-xs text-gold-deep hover:underline">
+            <Link href={`/host/listings/${listing.id}/preview`} className="inline-flex items-center gap-1 text-xs font-medium text-brand hover:text-brand-ink hover:underline">
               <Eye size={12} /> Preview as a guest
             </Link>
             {listing.status === "live" && (
@@ -72,17 +72,17 @@ export default async function EditListingPage({
       </div>
 
       {created && (
-        <div className="mt-4 rounded-2xl border border-green/30 bg-green/5 p-4 text-sm text-green">
+        <div className="mt-4 rounded-[22px] border border-green/30 bg-green/5 p-4 text-sm text-green">
           Draft saved — add your photos below, then submit for review when you&apos;re happy with it.
         </div>
       )}
       {listing.status === "rejected" && listing.reviewNote && (
-        <div className="mt-4 rounded-2xl border border-red/30 bg-red/5 p-4 text-sm text-red">
+        <div className="mt-4 rounded-[22px] border border-red/30 bg-red/5 p-4 text-sm text-red">
           <span className="font-medium">Not approved:</span> {listing.reviewNote} — update your listing below and resubmit.
         </div>
       )}
       {listing.status === "paused" && listing.reviewNote && (
-        <div className="mt-4 rounded-2xl border border-line bg-surface-2/60 p-4 text-sm text-muted">
+        <div className="mt-4 rounded-[22px] border border-line bg-surface-2/60 p-4 text-sm text-muted">
           <span className="font-medium text-ink">Note from Esker:</span> {listing.reviewNote}
         </div>
       )}

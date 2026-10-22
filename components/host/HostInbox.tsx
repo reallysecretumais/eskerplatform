@@ -8,7 +8,7 @@ import type { HostThreadSummary } from "@/lib/data/host";
 import type { ChatMessage } from "@/lib/data/chat";
 
 // The host's inbox — same two-pane pattern as the guest inbox, from the host's
-// perspective: guest bubbles left, the host's own replies right (gold). Live via
+// perspective: guest bubbles left, the host's own replies right (ice). Live via
 // the owner-scoped RLS realtime; sends go through the ownership-checked action.
 
 const fmtWhen = (iso: string | null) => {
@@ -62,18 +62,18 @@ export function HostInbox({ threads, firstMessages }: { threads: HostThreadSumma
               onClick={() => void open(t)}
               className={`flex items-center gap-3 border-b border-line px-4 py-3 text-left transition ${active ? "bg-surface-2" : "hover:bg-surface-2/60"}`}
             >
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gold/15 font-display text-sm font-semibold text-gold-deep">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ice-tint text-sm font-bold text-brand-ink">
                 {t.guestFirstName[0]?.toUpperCase() ?? "G"}
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="truncate text-sm font-medium text-ink">{t.guestFirstName}</span>
-                  <span className="ml-auto shrink-0 text-[10px] text-dim">{fmtWhen(t.lastAt)}</span>
+                  <span className="tnum ml-auto shrink-0 text-[10px] text-dim">{fmtWhen(t.lastAt)}</span>
                 </div>
                 <div className="truncate text-[11px] text-dim">{t.listingTitle}</div>
                 <div className="flex items-center gap-2">
                   <span className="truncate text-xs text-muted">{t.lastPreview ?? "New conversation"}</span>
-                  {unread && <span className="ml-auto grid h-4 min-w-4 shrink-0 place-items-center rounded-full bg-gold px-1 text-[10px] font-semibold text-ink">{t.unread}</span>}
+                  {unread && <span className="ml-auto grid h-4 min-w-4 shrink-0 place-items-center rounded-full bg-brand px-1 text-[10px] font-semibold text-warm tnum">{t.unread}</span>}
                 </div>
               </div>
             </button>
@@ -184,9 +184,9 @@ function HostThread({ conversationId, initialMessages }: { conversationId: strin
           const mine = m.direction === "outbound"; // host perspective
           return (
             <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[82%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${mine ? "rounded-br-md bg-gold/15 text-ink" : "rounded-bl-md border border-line bg-surface text-ink"}`}>
+              <div className={`max-w-[82%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${mine ? "rounded-br-md bg-ice-tint text-brand-ink" : "rounded-bl-md border border-line bg-surface text-ink"}`}>
                 <p className="whitespace-pre-wrap">{m.body}</p>
-                <div className={`mt-0.5 text-[10px] ${mine ? "text-right" : ""} text-dim`}>{fmtTime(m.created_at)}</div>
+                <div className={`tnum mt-0.5 text-[10px] ${mine ? "text-right" : ""} text-dim`}>{fmtTime(m.created_at)}</div>
               </div>
             </div>
           );
@@ -197,7 +197,7 @@ function HostThread({ conversationId, initialMessages }: { conversationId: strin
       {error && <p className="px-4 pb-1 text-xs text-red">{error}</p>}
 
       <div className="border-t border-line px-3 pb-3 pt-2">
-        <form onSubmit={submit} className="flex items-center gap-2 rounded-xl border border-line bg-surface p-1.5 focus-within:border-gold/50">
+        <form onSubmit={submit} className="flex items-center gap-2 rounded-full border border-line bg-surface p-1.5 pl-2.5 focus-within:border-brand/40">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -205,7 +205,7 @@ function HostThread({ conversationId, initialMessages }: { conversationId: strin
             aria-label="Reply to your guest"
             className="min-w-0 flex-1 bg-transparent px-2 py-1.5 text-sm text-ink outline-none placeholder:text-dim"
           />
-          <button type="submit" disabled={!input.trim() || busy} aria-label="Send" className="rounded-lg bg-gold p-2 text-ink transition hover:brightness-105 disabled:opacity-40">
+          <button type="submit" disabled={!input.trim() || busy} aria-label="Send" className="rounded-full bg-brand p-2 text-warm transition-colors hover:bg-brand-pressed disabled:opacity-40">
             <SendHorizonal size={16} />
           </button>
         </form>

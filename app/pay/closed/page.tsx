@@ -37,8 +37,8 @@ export default async function PayClosedPage({ searchParams }: { searchParams: Pr
   const c = COPY[why ?? ""] ?? COPY.invalid;
   return (
     <main className="flex min-h-screen items-center justify-center bg-bg px-6">
-      <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-8 text-center">
-        <h1 className="font-display text-xl font-semibold tracking-tight text-ink">{c.title}</h1>
+      <div className="w-full max-w-sm rounded-[22px] border border-line bg-surface p-8 text-center">
+        <h1 className="headline text-2xl text-ink">{c.title}</h1>
         <p className="mt-3 text-sm leading-relaxed text-muted">{c.body}</p>
         <p className="mt-4 text-xs text-dim">{brand.name}</p>
       </div>

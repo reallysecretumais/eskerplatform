@@ -13,17 +13,17 @@ export function HostIdVerify() {
 
   if (state?.ok) {
     return (
-      <div className="flex items-center gap-2 rounded-2xl border border-green/30 bg-green/5 p-4 text-sm font-medium text-green">
+      <div className="flex items-center gap-2 rounded-[22px] border border-green/30 bg-green/5 p-4 text-sm font-medium text-green">
         <Check size={16} /> {state.message}
       </div>
     );
   }
 
   return (
-    <form action={action} className="rounded-2xl border border-line bg-surface p-6">
+    <form action={action} className="rounded-[22px] border border-line bg-surface p-6">
       <div className="flex items-center gap-2">
-        <ShieldCheck size={18} className="text-gold-deep" />
-        <span className="font-display text-base font-semibold tracking-tight text-ink">Verify your CNIC</span>
+        <ShieldCheck size={18} className="text-brand" />
+        <span className="text-base font-bold text-ink">Verify your CNIC</span>
       </div>
       <p className="mt-1 text-xs text-dim">Required once before you can list. Checked instantly; stored privately.</p>
 
@@ -37,7 +37,7 @@ export function HostIdVerify() {
       <button
         type="submit"
         disabled={pending || !frontName || !backName}
-        className="mt-4 rounded-xl bg-ink px-5 py-2.5 text-sm font-medium text-bg transition hover:opacity-90 disabled:opacity-60"
+        className="mt-4 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-warm transition-colors hover:bg-brand-pressed disabled:opacity-60"
       >
         {pending ? "Verifying…" : "Verify identity"}
       </button>

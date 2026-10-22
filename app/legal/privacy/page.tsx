@@ -55,7 +55,7 @@ export default function PrivacyPolicy() {
       <h2>Your choices</h2>
       <p>
         You can ask us to access, correct, or delete your personal information (subject to records we must keep by law). Email{" "}
-        <a href={`mailto:${support.email}`} className="text-gold-deep underline hover:no-underline">{support.email}</a>{" "}
+        <a href={`mailto:${support.email}`} className="text-brand underline hover:no-underline">{support.email}</a>{" "}
         and we&apos;ll help.
       </p>
     </LegalPage>

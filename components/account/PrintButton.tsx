@@ -7,7 +7,7 @@ export function PrintButton() {
     <button
       type="button"
       onClick={() => window.print()}
-      className="inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2 text-sm font-medium text-bg transition hover:opacity-90 print:hidden"
+      className="inline-flex items-center gap-2 rounded-full border border-line-hi px-4 py-2 text-sm font-semibold text-ink transition hover:bg-surface-2 print:hidden"
     >
       <Printer size={15} /> Print / Save as PDF
     </button>

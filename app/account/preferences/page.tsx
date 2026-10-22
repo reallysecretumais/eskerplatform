@@ -7,7 +7,7 @@ export default async function PreferencesPage() {
   const account = await requireAccount();
   return (
     <div className="max-w-xl">
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Preferences</h1>
+      <h1 className="headline text-[34px] text-ink">Preferences</h1>
       <p className="mt-1 text-sm text-muted">Notifications and language.</p>
 
       <div className="mt-6">

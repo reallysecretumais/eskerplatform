@@ -9,11 +9,11 @@ export function LocationSection({ area }: { area?: string | null }) {
 
   return (
     <section>
-      <h2 className="mb-3 font-display text-lg font-semibold tracking-tight text-ink">Where you&apos;ll be</h2>
+      <h2 className="headline mb-3 text-2xl">Where you&apos;ll be</h2>
       <div className="mb-3 inline-flex items-center gap-1.5 text-sm text-muted">
-        <MapPin size={15} className="text-gold" /> {area}
+        <MapPin size={16} strokeWidth={1.8} className="text-brand" /> {area}
       </div>
-      <div className="overflow-hidden rounded-2xl border border-line">
+      <div className="overflow-hidden rounded-[22px] border border-line">
         <iframe
           src={map}
           title={`Map of ${area}`}

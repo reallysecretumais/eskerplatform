@@ -4,8 +4,7 @@ import { useActionState, useState } from "react";
 import { CreditCard, Building, Upload, Check } from "lucide-react";
 import { submitBalancePayment } from "@/app/account/actions";
 import type { BankAccount } from "@/lib/bankAccounts";
-
-const pkr = (n: number) => `₨${n.toLocaleString("en-PK")}`;
+import { rs } from "@/lib/listings";
 
 // Balance due + how to pay it. Today: bank transfer + screenshot (verified by the
 // team). The "Pay now by card" button is the Safepay seam — enabled when the
@@ -19,7 +18,7 @@ export function BalancePanel({ bookingId, balance, accounts }: { bookingId: stri
 
   if (state?.ok) {
     return (
-      <div className="rounded-2xl border border-green/30 bg-green/5 p-4">
+      <div className="rounded-[22px] border border-green/30 bg-green/5 p-4">
         <div className="flex items-center gap-2 text-sm font-medium text-green">
           <Check size={16} /> {state.message}
         </div>
@@ -28,10 +27,10 @@ export function BalancePanel({ bookingId, balance, accounts }: { bookingId: stri
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5">
+    <div className="rounded-[22px] border border-line bg-surface p-5">
       <div className="flex items-baseline justify-between">
         <span className="text-sm text-muted">Balance due at check-in</span>
-        <span className="font-display text-xl font-semibold text-gold-deep tabular-nums">{pkr(balance)}</span>
+        <span className="tnum text-xl font-bold text-brand">{rs(balance)}</span>
       </div>
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
@@ -39,14 +38,14 @@ export function BalancePanel({ bookingId, balance, accounts }: { bookingId: stri
           type="button"
           disabled
           title="Card & wallet payments are coming soon"
-          className="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-line bg-surface-2 px-4 py-2.5 text-sm text-dim"
+          className="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-full border border-line bg-surface-2 px-4 py-2.5 text-sm text-dim"
         >
-          <CreditCard size={16} /> Pay now by card <span className="text-[10px] uppercase tracking-wider">Soon</span>
+          <CreditCard size={16} /> Pay now by card <span className="label text-[10px]">Soon</span>
         </button>
         <button
           type="button"
           onClick={() => setOpenTransfer((v) => !v)}
-          className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-line px-4 py-2.5 text-sm text-ink transition hover:bg-surface-2"
+          className="flex flex-1 items-center justify-center gap-2 rounded-full border border-line-hi px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-surface-2"
         >
           <Building size={16} /> Pay by bank transfer
         </button>
@@ -54,7 +53,7 @@ export function BalancePanel({ bookingId, balance, accounts }: { bookingId: stri
 
       {openTransfer && (
         <div className="mt-4 border-t border-line pt-4">
-          <p className="text-xs text-muted">Transfer {pkr(balance)} to any Esker account below, then upload your screenshot — we&apos;ll confirm it.</p>
+          <p className="text-xs text-muted">Transfer <span className="tnum">{rs(balance)}</span> to any Esker account below, then upload your screenshot — we&apos;ll confirm it.</p>
           <div className="mt-3 space-y-2">
             {accounts.map((a) => (
               <div key={a.id} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">

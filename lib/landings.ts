@@ -21,6 +21,7 @@
 import type { PublicListing } from "@/lib/data/listings";
 import { slugify } from "@/lib/slug";
 import { LANDING_COPY } from "@/lib/landingCopy";
+import { rs } from "@/lib/listings";
 
 /** Below this a "collection" page isn't a collection. */
 export const MIN_LISTINGS = 3;
@@ -57,7 +58,7 @@ function plural(word: string): string {
   return `${w}s`;
 }
 
-const money = (n: number) => `₨${n.toLocaleString("en-PK")}`;
+const money = rs;
 const cheapest = (ls: PublicListing[]) => Math.min(...ls.map((l) => l.price));
 
 /**

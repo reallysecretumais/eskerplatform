@@ -356,7 +356,7 @@ function computeTrend(fin: Finance, count = 6): PartnerTrendPoint[] {
  * AFTER it, plus withdrawals after it, move the figure. Without an anchor this counts every
  * month Esker OS holds data for, which includes history settled before the
  * partnership and months whose expenses were never fully entered — the reason
- * B-17 read ₨694,018.
+ * B-17 read Rs 694,018.
  *
  * KEEP IN SYNC with Esker OS `lib/data/finance.ts getScopeCash` (same opening
  * row, same "strictly after as_of" rule) and its Partners page, which is where

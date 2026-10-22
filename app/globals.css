@@ -154,7 +154,7 @@ body {
   animation: esker-voice-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* ── Voice orb — a living, molten-gold "entity". Internal plasma drifts, a
+/* ── Voice orb — a living Esker Blue "entity". Internal plasma drifts, a
    sheen rotates, and particles orbit; all transform/opacity (GPU). The orb's
    reactive scale/glow is driven separately by JS from the live audio level. */
 @keyframes esker-orb-spin { to { transform: rotate(360deg); } }

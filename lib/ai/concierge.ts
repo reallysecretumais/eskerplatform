@@ -35,7 +35,7 @@ const rules = (marketsLine?: string) => `You are the ${brand.name} concierge —
 
 // Shared machine-readable tail: the recommended ids (+ a short per-listing
 // reason) ride home on trailing lines the client strips before display. The WHY
-// reasons become the small gold "why this matches" captions under each card.
+// reasons become the small Esker Blue "why this matches" captions under each card.
 const STAYS_TAIL = `At the very END of your reply, output exactly these lines (each on its own new line):
 STAYS: <comma-separated listing ids you are recommending, best first; leave empty if none>
 WHY: <for each recommended id: "id: reason" joined by "; " — each reason is a SHORT phrase (max 8 words) tying THAT listing to what the guest asked, e.g. "private pool + sleeps 6". Omit this line entirely if you recommend nothing.>

@@ -6,13 +6,12 @@ import { Sparkles, SendHorizonal, MapPin, BedDouble, Users, Banknote } from "luc
 import { interviewTurn } from "@/app/host/actions";
 import { PhotoStep } from "@/components/host/PhotoStep";
 import { INTERVIEW_OPENER, type InterviewFields, type ChatMsg } from "@/lib/ai/hostInterviewShared";
+import { rs } from "@/lib/listings";
 
 // The AI listing interview: a chat on the left, and the listing literally
-// writing itself on the right (gold pulse as each detail lands). On completion
+// writing itself on the right (an ice pulse as each detail lands). On completion
 // the server has already created the draft — we play a short "assembling" beat
 // and reveal the photo step right here (photos are the approval gate).
-
-const pkr = (n: number) => `₨${n.toLocaleString("en-PK")}`;
 
 export function ListingInterview() {
   const [messages, setMessages] = useState<ChatMsg[]>([{ role: "assistant", content: INTERVIEW_OPENER }]);
@@ -73,7 +72,7 @@ export function ListingInterview() {
   if (photoStepId) {
     return (
       <div>
-        <div className="mb-4 rounded-2xl border border-green/30 bg-green/5 p-4 text-sm text-green">
+        <div className="mb-4 rounded-[22px] border border-green/30 bg-green/5 p-4 text-sm text-green">
           Your listing is drafted ✨ — now let&apos;s make it shine with photos.
         </div>
         <PhotoStep draftId={photoStepId} />
@@ -84,11 +83,11 @@ export function ListingInterview() {
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
       {/* Chat */}
-      <div className="flex h-[62dvh] min-h-[420px] flex-col overflow-hidden rounded-2xl border border-line bg-surface">
+      <div className="flex h-[62dvh] min-h-[420px] flex-col overflow-hidden rounded-[22px] border border-line bg-surface">
         <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
-          <Sparkles size={15} className="text-gold-deep" />
+          <Sparkles size={15} className="text-brand" />
           <span className="text-sm font-semibold text-ink">Listing assistant</span>
-          <span className="ml-auto text-[11px] text-dim">~2 minutes</span>
+          <span className="tnum ml-auto text-[11px] text-dim">~2 minutes</span>
         </div>
 
         <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-4 py-4">
@@ -96,7 +95,7 @@ export function ListingInterview() {
             <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
               <div
                 className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${
-                  m.role === "user" ? "rounded-br-md bg-gold/15 text-ink" : "rounded-bl-md border border-line bg-bg/40 text-ink"
+                  m.role === "user" ? "rounded-br-md bg-ice-tint text-brand-ink" : "rounded-bl-md border border-line bg-bg/40 text-ink"
                 }`}
               >
                 {m.content}
@@ -114,7 +113,7 @@ export function ListingInterview() {
           )}
           {assembling && (
             <div className="flex justify-center py-2">
-              <span className="inline-flex items-center gap-2 rounded-full bg-gold/10 px-4 py-1.5 text-sm font-medium text-gold-deep">
+              <span className="inline-flex items-center gap-2 rounded-full bg-ice-tint px-4 py-1.5 text-sm font-medium text-brand-ink">
                 <Sparkles size={14} className="animate-pulse" /> Assembling your listing…
               </span>
             </div>
@@ -130,7 +129,7 @@ export function ListingInterview() {
         )}
 
         <div className="border-t border-line px-3 pb-3 pt-2">
-          <form onSubmit={submit} className="flex items-center gap-2 rounded-xl border border-line bg-bg/40 p-1.5 focus-within:border-gold/50">
+          <form onSubmit={submit} className="flex items-center gap-2 rounded-full border border-line bg-bg/40 p-1.5 pl-2.5 focus-within:border-brand/40">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -139,7 +138,7 @@ export function ListingInterview() {
               disabled={assembling}
               className="min-w-0 flex-1 bg-transparent px-2 py-1.5 text-sm text-ink outline-none placeholder:text-dim"
             />
-            <button type="submit" disabled={!input.trim() || busy || assembling} aria-label="Send" className="rounded-lg bg-gold p-2 text-ink transition hover:brightness-105 disabled:opacity-40">
+            <button type="submit" disabled={!input.trim() || busy || assembling} aria-label="Send" className="rounded-full bg-brand p-2 text-warm transition-colors hover:bg-brand-pressed disabled:opacity-40">
               <SendHorizonal size={16} />
             </button>
           </form>
@@ -148,14 +147,14 @@ export function ListingInterview() {
 
       {/* Live preview — the listing writing itself */}
       <aside className="lg:sticky lg:top-24 lg:self-start">
-        <div className="overflow-hidden rounded-2xl border border-line bg-surface">
-          <div className="border-b border-line bg-surface-2/50 px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-dim">
+        <div className="overflow-hidden rounded-[22px] border border-line bg-surface">
+          <div className="border-b border-line bg-surface-2/50 label px-4 py-2.5 text-[10.5px] text-dim">
             Your listing — building live
           </div>
           <div className="space-y-3 p-4">
             <Pulse on={fresh.has("title")}>
               {known.title ? (
-                <div className="font-display text-base font-semibold leading-snug text-ink">{known.title}</div>
+                <div className="text-base font-bold leading-snug text-ink">{known.title}</div>
               ) : (
                 <div className="space-y-1.5">
                   <div className="h-3.5 w-4/5 animate-pulse rounded bg-surface-2" />
@@ -173,8 +172,8 @@ export function ListingInterview() {
 
             <Pulse on={fresh.has("price")}>
               {known.price ? (
-                <div className="font-display text-lg font-semibold text-gold-deep tabular-nums">
-                  {pkr(known.price)}<span className="text-xs font-normal text-dim"> / night</span>
+                <div className="text-lg font-bold text-brand">
+                  <span className="tnum">{rs(known.price)}</span><span className="text-xs font-normal text-dim"> / night</span>
                 </div>
               ) : (
                 <div className="inline-flex items-center gap-1.5 text-xs text-dim"><Banknote size={12} /> Price — we&apos;ll get there</div>
@@ -185,9 +184,9 @@ export function ListingInterview() {
               <Pulse on={fresh.has("amenities")}>
                 <div className="flex flex-wrap gap-1">
                   {known.amenities!.slice(0, 8).map((a) => (
-                    <span key={a} className="rounded-full bg-gold/10 px-2 py-0.5 text-[10px] font-medium text-gold-deep">{a}</span>
+                    <span key={a} className="rounded-full bg-ice-tint px-2 py-0.5 text-[10px] font-medium text-brand-ink">{a}</span>
                   ))}
-                  {known.amenities!.length > 8 && <span className="text-[10px] text-dim">+{known.amenities!.length - 8}</span>}
+                  {known.amenities!.length > 8 && <span className="tnum text-[10px] text-dim">+{known.amenities!.length - 8}</span>}
                 </div>
               </Pulse>
             )}
@@ -217,7 +216,7 @@ function Dot({ delay }: { delay: string }) {
 
 function Pulse({ on, children }: { on: boolean; children: React.ReactNode }) {
   return (
-    <div className={`rounded-lg transition-all duration-700 ${on ? "bg-gold/10 shadow-[0_0_0_1.5px_var(--color-gold,#c9a84c)] p-1.5 -m-1.5" : ""}`}>
+    <div className={`rounded-lg transition-all duration-700 ${on ? "bg-ice-tint ring-[1.5px] ring-brand/40 p-1.5 -m-1.5" : ""}`}>
       {children}
     </div>
   );
@@ -226,8 +225,8 @@ function Pulse({ on, children }: { on: boolean; children: React.ReactNode }) {
 function Chip({ icon, on, value, placeholder }: { icon: React.ReactNode; on: boolean; value?: string; placeholder: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-medium transition-all duration-700 ${
-        value ? (on ? "border-gold bg-gold/15 text-gold-deep" : "border-gold/30 bg-gold/5 text-gold-deep") : "border-line text-dim"
+      className={`tnum inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-medium transition-all duration-700 ${
+        value ? (on ? "border-brand/40 bg-ice text-brand-ink" : "border-transparent bg-ice-tint text-brand-ink") : "border-line text-dim"
       }`}
     >
       {icon} {value ?? placeholder}

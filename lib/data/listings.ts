@@ -134,7 +134,7 @@ export function slimListings(listings: PublicListing[]): SlimListing[] {
 // order. Before the migrations run, `public_listings` simply doesn't return the
 // geography/mode columns, so we fill them from the category — the same rule the
 // migration itself seeds. After the migrations, the DB's answer always wins.
-// Without this, a code-first deploy would render "₨35,000 / undefined".
+// Without this, a code-first deploy would render "Rs 35,000 / undefined".
 function normalizeListing(row: Record<string, unknown>): PublicListing {
   const category = (row.category as string | null) ?? null;
   const fallback = unitForCategory(category ?? "");

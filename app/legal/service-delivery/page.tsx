@@ -75,7 +75,7 @@ export default function ServiceDeliveryPolicy() {
       <p>
         You pay an advance to secure the booking (25% of the total for standard stays, 50% for Esker
         Exclusive), and the balance at or before check-in. Full terms are in our{" "}
-        <Link href="/legal/terms" className="text-gold-deep underline hover:no-underline">
+        <Link href="/legal/terms" className="text-brand underline hover:no-underline">
           Terms of Service
         </Link>
         .
@@ -86,7 +86,7 @@ export default function ServiceDeliveryPolicy() {
         If the property is not as described, or anything about your stay isn&apos;t right, contact us
         immediately — our guest support runs 24/7. We will put it right, move you to a comparable
         stay, or refund you. Cancellations and refunds are covered by our{" "}
-        <Link href="/legal/cancellation" className="text-gold-deep underline hover:no-underline">
+        <Link href="/legal/cancellation" className="text-brand underline hover:no-underline">
           Cancellation &amp; Refund Policy
         </Link>
         .
@@ -95,15 +95,15 @@ export default function ServiceDeliveryPolicy() {
       <h2>Reaching us</h2>
       <p>
         Call or WhatsApp{" "}
-        <a href={`tel:${company.phone}`} className="text-gold-deep underline hover:no-underline">
+        <a href={`tel:${company.phone}`} className="text-brand underline hover:no-underline">
           {company.phone}
         </a>
         , email{" "}
-        <a href={`mailto:${support.email}`} className="text-gold-deep underline hover:no-underline">
+        <a href={`mailto:${support.email}`} className="text-brand underline hover:no-underline">
           {support.email}
         </a>
         , or see our{" "}
-        <Link href="/contact" className="text-gold-deep underline hover:no-underline">
+        <Link href="/contact" className="text-brand underline hover:no-underline">
           contact page
         </Link>
         .

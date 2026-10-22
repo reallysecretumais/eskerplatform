@@ -1,45 +1,33 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { SiteNav } from "@/components/SiteNav";
+import { SiteFooter } from "@/components/SiteFooter";
 import { getAccount } from "@/lib/auth";
-import { brand } from "@/lib/brand";
+import { getListings, getMarkets } from "@/lib/data/listings";
+import { liveCities } from "@/lib/geo";
 import { support } from "@/lib/payments";
 
-// Shared shell for the legal pages — nav + readable prose column + footer.
+// Shared shell for the legal pages — nav + readable prose column + the site footer.
 export async function LegalPage({ title, updated, children }: { title: string; updated: string; children: ReactNode }) {
   const account = await getAccount();
+  const cities = liveCities(await getListings(), await getMarkets());
   return (
     <main className="min-h-full">
       <SiteNav theme="light" account={account} />
 
-      <article className="mx-auto max-w-2xl px-6 py-12">
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">{title}</h1>
-        <p className="mt-2 text-sm text-dim">Last updated {updated}</p>
-        <div className="mt-8 space-y-7 text-[15px] leading-relaxed text-muted [&_h2]:font-display [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-ink [&_h2]:tracking-tight [&_h2]:mt-1 [&_h2+p]:mt-2 [&_p]:mt-2 [&_ul]:mt-2 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:mt-1 [&_strong]:text-ink">
+      <article className="mx-auto max-w-2xl px-6 pb-16 pt-12">
+        <h1 className="headline text-[34px] text-ink sm:text-[40px]">{title}</h1>
+        <p className="mt-3 text-sm text-dim">Last updated <span className="tnum">{updated}</span></p>
+        <div className="mt-8 space-y-7 text-[15px] leading-relaxed text-muted [&_h2]:headline [&_h2]:text-2xl [&_h2]:text-ink [&_h2]:mt-1 [&_h2+p]:mt-2 [&_p]:mt-2 [&_ul]:mt-2 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:mt-1 [&_strong]:text-ink">
           {children}
         </div>
         <div className="mt-12 border-t border-line pt-6 text-sm text-muted">
           Questions about this policy? Message us on{" "}
-          <a href={`https://wa.me/${support.whatsapp}`} className="text-gold-deep underline hover:no-underline">WhatsApp</a> or email{" "}
-          <a href={`mailto:${support.email}`} className="text-gold-deep underline hover:no-underline">{support.email}</a>.
+          <a href={`https://wa.me/${support.whatsapp}`} className="text-brand underline hover:no-underline">WhatsApp</a> or email{" "}
+          <a href={`mailto:${support.email}`} className="text-brand underline hover:no-underline">{support.email}</a>.
         </div>
       </article>
 
-      <footer className="border-t border-line">
-        <div className="mx-auto max-w-2xl px-6 py-8 text-sm text-muted">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <span className="font-display font-semibold text-ink">{brand.name}</span>
-            <div className="flex flex-wrap gap-x-5 gap-y-1">
-              <Link href="/stays" className="hover:text-ink">Browse stays</Link>
-              <Link href="/contact" className="hover:text-ink">Contact</Link>
-              <Link href="/legal/terms" className="hover:text-ink">Terms</Link>
-              <Link href="/legal/cancellation" className="hover:text-ink">Cancellation &amp; refunds</Link>
-              <Link href="/legal/service-delivery" className="hover:text-ink">Service delivery</Link>
-              <Link href="/legal/privacy" className="hover:text-ink">Privacy</Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter cities={cities} />
     </main>
   );
 }

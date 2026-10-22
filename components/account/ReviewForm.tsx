@@ -38,7 +38,7 @@ export function ReviewForm({ bookingId, existing }: { bookingId: string; existin
   // Saved view
   if (!editing && saved) {
     return (
-      <div className="rounded-2xl border border-gold/30 bg-gradient-to-br from-gold/[0.07] to-transparent p-5">
+      <div className="rounded-[22px] border border-line bg-surface p-5">
         <div className="flex items-center justify-between">
           <div className="inline-flex items-center gap-1.5 text-sm font-medium text-green">
             <Check size={15} /> Your review is live
@@ -49,7 +49,7 @@ export function ReviewForm({ bookingId, existing }: { bookingId: string; existin
         </div>
         <div className="mt-3 flex items-center gap-2">
           <StarsDisplay value={saved.rating} size={16} />
-          <span className="font-display text-sm font-semibold text-ink tabular-nums">{saved.rating.toFixed(2).replace(/\.?0+$/, "")}</span>
+          <span className="tnum text-sm font-bold text-ink">{saved.rating.toFixed(2).replace(/\.?0+$/, "")}</span>
         </div>
         <p className="mt-2 text-sm leading-relaxed text-ink">“{saved.body}”</p>
       </div>
@@ -58,10 +58,10 @@ export function ReviewForm({ bookingId, existing }: { bookingId: string; existin
 
   // Edit / create view
   return (
-    <div className="overflow-hidden rounded-2xl border border-line bg-surface">
+    <div className="overflow-hidden rounded-[22px] border border-line bg-surface">
       <div className="flex items-center gap-2 border-b border-line bg-surface-2/50 px-5 py-3">
-        <Sparkles size={16} className="text-gold-deep" />
-        <span className="font-display text-base font-semibold tracking-tight text-ink">
+        <Sparkles size={16} className="text-brand" />
+        <span className="text-base font-bold text-ink">
           {saved ? "Edit your review" : "How was your stay?"}
         </span>
       </div>
@@ -78,7 +78,7 @@ export function ReviewForm({ bookingId, existing }: { bookingId: string; existin
           rows={4}
           maxLength={2000}
           placeholder="What made it special? The space, the location, the little touches…"
-          className="mt-4 w-full resize-none rounded-xl border border-line bg-bg/40 px-3.5 py-3 text-sm text-ink outline-none transition placeholder:text-dim focus:border-gold/50"
+          className="mt-4 w-full resize-none rounded-xl border border-line bg-bg/40 px-3.5 py-3 text-sm text-ink outline-none transition placeholder:text-dim focus:border-brand/40"
         />
 
         <input
@@ -86,7 +86,7 @@ export function ReviewForm({ bookingId, existing }: { bookingId: string; existin
           onChange={(e) => setLocation(e.target.value)}
           maxLength={60}
           placeholder="Your city (optional) — adds trust for other guests"
-          className="mt-3 w-full rounded-xl border border-line bg-bg/40 px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-gold/50"
+          className="mt-3 w-full rounded-xl border border-line bg-bg/40 px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-brand/40"
         />
 
         {error && <p className="mt-3 text-sm text-red">{error}</p>}
@@ -96,7 +96,7 @@ export function ReviewForm({ bookingId, existing }: { bookingId: string; existin
             type="button"
             onClick={post}
             disabled={pending}
-            className="rounded-xl bg-ink px-5 py-2.5 text-sm font-medium text-bg transition hover:opacity-90 disabled:opacity-60"
+            className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-warm transition hover:bg-brand-pressed disabled:opacity-60"
           >
             {pending ? "Posting…" : saved ? "Update review" : "Post review"}
           </button>

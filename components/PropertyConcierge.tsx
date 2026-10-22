@@ -80,10 +80,10 @@ export function PropertyConcierge({ property, listings }: { property: SlimListin
   };
 
   return (
-    <section className="rounded-2xl border border-line bg-surface p-5">
+    <section className="rounded-[22px] border border-line bg-surface p-5">
       <div className="flex items-center gap-2">
-        <Sparkles size={16} className="text-gold" />
-        <h2 className="font-display text-base font-semibold tracking-tight text-ink">Ask about this place</h2>
+        <Sparkles size={16} className="text-brand" />
+        <h2 className="text-base font-bold text-ink">Ask about this place</h2>
       </div>
       <p className="mt-1 text-sm text-muted">Instant answers — parking, check-in, family-friendly, what&apos;s nearby. Even in Roman Urdu.</p>
 
@@ -96,7 +96,7 @@ export function PropertyConcierge({ property, listings }: { property: SlimListin
               {t.matches.length > 0 && (
                 <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {t.matches.map((l) => (
-                    <StayCard key={l.id} title={l.title} category={l.category ?? "Stay"} area={l.area ?? ""} city={l.city} price={l.price} priceUnit={l.price_unit} exclusive={l.esker_exclusive} photo={l.photo ?? undefined} href={stayPath(l)} />
+                    <StayCard key={l.id} title={l.title} category={l.category ?? "Stay"} area={l.area ?? ""} city={l.city} price={l.price} priceUnit={l.price_unit} exclusive={l.esker_exclusive} photo={l.photo ?? undefined} href={stayPath(l)} size="compact" />
                   ))}
                 </div>
               )}
@@ -107,7 +107,7 @@ export function PropertyConcierge({ property, listings }: { property: SlimListin
               <div className="text-xs font-medium text-dim">{pendingQ}</div>
               <p className="mt-1 text-[15px] leading-relaxed text-ink">
                 {partial}
-                <span className="ml-0.5 animate-pulse text-gold">▍</span>
+                <span className="ml-0.5 animate-pulse text-brand">▍</span>
               </p>
             </div>
           )}
@@ -117,21 +117,21 @@ export function PropertyConcierge({ property, listings }: { property: SlimListin
       {thread.length === 0 && !busy && (
         <div className="mt-4 flex flex-wrap gap-2">
           {SUGGEST.map((s) => (
-            <button key={s} type="button" onClick={() => ask(s)} className="rounded-full border border-line bg-bg px-3.5 py-1.5 text-xs text-muted transition hover:border-gold/40 hover:text-ink">
+            <button key={s} type="button" onClick={() => ask(s)} className="rounded-full border border-line bg-bg px-3.5 py-1.5 text-xs text-muted transition hover:border-line-hi hover:text-ink">
               {s}
             </button>
           ))}
         </div>
       )}
 
-      <form onSubmit={submit} className="mt-4 flex items-center gap-2 rounded-xl border border-line bg-bg p-1.5 focus-within:border-gold/50">
+      <form onSubmit={submit} className="mt-4 flex items-center gap-2 rounded-full border border-line bg-bg p-1.5 focus-within:border-brand/40 focus-within:ring-2 focus-within:ring-brand/40">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask anything about this place…"
-          className="min-w-0 flex-1 bg-transparent px-2 py-1.5 text-sm text-ink outline-none placeholder:text-dim"
+          className="min-w-0 flex-1 bg-transparent px-3 py-1.5 text-sm text-ink outline-none placeholder:text-dim"
         />
-        <button type="submit" disabled={busy} className="rounded-lg bg-gold px-4 py-2 text-sm font-medium text-ink transition hover:brightness-105 disabled:opacity-50">
+        <button type="submit" disabled={busy} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-warm transition hover:bg-brand-pressed disabled:opacity-50">
           Ask
         </button>
       </form>

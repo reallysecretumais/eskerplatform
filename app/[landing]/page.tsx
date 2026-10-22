@@ -5,14 +5,14 @@ import { ArrowRight, MapPin } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { StayCard } from "@/components/StayCard";
 import { JsonLd } from "@/components/JsonLd";
-import { EskerLogo } from "@/components/EskerLogo";
-import { getListings } from "@/lib/data/listings";
+import { SiteFooter } from "@/components/SiteFooter";
+import { getListings, getMarkets } from "@/lib/data/listings";
+import { liveCities } from "@/lib/geo";
 import { getAccount } from "@/lib/auth";
 import { findLanding, landingPages, relatedLandings } from "@/lib/landings";
 import { collectionLd, breadcrumbLd } from "@/lib/seo";
 import { stayPath } from "@/lib/slug";
 import { formatPrice } from "@/lib/listings";
-import { brand } from "@/lib/brand";
 
 // SEO landing pages (/short-stay-f-10-f-11-islamabad, /penthouses-islamabad …).
 // This is a single catch-all at the root, so every real route above it wins;
@@ -47,6 +47,7 @@ export default async function LandingPage({ params }: Params) {
   if (!page) notFound();
 
   const account = await getAccount();
+  const cities = liveCities(listings, await getMarkets());
   const related = relatedLandings(page, listings);
   const from = Math.min(...page.listings.map((l) => l.price));
   const { amount, unit } = formatPrice(from, page.listings[0].price_unit);
@@ -62,7 +63,7 @@ export default async function LandingPage({ params }: Params) {
     .map(([a]) => a);
 
   return (
-    <main className="min-h-full pb-16">
+    <main className="min-h-full">
       <JsonLd
         data={[
           collectionLd({ title: page.metaTitle, description: page.metaDescription, path: `/${page.slug}`, listings: page.listings }),
@@ -75,7 +76,7 @@ export default async function LandingPage({ params }: Params) {
       />
       <SiteNav theme="light" account={account} />
 
-      <div className="mx-auto max-w-6xl px-6 py-8">
+      <div className="mx-auto max-w-[1248px] px-5 pb-16 pt-8 sm:px-6">
         {/* Breadcrumb — visible, matching the JSON-LD trail */}
         <nav aria-label="Breadcrumb" className="text-xs text-dim">
           <Link href="/" className="hover:text-ink">Home</Link>
@@ -89,7 +90,7 @@ export default async function LandingPage({ params }: Params) {
           )}
         </nav>
 
-        <h1 className="mt-3 font-display text-3xl font-semibold tracking-tight text-ink">{page.heading}</h1>
+        <h1 className="headline mt-3 text-[34px] text-ink sm:text-[40px]">{page.heading}</h1>
 
         {/* Live facts — always true because they're computed, never written */}
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted">
@@ -101,7 +102,7 @@ export default async function LandingPage({ params }: Params) {
           </span>
           {page.city && (
             <span className="inline-flex items-center gap-1">
-              <MapPin size={14} className="text-gold" /> {page.area ? `${page.area}, ${page.city}` : page.city}
+              <MapPin size={14} className="text-brand" /> {page.area ? `${page.area}, ${page.city}` : page.city}
             </span>
           )}
         </div>
@@ -120,7 +121,7 @@ export default async function LandingPage({ params }: Params) {
         )}
 
         {/* The listings */}
-        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="mt-8 grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
           {page.listings.map((l) => (
             <StayCard
               key={l.id}
@@ -141,7 +142,7 @@ export default async function LandingPage({ params }: Params) {
             none of them is an orphan and crawl depth stays shallow. */}
         {related.length > 0 && (
           <section className="mt-12 border-t border-line pt-8">
-            <h2 className="font-display text-lg font-semibold tracking-tight text-ink">Keep looking</h2>
+            <h2 className="headline text-2xl text-ink">Keep looking</h2>
             <div className="mt-3 flex flex-wrap gap-2">
               {related.map((r) => (
                 <Link
@@ -163,12 +164,7 @@ export default async function LandingPage({ params }: Params) {
         )}
       </div>
 
-      <footer className="border-t border-line">
-        <div className="mx-auto max-w-6xl px-6 py-8 text-sm text-muted">
-          <EskerLogo className="text-ink" />
-          <p className="mt-2 text-xs text-dim">{brand.tagline}</p>
-        </div>
-      </footer>
+      <SiteFooter cities={cities} />
     </main>
   );
 }

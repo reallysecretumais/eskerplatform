@@ -16,18 +16,18 @@ export default async function PartnerProperties() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Your properties</h1>
+      <h1 className="headline text-[30px] text-ink sm:text-[34px]">Your properties</h1>
 
       {properties.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-line bg-surface p-8 text-center">
-          <LineChart size={22} className="mx-auto text-gold-deep" />
+        <div className="mt-8 rounded-[22px] border border-line bg-surface p-8 text-center">
+          <LineChart size={22} className="mx-auto text-brand" />
           <p className="mt-2 text-sm text-muted">No properties are linked to your account yet.</p>
         </div>
       ) : (
         <div className="mt-6 space-y-4">
           {properties.map((p) => (
-            <Link key={p.id} href={`/partner/properties/${p.id}`} className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4 transition hover:border-line-hi">
-              <div className="h-16 shrink-0 overflow-hidden rounded-lg" style={{ width: 84, backgroundColor: "#e7e1d6", backgroundImage: p.photo ? `url(${p.photo})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }} />
+            <Link key={p.id} href={`/partner/properties/${p.id}`} className="flex items-center gap-4 rounded-[22px] border border-line bg-surface p-4 transition hover:border-line-hi">
+              <div className="h-16 shrink-0 overflow-hidden rounded-lg" style={{ width: 84, backgroundColor: "var(--color-surface-2)", backgroundImage: p.photo ? `url(${p.photo})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }} />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium text-ink">{p.title}</div>
                 <div className="text-xs text-muted">{p.area ?? ""}</div>

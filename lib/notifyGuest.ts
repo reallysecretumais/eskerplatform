@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email";
 import { bookingReceivedEmail } from "@/lib/emailTemplates";
+import { rs } from "@/lib/listings";
 
 // Fan-out for a new website booking: guest email (now), guest WhatsApp (queued
 // for the CRM's inbox sender to deliver natively when WA is live), and an
@@ -43,7 +44,7 @@ type BookingReceived = {
   awaitingPayment?: boolean;
 };
 
-const pkr = (n: number) => `₨${Math.round(n).toLocaleString("en-PK")}`;
+const pkr = rs;
 const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
 export async function notifyBookingReceived(b: BookingReceived): Promise<void> {

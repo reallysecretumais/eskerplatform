@@ -8,7 +8,7 @@ export function PreferencesForm({ notifyEmail, notifyWhatsapp, language }: { not
   const [state, action, pending] = useActionState(updatePreferences, null);
 
   return (
-    <form action={action} className="rounded-2xl border border-line bg-surface p-6">
+    <form action={action} className="rounded-[22px] border border-line bg-surface p-6">
       <fieldset>
         <legend className="text-sm font-medium text-ink">How should we reach you?</legend>
         <p className="mt-0.5 text-xs text-dim">Booking updates and check-in details.</p>
@@ -27,7 +27,7 @@ export function PreferencesForm({ notifyEmail, notifyWhatsapp, language }: { not
       </fieldset>
 
       <div className="mt-6 flex items-center gap-3">
-        <button type="submit" disabled={pending} className="rounded-xl bg-ink px-4 py-2 text-sm font-medium text-bg transition hover:opacity-90 disabled:opacity-60">
+        <button type="submit" disabled={pending} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-warm transition hover:bg-brand-pressed disabled:opacity-60">
           {pending ? "Saving…" : "Save preferences"}
         </button>
         {state?.ok && (
@@ -44,7 +44,7 @@ export function PreferencesForm({ notifyEmail, notifyWhatsapp, language }: { not
 function Toggle({ name, label, defaultChecked }: { name: string; label: string; defaultChecked: boolean }) {
   return (
     <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-line bg-bg/40 px-3.5 py-2.5">
-      <input type="checkbox" name={name} defaultChecked={defaultChecked} className="h-4 w-4 accent-[var(--color-gold,#C9A84C)]" />
+      <input type="checkbox" name={name} defaultChecked={defaultChecked} className="h-4 w-4 accent-brand" />
       <span className="text-sm text-ink">{label}</span>
     </label>
   );
@@ -52,8 +52,8 @@ function Toggle({ name, label, defaultChecked }: { name: string; label: string; 
 
 function Radio({ name, value, label, defaultChecked }: { name: string; value: string; label: string; defaultChecked: boolean }) {
   return (
-    <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-xl border border-line bg-bg/40 px-3.5 py-2.5 has-[:checked]:border-gold/50 has-[:checked]:bg-gold/5">
-      <input type="radio" name={name} value={value} defaultChecked={defaultChecked} className="h-4 w-4 accent-[var(--color-gold,#C9A84C)]" />
+    <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-xl border border-line bg-bg/40 px-3.5 py-2.5 has-[:checked]:border-brand/40 has-[:checked]:bg-ice-tint">
+      <input type="radio" name={name} value={value} defaultChecked={defaultChecked} className="h-4 w-4 accent-brand" />
       <span className="text-sm text-ink">{label}</span>
     </label>
   );

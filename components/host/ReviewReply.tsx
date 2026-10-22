@@ -42,7 +42,7 @@ export function ReviewReply({ reviewId, initial }: { reviewId: string; initial: 
       <button
         type="button"
         onClick={() => setEditing(true)}
-        className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-gold-deep transition hover:underline"
+        className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand transition hover:text-brand-ink hover:underline"
       >
         <Reply size={14} /> Reply publicly
       </button>
@@ -58,14 +58,14 @@ export function ReviewReply({ reviewId, initial }: { reviewId: string; initial: 
         maxLength={1000}
         autoFocus
         placeholder="Thank your guest, or respond gracefully to any feedback… (shown publicly)"
-        className="w-full resize-none rounded-xl border border-line bg-bg/40 px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-gold/50"
+        className="w-full resize-none rounded-xl border border-line bg-bg/40 px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-brand/40"
       />
       {err && <p className="mt-1.5 text-xs text-red">{err}</p>}
       <div className="mt-2 flex items-center gap-2">
-        <button type="button" onClick={save} disabled={pending} className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-3.5 py-1.5 text-xs font-medium text-bg transition hover:opacity-90 disabled:opacity-60">
+        <button type="button" onClick={save} disabled={pending} className="inline-flex items-center gap-1.5 rounded-full bg-brand px-3.5 py-1.5 text-xs font-semibold text-warm transition-colors hover:bg-brand-pressed disabled:opacity-60">
           <Check size={13} /> {pending ? "Saving…" : saved ? "Update reply" : "Post reply"}
         </button>
-        <button type="button" onClick={() => { setEditing(false); setText(saved ?? ""); setErr(null); }} className="inline-flex items-center gap-1 rounded-lg border border-line px-3 py-1.5 text-xs text-muted transition hover:text-ink">
+        <button type="button" onClick={() => { setEditing(false); setText(saved ?? ""); setErr(null); }} className="inline-flex items-center gap-1 rounded-full border border-line-hi px-3 py-1.5 text-xs font-medium text-ink transition hover:bg-surface-2">
           <X size={13} /> Cancel
         </button>
         {saved && text.trim() === "" && (

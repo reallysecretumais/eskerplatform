@@ -1,7 +1,6 @@
 import { TrendingUp, Wallet, Percent } from "lucide-react";
 import { isMonthInProgress, type PartnerPerformance } from "@/lib/data/partner";
-
-const pkr = (n: number) => `₨${n.toLocaleString("en-PK")}`;
+import { rs } from "@/lib/listings";
 
 // The partner's side of the month, cash basis: revenue collected, itemised
 // operating costs, net profit, and their share. Esker's share and the management
@@ -26,17 +25,17 @@ export function PerformanceCard({
   return (
     <section>
       <div className="grid grid-cols-3 gap-3">
-        <Stat icon={<TrendingUp size={15} />} label="Revenue collected" value={pkr(p.revenue)} />
-        <Stat icon={<Wallet size={15} />} label="Net profit" value={pkr(p.net)} accent />
-        <Stat icon={<Percent size={15} />} label={shareLabel} value={pkr(p.yourShare)} accent />
+        <Stat icon={<TrendingUp size={15} />} label="Revenue collected" value={rs(p.revenue)} />
+        <Stat icon={<Wallet size={15} />} label="Net profit" value={rs(p.net)} accent />
+        <Stat icon={<Percent size={15} />} label={shareLabel} value={rs(p.yourShare)} accent />
       </div>
       <div className="mt-2 text-xs text-dim">
-        {occupancy}% occupancy{live ? " so far" : ""} · {bookingsCount} {bookingsCount === 1 ? "booking" : "bookings"} this month
+        <span className="tnum">{occupancy}%</span> occupancy{live ? " so far" : ""} · <span className="tnum">{bookingsCount}</span> {bookingsCount === 1 ? "booking" : "bookings"} this month
       </div>
 
       {/* Operating costs, itemised */}
-      <div className="mt-4 rounded-2xl border border-line bg-surface p-4">
-        <div className="mb-2 text-xs font-medium uppercase tracking-wider text-dim">Operating costs</div>
+      <div className="mt-4 rounded-[22px] border border-line bg-surface p-4">
+        <div className="label mb-2 text-[11px] text-dim">Operating costs</div>
         {p.expenseLines.length === 0 ? (
           <div className="text-sm text-muted">No costs recorded for this month.</div>
         ) : (
@@ -44,12 +43,12 @@ export function PerformanceCard({
             {p.expenseLines.map((l) => (
               <div key={l.category} className="flex items-center justify-between py-1">
                 <span className="text-muted">{l.label}</span>
-                <span className="tabular-nums text-ink">{pkr(l.amount)}</span>
+                <span className="tnum text-ink">{rs(l.amount)}</span>
               </div>
             ))}
             <div className="mt-1 flex items-center justify-between border-t border-line pt-2 font-medium">
               <span>Total costs</span>
-              <span className="tabular-nums">{pkr(p.expenses)}</span>
+              <span className="tnum">{rs(p.expenses)}</span>
             </div>
           </div>
         )}
@@ -59,7 +58,7 @@ export function PerformanceCard({
         <p className="mt-2 text-xs text-dim">Net profit is shown after operating costs and Esker&apos;s management fee.</p>
       )}
       {p.inRecovery && (
-        <p className="mt-2 text-xs text-gold-deep">
+        <p className="mt-2 text-xs text-brand">
           This month&apos;s full net profit is applied to your investment recovery — see the recovery panel below.
         </p>
       )}
@@ -69,12 +68,12 @@ export function PerformanceCard({
 
 function Stat({ icon, label, value, accent = false }: { icon: React.ReactNode; label: string; value: string; accent?: boolean }) {
   return (
-    <div className="rounded-2xl border border-line bg-surface p-4">
-      <div className={`flex items-center gap-1.5 ${accent ? "text-gold-deep" : "text-dim"}`}>
+    <div className="rounded-[22px] border border-line bg-surface p-4">
+      <div className={`flex items-center gap-1.5 ${accent ? "text-brand" : "text-dim"}`}>
         {icon}
       </div>
-      <div className="mt-1.5 font-display text-xl font-semibold text-ink tabular-nums">{value}</div>
-      <div className="mt-0.5 text-[11px] uppercase tracking-wider text-dim">{label}</div>
+      <div className="tnum mt-1.5 text-xl font-bold text-ink">{value}</div>
+      <div className="label mt-1 text-[10.5px] text-dim">{label}</div>
     </div>
   );
 }

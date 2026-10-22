@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback } from "react";
 
 // Draggable / tappable 5-star rating, snapped to 0.25 (so 4, 4.5, 4.75 are all
-// reachable). One continuous gold fill sweeps across via clip-path, so base +
+// reachable). One continuous Esker Blue fill sweeps across via clip-path, so base +
 // fill stay pixel-aligned.
 //
 // ⚠️ The stars are FIXED-SIZE on purpose. They used to be fluid (`flex-1` +
@@ -62,19 +62,19 @@ export function StarRating({ value, onChange }: { value: number; onChange: (v: n
         onPointerLeave={onUp}
         onPointerUp={onUp}
         onKeyDown={onKey}
-        className="relative inline-block cursor-pointer rounded-lg py-1 outline-none ring-gold/40 focus-visible:ring-2"
+        className="relative inline-block cursor-pointer rounded-lg py-1 outline-none ring-brand/40 focus-visible:ring-2"
         style={{ touchAction: "none" }}
       >
         {/* base (empty) */}
         <StarRow className="text-line-hi" />
-        {/* gold fill, revealed from the left to the current value */}
+        {/* blue fill, revealed from the left to the current value */}
         <div className="pointer-events-none absolute inset-0 py-1" style={{ clipPath: `inset(0 ${100 - pct}% 0 0)` }}>
-          <StarRow className="text-gold" filled />
+          <StarRow className="text-brand" filled />
         </div>
       </div>
 
       {shown > 0 ? (
-        <span className="font-display text-3xl font-semibold text-ink tabular-nums" aria-hidden>
+        <span className="tnum text-3xl font-bold text-ink" aria-hidden>
           {shown.toFixed(2).replace(/\.?0+$/, "")}
         </span>
       ) : (
