@@ -226,20 +226,52 @@ export async function findListingByParam(param: string): Promise<PublicListing |
 
 export type BusyRange = { start_date: string; end_date: string };
 
+/**
+ * The public availability window could not be read.
+ *
+ * THROWN, never returned as an empty list. Both readers below used to log the
+ * error and return nothing — and "no busy ranges" is the answer that says
+ * every night of every stay is free. A failed read says nothing of the kind,
+ * so an unknown night must never reach a guest looking like an open one.
+ *
+ * Callers turn it into an honest state: the app routes answer 503 with a
+ * guest-safe message (lib/app/api.ts `guard`), the stay page says it couldn't
+ * load the calendar and won't take a reservation, checkout won't render the
+ * form, the concierge says it couldn't check. Booking itself never depended on
+ * these reads — createBooking re-checks the bookings table directly.
+ */
+export class AvailabilityUnavailable extends Error {
+  constructor(detail: string) {
+    super(`Availability could not be read: ${detail}`);
+    this.name = "AvailabilityUnavailable";
+  }
+}
+
+/** PostgREST returns at most this many rows per read (Supabase's default
+ *  max_rows). A full page may be a cut-off one, and a cut-off busy list is a
+ *  list with booked nights missing — so it fails closed like an error. */
+const MAX_ROWS = 1000;
+
+/** Recorded with one stable tag so it can be searched in the runtime logs. */
+function unreadable(where: string, detail: string): never {
+  console.error(`[availability:unreadable] ${where}: ${detail}`);
+  throw new AvailabilityUnavailable(detail);
+}
+
 /** Booked date ranges for ALL public listings, grouped by property id (one query).
- *  Feeds the concierge so it only recommends places free for the guest's dates. */
+ *  Feeds the concierge and the app's inventory. Throws AvailabilityUnavailable
+ *  rather than ever returning a partial or empty picture by accident. */
 export async function getBusyByProperty(): Promise<Map<string, BusyRange[]>> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("public_availability")
     .select("property_id,start_date,end_date")
     .order("start_date");
+  if (error) unreadable("all", error.message);
+  if (!data) unreadable("all", "no data returned");
+  if (data.length >= MAX_ROWS) unreadable("all", `${data.length} rows — the read may have been cut off`);
   const map = new Map<string, BusyRange[]>();
-  if (error) {
-    console.error("[availability] all read failed:", error.message);
-    return map;
-  }
-  for (const row of (data ?? []) as { property_id: string; start_date: string; end_date: string }[]) {
+  for (const row of data as { property_id: string; start_date: string; end_date: string }[]) {
     const arr = map.get(row.property_id) ?? [];
     arr.push({ start_date: row.start_date, end_date: row.end_date });
     map.set(row.property_id, arr);
@@ -247,7 +279,8 @@ export async function getBusyByProperty(): Promise<Map<string, BusyRange[]>> {
   return map;
 }
 
-/** Busy date ranges (no PII) for a listing, from the public availability window. */
+/** Busy date ranges (no PII) for a listing, from the public availability window.
+ *  Throws AvailabilityUnavailable on a failed read, like getBusyByProperty. */
 export async function getAvailability(id: string): Promise<BusyRange[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -255,9 +288,8 @@ export async function getAvailability(id: string): Promise<BusyRange[]> {
     .select("start_date,end_date")
     .eq("property_id", id)
     .order("start_date");
-  if (error) {
-    console.error("[availability] read failed:", error.message);
-    return [];
-  }
-  return (data ?? []) as BusyRange[];
+  if (error) unreadable(`listing ${id}`, error.message);
+  if (!data) unreadable(`listing ${id}`, "no data returned");
+  if (data.length >= MAX_ROWS) unreadable(`listing ${id}`, `${data.length} rows — the read may have been cut off`);
+  return data as BusyRange[];
 }

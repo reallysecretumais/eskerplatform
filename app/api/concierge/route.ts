@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { getListings, getMarkets, getBusyByProperty } from "@/lib/data/listings";
+import { getListings, getMarkets, getBusyByProperty, AvailabilityUnavailable } from "@/lib/data/listings";
 import { catalog, conciergeSystem, voiceSystem, MODEL, todayPK } from "@/lib/ai/concierge";
 import { describeMarkets } from "@/lib/geo";
 import { getAiSurface, type AiSurface } from "@/lib/settings";
@@ -47,7 +47,19 @@ export async function POST(req: NextRequest) {
   }
 
   const apiKey = process.env.OPENAI_API_KEY;
-  const [listings, busy, markets] = await Promise.all([getListings(), getBusyByProperty(), getMarkets()]);
+  // The concierge only recommends stays free for the guest's dates, so it
+  // can't answer at all without the availability window. Say so plainly
+  // rather than recommend from a calendar that reads as empty.
+  let busy: Awaited<ReturnType<typeof getBusyByProperty>>;
+  try {
+    busy = await getBusyByProperty();
+  } catch (e) {
+    if (!(e instanceof AvailabilityUnavailable)) throw e;
+    return new Response("I couldn't check which stays are free just now. Please try again in a moment, or message us on WhatsApp.\nSTAYS:", {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+  const [listings, markets] = await Promise.all([getListings(), getMarkets()]);
 
   if (!apiKey) {
     return new Response("The concierge isn't configured yet.\nSTAYS:", {

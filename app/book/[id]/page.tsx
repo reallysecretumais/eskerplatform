@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { CheckoutForm } from "@/components/CheckoutForm";
-import { getListing, getAvailability } from "@/lib/data/listings";
+import { getListing, getAvailability, AvailabilityUnavailable } from "@/lib/data/listings";
 import { getAccount } from "@/lib/auth";
 import { formatPrice } from "@/lib/listings";
 import { advanceAmount, advanceLabel as advancePctLabel } from "@/lib/payments";
@@ -56,7 +56,36 @@ export default async function BookPage({
 
   // Don't allow checkout for taken dates — except the guest's own card hold,
   // when Safepay sends them back here after a payment that didn't go through.
-  const busy = await getAvailability(id);
+  const busy = await getAvailability(id).catch((e) => {
+    if (e instanceof AvailabilityUnavailable) return null;
+    throw e;
+  });
+  // We couldn't read the calendar: say so, and don't take a booking we can't
+  // stand behind (createBooking would re-check, but the guest shouldn't fill a
+  // whole form first).
+  if (busy === null) {
+    const account = await getAccount();
+    return (
+      <main className="min-h-full pb-16">
+        <SiteNav theme="light" account={account} />
+        <div className="mx-auto max-w-xl px-5 py-16 text-center sm:px-6">
+          <h1 className="headline text-[34px]">We couldn&apos;t check these dates</h1>
+          <p className="mt-3 text-muted">Our availability check didn&apos;t answer just now. Please try again in a moment.</p>
+          <div className="mt-7 flex flex-wrap justify-center gap-3">
+            <Link
+              href={`/book/${id}?checkin=${checkin}&checkout=${checkout}`}
+              className="inline-flex h-12 items-center rounded-full bg-brand px-6 text-[15px] font-bold text-warm transition-colors hover:bg-brand-pressed"
+            >
+              Try again
+            </Link>
+            <Link href={stayPath(listing)} className="inline-flex h-12 items-center rounded-full px-6 text-[15px] font-semibold text-ink shadow-[inset_0_0_0_1.5px_var(--color-line-hi)] hover:text-brand">
+              Back to the stay
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
   const resumed = sp.resume ? await ownHold(sp.resume, id, checkin, checkout) : false;
   // Where a transfer should go — the CRM's Settings, read server-side because
   // CheckoutForm is a client component.

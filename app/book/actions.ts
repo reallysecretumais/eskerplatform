@@ -202,25 +202,33 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
     // adrift, which over-blocked a stay ending exactly when a block began.
     // The same confusion, read the other way, is what let the public
     // availability window publish every owner block a day early (phase91).
-    const { data: busy } = await admin
+    const { data: busy, error: busyErr } = await admin
       .from("external_ical_busy")
       .select("id")
       .eq("external_property_id", propertyId)
       .lt("starts", `${checkout}T00:00:00+05:00`)
       .gt("ends", `${checkin}T00:00:00+05:00`)
       .limit(1);
+    if (busyErr) {
+      console.error("[book] owner calendar check failed:", busyErr.message);
+      return { ok: false, message: "We couldn't check these dates just now. Please try again in a moment." };
+    }
     if (busy && busy.length > 0) {
       return { ok: false, message: "Sorry — those dates were just taken. Please pick others." };
     }
   } else {
     // Host-blocked dates (self-listed places): treated exactly like bookings.
-    const { data: blocked } = await admin
+    const { data: blocked, error: blockErr } = await admin
       .from("property_blocks")
       .select("id")
       .eq("property_id", propertyId)
       .lt("start_date", checkout)
       .gt("end_date", checkin)
       .limit(1);
+    if (blockErr) {
+      console.error("[book] host block check failed:", blockErr.message);
+      return { ok: false, message: "We couldn't check these dates just now. Please try again in a moment." };
+    }
     if (blocked && blocked.length > 0) {
       return { ok: false, message: "Sorry — the host has those dates unavailable. Please pick others." };
     }

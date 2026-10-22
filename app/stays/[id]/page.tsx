@@ -18,7 +18,7 @@ import { LocationSection } from "@/components/LocationSection";
 import { Reviews } from "@/components/Reviews";
 import { TrackEvent } from "@/components/TrackEvent";
 import { TrackListingView } from "@/components/TrackListingView";
-import { findListingByParam, getListings, getAvailability, slimListings, getListingHost } from "@/lib/data/listings";
+import { findListingByParam, getListings, getAvailability, slimListings, getListingHost, AvailabilityUnavailable } from "@/lib/data/listings";
 import { getExternalBookability } from "@/lib/data/externalBooking";
 import { getWebsiteAi } from "@/lib/settings";
 import { HostCard } from "@/components/HostCard";
@@ -68,7 +68,12 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
   if (`/stays/${param}` !== canonical) permanentRedirect(canonical);
 
   const id = listing.id;
-  const busy = await getAvailability(id);
+  // null = the calendar couldn't be read. The widget then says so and takes no
+  // reservation, rather than drawing every night as open.
+  const busy = await getAvailability(id).catch((e) => {
+    if (e instanceof AvailabilityUnavailable) return null;
+    throw e;
+  });
   const all = await getListings();
   const account = await getAccount();
   const { reviews, summary } = await getReviews(id);

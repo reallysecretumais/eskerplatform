@@ -1,5 +1,6 @@
 import "server-only";
 import { getAccount, type Account } from "@/lib/auth";
+import { AvailabilityUnavailable } from "@/lib/data/listings";
 
 /**
  * Shared plumbing for the `/api/app/v1` routes — the Esker Rentals mobile API.
@@ -68,6 +69,11 @@ export function guard<C extends RouteCtx = RouteCtx>(handler: (req: Request, ctx
     try {
       return await handler(req, ctx);
     } catch (e) {
+      // Availability we couldn't read is never shown as free (lib/data/listings
+      // AvailabilityUnavailable). It's already recorded where it was thrown.
+      if (e instanceof AvailabilityUnavailable) {
+        return fail("availability_unavailable", "We couldn't check availability just now. Please try again in a moment.", 503);
+      }
       console.error("[api/app] unhandled:", e);
       return fail("server_error", "Something went wrong on our side. Please try again.", 500);
     }

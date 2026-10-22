@@ -1,7 +1,7 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isExternal, type PublicListing } from "@/lib/data/listings";
+import { isExternal, AvailabilityUnavailable, type PublicListing } from "@/lib/data/listings";
 
 /**
  * AVAILABILITY IS THREE-VALUED, and every public surface used to flatten it to
@@ -173,6 +173,14 @@ const cachedSignalRows = unstable_cache(
         .gte("responded_at", tapCutoff)
         .order("responded_at", { ascending: false }),
     ]);
+    // A failed read is not "no signals". Losing the answers would drop an
+    // owner's fresh "no", and a synced calendar would then read as confirmed.
+    // Throwing also keeps the failure out of the 60s cache.
+    if (props.error || checks.error) {
+      const detail = (props.error ?? checks.error)!.message;
+      console.error(`[availability:unreadable] owner signals: ${detail}`);
+      throw new AvailabilityUnavailable(detail);
+    }
 
     return {
       icalSynced: ((props.data ?? []) as { id: string; ical_synced_at: string | null }[])

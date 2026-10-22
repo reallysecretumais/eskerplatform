@@ -47,7 +47,9 @@ export function BookingWidget({
    *  category in the DB. Never derive it here — web and app must agree. */
   unit: string;
   capacity: number | null;
-  busy: BusyRange[];
+  /** null = the availability window couldn't be read: an unknown night is
+   *  never drawn as an open one, so the calendar says so and takes nothing. */
+  busy: BusyRange[] | null;
   /** "request" = an EXTERNAL (resale) unit whose owner calendar we can't see
    *  right now, so we ask the owner before taking any money. */
   bookMode?: "instant" | "request";
@@ -57,7 +59,8 @@ export function BookingWidget({
 }) {
   const router = useRouter();
   const isNight = unit === "night";
-  const booked = bookedSet(busy);
+  const calendarUnknown = busy === null;
+  const booked = bookedSet(busy ?? []);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -93,7 +96,7 @@ export function BookingWidget({
   };
 
   const pick = (d: Date) => {
-    if (d < today || booked.has(iso(d))) return;
+    if (calendarUnknown || d < today || booked.has(iso(d))) return;
     setReserved(false);
     if (!isNight) {
       setDay(d);
@@ -129,7 +132,7 @@ export function BookingWidget({
   const dayState = (d: number) => {
     const date = new Date(view.y, view.m, d);
     const k = iso(date);
-    if (date < today || booked.has(k)) return "disabled";
+    if (calendarUnknown || date < today || booked.has(k)) return "disabled";
     if (isNight) {
       if (ci && k === iso(ci)) return "edge";
       if (co && k === iso(co)) return "edge";
@@ -144,6 +147,7 @@ export function BookingWidget({
   const waHref = `https://wa.me/${company.whatsapp}?text=${waText}`;
 
   const reserve = () => {
+    if (calendarUnknown) return;
     if (!canReserve) {
       ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
@@ -241,6 +245,12 @@ export function BookingWidget({
           </div>
         </div>
 
+        {calendarUnknown && (
+          <p className="mt-3 rounded-[14px] bg-surface-2 px-3.5 py-3 text-[13px] leading-relaxed text-ink" role="status">
+            We couldn&apos;t load this stay&apos;s calendar just now. Refresh the page to try again, or message us and we&apos;ll check your dates.
+          </p>
+        )}
+
         {/* Slot/hour quantity, or guests */}
         <div className="mt-4 flex items-center justify-between border-t border-line pt-4 text-[15px]">
           <span className="font-semibold text-ink">{isNight ? "Guests" : unit === "hour" ? "Hours" : "Blocks"}</span>
@@ -265,10 +275,12 @@ export function BookingWidget({
         <button
           type="button"
           onClick={reserve}
-          disabled={asking}
+          disabled={asking || calendarUnknown}
           className="mt-5 h-[58px] w-full rounded-full bg-brand px-5 text-base font-bold text-warm transition-colors hover:bg-brand-pressed disabled:opacity-60"
         >
-          {asking
+          {calendarUnknown
+            ? "Calendar unavailable"
+            : asking
             ? "Sending…"
             : canReserve
               ? bookMode === "request"
@@ -354,8 +366,8 @@ export function BookingWidget({
           <div className="tnum text-[17px] font-bold text-ink">{units > 0 ? totalFmt : priceFmt}</div>
           <div className="label text-[10.5px] text-dim">{units > 0 ? `${units} ${unitLabel}${units === 1 ? "" : "s"}` : `/ ${unitLabel}`}</div>
         </div>
-        <button type="button" onClick={reserve} className="inline-flex h-12 items-center rounded-full bg-brand px-7 text-[15px] font-bold text-warm transition-colors hover:bg-brand-pressed">
-          {canReserve ? (bookMode === "request" ? "Request" : "Reserve") : isNight ? "Select dates" : "Select a day"}
+        <button type="button" onClick={reserve} disabled={calendarUnknown} className="inline-flex h-12 items-center rounded-full bg-brand px-7 text-[15px] font-bold text-warm transition-colors hover:bg-brand-pressed disabled:opacity-60">
+          {calendarUnknown ? "Calendar unavailable" : canReserve ? (bookMode === "request" ? "Request" : "Reserve") : isNight ? "Select dates" : "Select a day"}
         </button>
       </div>
     </>
