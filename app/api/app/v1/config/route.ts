@@ -1,6 +1,7 @@
 import { ok, guard } from "@/lib/app/api";
 import { brand } from "@/lib/brand";
-import { payments, support, MIN_ADVANCE, advancePct } from "@/lib/payments";
+import { guestPaymentMethods, support, MIN_ADVANCE, advancePct } from "@/lib/payments";
+import { isSafepayConfigured } from "@/lib/safepay";
 import { getBankAccounts, toWireAccounts, primaryTitle } from "@/lib/data/bankAccounts";
 import { getWebsiteAi } from "@/lib/settings";
 
@@ -65,7 +66,8 @@ export const GET = guard(async () => {
       minAdvance: MIN_ADVANCE,
       advancePctExclusive: advancePct(true),
       advancePctStandard: advancePct(false),
-      methods: payments.methods,
+      // Only what works today (lib/payments.ts) — the same list the website shows.
+      methods: guestPaymentMethods(isSafepayConfigured()),
       // Same keys the app has parsed since launch; the values now come from the
       // CRM's Settings instead of a constant in this repo.
       accountTitle: primaryTitle(accounts),

@@ -1,7 +1,8 @@
 import { brand } from "@/lib/brand";
 import { company } from "@/lib/contact";
 import { citiesText as joinCities } from "@/lib/geo";
-import { support } from "@/lib/payments";
+import { support, guestPaymentSentence } from "@/lib/payments";
+import { isSafepayConfigured } from "@/lib/safepay";
 import { thumb, ogCrop } from "@/lib/img";
 import { stayPath } from "@/lib/slug";
 import type { PublicListing } from "@/lib/data/listings";
@@ -25,7 +26,7 @@ export function defaultDesc(cities?: string[]): string {
   const where = cities?.length ? joinCities(cities) : CITIES;
   return (
     `Book premium, professionally managed short-stay apartments, penthouses and villas in ${where}. ` +
-    `${brand.name}'s AI concierge understands English and Roman Urdu — describe your trip and book a verified, ${brand.exclusiveTier} stay in minutes. Local payments: ${brand.payments.join(", ")}.`
+    `${brand.name}'s AI concierge understands English and Roman Urdu — describe your trip and book a verified, ${brand.exclusiveTier} stay in minutes. Pay by ${guestPaymentSentence(isSafepayConfigured())}.`
   );
 }
 export function keywords(cities?: string[]): string[] {

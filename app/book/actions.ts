@@ -84,7 +84,7 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
   const phone = String(formData.get("phone") || "").trim();
   const email = String(formData.get("email") || "").trim();
   const proof = formData.get("proof") as File | null;
-  // "safepay" = hosted checkout (card · wallet · Raast), no screenshot; anything
+  // "safepay" = Safepay's hosted card checkout, no screenshot; anything
   // else falls back to the bank-transfer + screenshot flow. Server-gated on
   // keys so a forged form value can't invent a checkout on an unconfigured env.
   const viaSafepay = String(formData.get("pay_method") || "") === "safepay" && isSafepayConfigured();

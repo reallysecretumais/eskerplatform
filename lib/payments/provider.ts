@@ -2,14 +2,11 @@ import "server-only";
 import { advanceAmount } from "@/lib/payments";
 
 // ── Payment provider seam ────────────────────────────────────────────────────
-// Today the advance is paid by manual transfer (Easypaisa / JazzCash / SadaPay /
-// bank) and a screenshot the team verifies. This interface is the single seam a
-// real Pakistani gateway (Safepay or PayFast) drops in behind later — the
-// checkout/booking flow talks to a `PaymentProvider`, never to a specific vendor,
-// so switching is a one-file change with no churn in `app/book/actions.ts`.
-//
-// NOT wired into the booking flow yet — `manualProvider` documents the current
-// behaviour; a hosted-gateway implementation will be added when we go live.
+// Today the advance is paid by card through Safepay (lib/safepay.ts, called
+// straight from app/book/actions.ts) or by bank transfer plus a screenshot the
+// team verifies (`manualProvider`, below). Which methods a guest is TOLD about
+// lives in one place: lib/payments.ts. This interface remains the seam a further
+// gateway drops in behind; it is NOT wired into the booking flow yet.
 
 export type ChargeRequest = {
   bookingId: string;

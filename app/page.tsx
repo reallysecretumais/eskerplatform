@@ -11,6 +11,7 @@ import { getListings, getMarkets, slimListings, type PublicListing } from "@/lib
 import { homeSections, categoryCounts, byStrength, MORE_SECTION_MAX, EXCLUSIVE_SECTION_MAX } from "@/lib/listings";
 import { activeMarkets, byMarket, citiesText, liveCities } from "@/lib/geo";
 import { guestPaymentSentence } from "@/lib/payments";
+import { isSafepayConfigured } from "@/lib/safepay";
 import { crop } from "@/lib/img";
 import { getAccount } from "@/lib/auth";
 import { getWebsiteAi } from "@/lib/settings";
@@ -24,13 +25,17 @@ import { organizationLd, websiteLd } from "@/lib/seo";
 
 const TRUST = ["Verified, managed stays", "Advance held until check-in", "Real people on WhatsApp"];
 
-// "Pay the way you pay" reads the one list of methods that actually work.
-const STANDARD = [
-  { title: "Inspected and managed", body: "Every Exclusive stay is run by our own team." },
-  { title: "Held until you're in", body: "Your advance is released at check-in, not before." },
-  { title: "Pay the way you pay", body: `${guestPaymentSentence()}.` },
-  { title: "Real people", body: "On WhatsApp before, during and after your stay." },
-];
+// "Pay the way you pay" reads the one list of methods that actually work
+// (lib/payments.ts). The board's "Easypaisa, JazzCash, SadaPay or bank
+// transfer" isn't true yet; the wallets appear here the day they go live.
+function standardPoints(): { title: string; body: string }[] {
+  return [
+    { title: "Inspected and managed", body: "Every Exclusive stay is run by our own team." },
+    { title: "Held until you're in", body: "Your advance is released at check-in, not before." },
+    { title: "Pay the way you pay", body: `By ${guestPaymentSentence(isSafepayConfigured())}.` },
+    { title: "Real people", body: "On WhatsApp before, during and after your stay." },
+  ];
+}
 
 export default async function HomePage() {
   const [listings, markets, account, ai] = await Promise.all([getListings(), getMarkets(), getAccount(), getWebsiteAi()]);
@@ -164,7 +169,7 @@ export default async function HomePage() {
             </h2>
           </div>
           <div className="grid min-w-0 flex-[1_1_420px] gap-x-8 gap-y-7 sm:grid-cols-2">
-            {STANDARD.map((p) => (
+            {standardPoints().map((p) => (
               <div key={p.title} className="flex flex-col gap-2">
                 <span className="h-[1.5px] w-10 bg-ice" aria-hidden />
                 <span className="text-lg font-bold">{p.title}</span>

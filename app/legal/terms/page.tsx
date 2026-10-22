@@ -1,10 +1,12 @@
 import { LegalPage } from "@/components/LegalPage";
+import { guestPaymentTerms } from "@/lib/payments";
+import { isSafepayConfigured } from "@/lib/safepay";
 
 export const metadata = { title: "Terms of Service — Esker Stays" };
 
 export default function TermsOfService() {
   return (
-    <LegalPage title="Terms of Service" updated="29 June 2026">
+    <LegalPage title="Terms of Service" updated="22 October 2026">
       <p>
         These terms govern bookings made through the Esker Stays website, operated by Esker Rentals in Islamabad and Rawalpindi, Pakistan. By booking, you agree to them.
       </p>
@@ -16,7 +18,7 @@ export default function TermsOfService() {
 
       <h2>Payment</h2>
       <p>
-        We take an advance to secure your booking — 25% of the total for standard stays, 50% for Esker Exclusive — with the balance due at or before check-in. Payment is made by bank transfer, Easypaisa, JazzCash, or SadaPay and verified from your uploaded screenshot. Your advance is held and applied to your stay. Refunds follow our{" "}
+        We take an advance to secure your booking — 25% of the total for standard stays, 50% for Esker Exclusive — with the balance due at or before check-in. Payment is made {guestPaymentTerms(isSafepayConfigured())}. Your advance is held and applied to your stay. Refunds follow our{" "}
         <a href="/legal/cancellation" className="text-brand underline hover:no-underline">Cancellation &amp; Refund Policy</a>.
       </p>
 

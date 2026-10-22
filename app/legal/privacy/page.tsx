@@ -5,7 +5,7 @@ export const metadata = { title: "Privacy Policy — Esker Stays" };
 
 export default function PrivacyPolicy() {
   return (
-    <LegalPage title="Privacy Policy" updated="29 June 2026">
+    <LegalPage title="Privacy Policy" updated="22 October 2026">
       <p>
         Esker Stays (operated by Esker Rentals, Islamabad/Rawalpindi, Pakistan) respects your privacy. This policy explains what we collect, why, and how we protect it.
       </p>
@@ -30,7 +30,7 @@ export default function PrivacyPolicy() {
 
       <h2>Card and payment data</h2>
       <p>
-        When you pay by card, bank account, wallet, or RAAST, your payment is processed by a{" "}
+        When you pay by card, your payment is processed by a{" "}
         <strong>licensed third-party payment gateway</strong>. Your full card number, CVV, and PIN
         are entered on the gateway&apos;s secure page and are{" "}
         <strong>never seen, collected, or stored by Esker</strong> — we only receive confirmation

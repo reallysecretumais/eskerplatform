@@ -5,7 +5,6 @@ import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Copy, Check, Upload, ShieldCheck, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { createBooking, verifyIdUpload } from "@/app/book/actions";
-import { payments } from "@/lib/payments";
 import type { BankAccount } from "@/lib/bankAccounts";
 
 type IdStatus = "idle" | "checking" | "ok" | "bad";
@@ -227,7 +226,7 @@ export function CheckoutForm({
                 <Tick on={payMethod === "safepay"} />
                 Pay online now <span className="label rounded-full bg-ice-tint px-2 py-0.5 text-[9.5px] tracking-[0.1em] text-brand-ink">Recommended</span>
               </div>
-              <div className="mt-1 pl-7 text-[13px] text-muted">Card · wallet · Raast — secure Safepay checkout, confirms instantly.</div>
+              <div className="mt-1 pl-7 text-[13px] text-muted">Card, through Safepay&apos;s secure checkout. Confirms instantly.</div>
             </button>
             <button
               type="button"
@@ -251,8 +250,8 @@ export function CheckoutForm({
           </p>
         ) : (
           <p className="mt-3 text-sm text-muted">
-            Send it to {accounts.length === 1 ? "the Esker account" : "any of the Esker accounts"} below — from{" "}
-            {payments.methods.join(", ")} — then upload your screenshot.
+            Send it by bank transfer to {accounts.length === 1 ? "the Esker account" : "any of the Esker accounts"} below, then
+            upload your screenshot.
           </p>
         )}
 

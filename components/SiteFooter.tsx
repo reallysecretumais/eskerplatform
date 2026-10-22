@@ -2,6 +2,7 @@ import Link from "next/link";
 import { brand } from "@/lib/brand";
 import { company } from "@/lib/contact";
 import { guestPaymentMethods } from "@/lib/payments";
+import { isSafepayConfigured } from "@/lib/safepay";
 import { EskerLogo } from "@/components/EskerLogo";
 
 // The site footer, from the Website board: the lockup and the brand line, the
@@ -66,7 +67,7 @@ export function SiteFooter({
         </div>
         <div className="flex flex-wrap justify-between gap-4 pt-[22px] text-[13px] text-ash-label shadow-[0_-1px_0_var(--color-dark-line)]">
           <span>{(cities.length ? cities : brand.launchCities).join(" · ")}</span>
-          <span>{guestPaymentMethods().join(" · ")}</span>
+          <span>{guestPaymentMethods(isSafepayConfigured()).join(" · ")}</span>
         </div>
       </div>
     </footer>

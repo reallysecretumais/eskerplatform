@@ -21,8 +21,6 @@ export const brand = {
   gold: "#C9A84C",
   // Team WhatsApp for "Request a price" (digits only, country code, no +).
   whatsapp: "923325977626",
-  // Local payment methods shown as trust signals.
-  payments: ["Easypaisa", "JazzCash", "Bank transfer", "SadaPay"],
 } as const;
 
 export type Brand = typeof brand;
