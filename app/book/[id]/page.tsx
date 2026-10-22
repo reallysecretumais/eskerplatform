@@ -15,6 +15,7 @@ import type { Metadata } from "next";
 import { getBankAccounts } from "@/lib/data/bankAccounts";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { blocksDates, isExpiringHold } from "@/lib/booking/hold";
+import { realEmail, realName } from "@/lib/booking/create";
 
 export const metadata: Metadata = { title: "Confirm & pay", robots: { index: false, follow: false } };
 
@@ -108,7 +109,8 @@ export default async function BookPage({
   const balanceLabel = formatPrice(balance, unit).amount;
   const pctLabel = advancePctLabel(total, exclusive);
   const account = await getAccount();
-  const prefill = { name: account?.name ?? "", email: account?.email ?? "", phone: account?.phone ?? "" };
+  // Never prefill WhatsApp sign-up's placeholders ("Guest", a no-mail address).
+  const prefill = { name: realName(account?.name), email: realEmail(account?.email), phone: account?.phone ?? "" };
 
   return (
     <main className="min-h-full pb-16">

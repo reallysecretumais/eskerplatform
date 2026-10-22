@@ -2,6 +2,10 @@
 // hub (overview, trips, detail, timeline). Maps the CRM's internal statuses to
 // friendly labels + a tone token + a position on the guest journey.
 
+/** Statuses a guest may cancel themselves (website account and app): anything
+ *  before check-in. Later than that, it's a conversation with the team. */
+export const GUEST_CANCELLABLE = ["awaiting_payment", "payment_collected", "handed_over", "awaiting_checkin"];
+
 export type StatusTone = "warning" | "info" | "positive" | "muted" | "danger";
 
 export const STATUS_LABEL: Record<string, string> = {

@@ -44,9 +44,9 @@ export const GET = guard(async () => {
       aiPropertyQa: ai.concierge.enabled,
       // Guest chat is deliberately human-only (no auto-AI) — same policy as web.
       chat: true,
-      // Turns on with the payment gateway (Batch: payments). Until then the app
-      // shows bank transfer only, rather than a card button that can't work.
-      onlinePayments: false,
+      // Card checkout (Safepay) is live wherever its keys are set; without them
+      // the app shows bank transfer only, never a card button that can't work.
+      onlinePayments: isSafepayConfigured(),
       saves: true,
     },
 

@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient, bearerToken } from "@/lib/supabase/server";
+import { blocksDates, isExpiringHold, LEGACY_HOLD_MS } from "@/lib/booking/hold";
 
 export type AccountRole = "guest" | "owner" | "partner";
 
@@ -85,6 +86,10 @@ export type MyBooking = {
   status: string;
   nights: number | null;
   listing: BookingListing | null;
+  /** When an unpaid booking's dates go back on sale; null once paid, or for staff bookings. */
+  holdUntil: string | null;
+  /** An unpaid website/app booking whose hold has run out: its dates are free again. */
+  holdEnded: boolean;
 };
 
 // Full detail for one booking (adds rate + source + created_at to MyBooking).
@@ -96,6 +101,19 @@ export type MyBookingDetail = MyBooking & {
 
 const num = (v: unknown) => Math.max(0, Math.round(Number(v) || 0));
 
+// The listing a booking is for: an Esker-run property, or an external (resale)
+// unit, whose public listing id is its external_property_id.
+type BookingRef = { property_id: string | null; external_property_id: string | null };
+const listingIdOf = (b: BookingRef) => b.property_id ?? b.external_property_id;
+
+// Whether an unpaid hold still keeps its dates (lib/booking/hold.ts).
+type HoldRef = { status: string; source: string | null; created_at: string | null; hold_until: string | null };
+function holdOf(b: HoldRef): { holdUntil: string | null; holdEnded: boolean } {
+  if (!isExpiringHold(b)) return { holdUntil: null, holdEnded: false };
+  const until = b.hold_until ?? (b.created_at ? new Date(new Date(b.created_at).getTime() + LEGACY_HOLD_MS).toISOString() : null);
+  return { holdUntil: until, holdEnded: !blocksDates(b) };
+}
+
 // The signed-in guest's own bookings (RLS-scoped to account_id), joined to the
 // public listing for display. Returns [] when signed out.
 export async function getMyBookings(): Promise<MyBooking[]> {
@@ -105,12 +123,12 @@ export async function getMyBookings(): Promise<MyBooking[]> {
 
   const { data: bookings } = await supabase
     .from("bookings")
-    .select("id, property_id, checkin, checkout, amount, advance_paid, payment_status, status, nights")
+    .select("id, property_id, external_property_id, checkin, checkout, amount, advance_paid, payment_status, status, nights, source, created_at, hold_until")
     .eq("account_id", user.id)
     .order("checkin", { ascending: false });
   if (!bookings || bookings.length === 0) return [];
 
-  const ids = [...new Set(bookings.map((b) => b.property_id))];
+  const ids = [...new Set(bookings.map(listingIdOf).filter((id): id is string => !!id))];
   const { data: listings } = await supabase.from("public_listings").select("id, title, area, category, photos").in("id", ids);
   const byId = new Map((listings ?? []).map((l) => [l.id, l as BookingListing]));
 
@@ -127,7 +145,8 @@ export async function getMyBookings(): Promise<MyBooking[]> {
       paymentStatus: b.payment_status ?? null,
       status: b.status,
       nights: b.nights,
-      listing: byId.get(b.property_id) ?? null,
+      listing: byId.get(listingIdOf(b) ?? "") ?? null,
+      ...holdOf(b),
     };
   });
 }
@@ -141,7 +160,7 @@ export async function getMyBooking(id: string): Promise<MyBookingDetail | null> 
 
   const { data: b } = await supabase
     .from("bookings")
-    .select("id, property_id, checkin, checkout, amount, advance_paid, payment_status, status, nights, rate_at_booking, source, created_at")
+    .select("id, property_id, external_property_id, checkin, checkout, amount, advance_paid, payment_status, status, nights, rate_at_booking, source, created_at, hold_until")
     .eq("id", id)
     .eq("account_id", user.id)
     .maybeSingle();
@@ -150,7 +169,7 @@ export async function getMyBooking(id: string): Promise<MyBookingDetail | null> 
   const { data: listing } = await supabase
     .from("public_listings")
     .select("id, title, area, category, photos")
-    .eq("id", b.property_id)
+    .eq("id", listingIdOf(b) ?? "")
     .maybeSingle();
 
   const amount = num(b.amount);
@@ -166,6 +185,7 @@ export async function getMyBooking(id: string): Promise<MyBookingDetail | null> 
     status: b.status,
     nights: b.nights,
     listing: (listing as BookingListing) ?? null,
+    ...holdOf(b),
     rateAtBooking: b.rate_at_booking != null ? Number(b.rate_at_booking) : null,
     source: b.source ?? null,
     createdAt: b.created_at ?? null,

@@ -4,6 +4,7 @@ import { ChevronLeft, MapPin, FileText } from "lucide-react";
 import { getMyBooking } from "@/lib/auth";
 import { getMyReview } from "@/lib/data/reviews";
 import { cancellationQuote } from "@/lib/payments";
+import { GUEST_CANCELLABLE } from "@/lib/bookingStatus";
 import { thumb } from "@/lib/img";
 import { StatusBadge } from "@/components/account/StatusBadge";
 import { StatusTimeline } from "@/components/account/StatusTimeline";
@@ -16,7 +17,6 @@ import { rs } from "@/lib/listings";
 
 export const metadata = { title: "Booking — Esker" };
 
-const CANCELLABLE = ["awaiting_payment", "payment_collected", "handed_over", "awaiting_checkin"];
 const fmt = (d: string | null) => (d ? new Date(`${d}T00:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }) : "—");
 
 
@@ -28,7 +28,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
   const photo = b.listing?.photos?.[0];
   const loc = [b.listing?.category, b.listing?.area].filter(Boolean).join(" · ");
   const activePayable = !["cancelled", "checked_out"].includes(b.status);
-  const cancellable = CANCELLABLE.includes(b.status) && Boolean(b.checkin);
+  const cancellable = GUEST_CANCELLABLE.includes(b.status) && Boolean(b.checkin);
   const quote = b.checkin ? cancellationQuote(b.checkin, b.advancePaid) : null;
   const reviewable = b.status === "checked_out";
   const myReview = reviewable ? await getMyReview(b.id) : null;

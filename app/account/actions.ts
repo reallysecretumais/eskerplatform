@@ -11,11 +11,11 @@ import { toE164Pk } from "@/lib/otp";
 import { issueOtp, checkOtp } from "@/lib/otpFlow";
 import { notifyStaff } from "@/lib/notifyStaff";
 import { rs } from "@/lib/listings";
+import { GUEST_CANCELLABLE } from "@/lib/bookingStatus";
 
 export type ActionResult = { ok: boolean; message: string };
 
 // Bookings a guest may still self-cancel (only before check-in).
-const CANCELLABLE = ["awaiting_payment", "payment_collected", "handed_over", "awaiting_checkin"];
 const DOC_BUCKET = "guest-docs";
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -233,11 +233,11 @@ export async function cancelMyBooking(bookingId: string): Promise<CancelResult> 
   const admin = createAdminClient();
   const { data: b } = await admin
     .from("bookings")
-    .select("id, account_id, property_id, checkin, status, advance_paid, notes")
+    .select("id, account_id, property_id, external_property_id, checkin, status, advance_paid, notes")
     .eq("id", bookingId)
     .maybeSingle();
   if (!b || b.account_id !== accountId) return { ok: false, message: "Booking not found." };
-  if (!CANCELLABLE.includes(String(b.status))) {
+  if (!GUEST_CANCELLABLE.includes(String(b.status))) {
     return { ok: false, message: "This booking can no longer be cancelled online — please message us." };
   }
   if (!b.checkin) return { ok: false, message: "This booking can't be cancelled online — please message us." };
@@ -265,7 +265,12 @@ export async function cancelMyBooking(bookingId: string): Promise<CancelResult> 
   if (error) return { ok: false, message: "Could not cancel the booking. Please try again." };
 
   // Alert staff (and email the guest, best-effort).
-  const { data: listing } = await admin.from("public_listings").select("title").eq("id", b.property_id).maybeSingle();
+  // An external (resale) stay's public listing id is its external_property_id.
+  const { data: listing } = await admin
+    .from("public_listings")
+    .select("title")
+    .eq("id", b.property_id ?? b.external_property_id)
+    .maybeSingle();
   const title = String(listing?.title ?? "a stay");
   await notifyStaff(admin, {
     title: `Website cancellation — ${title}`,
