@@ -5,7 +5,7 @@ import { Block, HeaderSkeleton } from "@/components/Skeletons";
 export default function Loading() {
   return (
     <main className="min-h-full">
-      <HeaderSkeleton />
+      <HeaderSkeleton narrow />
       <div className="mx-auto max-w-[1104px] px-5 py-8 sm:px-6" aria-busy="true" aria-label="Loading this stay">
         <Block className="h-4 w-20" />
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

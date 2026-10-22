@@ -87,7 +87,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
     }
   };
 
-  const input = "w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-brand/40";
+  const input = "h-12 w-full rounded-[14px] border border-line bg-surface px-4 text-[15px] text-ink outline-none transition-colors placeholder:text-dim focus:border-brand";
 
   return (
     <div>
@@ -95,10 +95,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
       {mode === "signup" && (
         <div className="mb-4">
           <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => setIntent("guest")} className={`rounded-full border px-3 py-2.5 text-sm transition ${intent === "guest" ? "border-brand/40 bg-ice-tint font-semibold text-brand-ink" : "border-line text-muted hover:text-ink"}`}>
+            <button type="button" onClick={() => setIntent("guest")} className={`h-11 rounded-full border px-3 text-sm transition ${intent === "guest" ? "border-brand/40 bg-ice-tint font-semibold text-brand-ink" : "border-line text-muted hover:text-ink"}`}>
               Book stays
             </button>
-            <button type="button" onClick={() => setIntent("owner")} className={`rounded-full border px-3 py-2.5 text-sm transition ${intent === "owner" ? "border-brand/40 bg-ice-tint font-semibold text-brand-ink" : "border-line text-muted hover:text-ink"}`}>
+            <button type="button" onClick={() => setIntent("owner")} className={`h-11 rounded-full border px-3 text-sm transition ${intent === "owner" ? "border-brand/40 bg-ice-tint font-semibold text-brand-ink" : "border-line text-muted hover:text-ink"}`}>
               List my place
             </button>
           </div>
@@ -111,10 +111,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
       {/* Login: method tabs (phone default) */}
       {mode === "login" && (
         <div className="mb-5 flex gap-1 rounded-full border border-line bg-surface-2 p-1">
-          <button type="button" onClick={() => setMethod("phone")} className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition ${method === "phone" ? "bg-brand font-semibold text-warm" : "text-muted hover:text-ink"}`}>
+          <button type="button" onClick={() => setMethod("phone")} className={`flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-sm transition ${method === "phone" ? "bg-brand font-semibold text-warm" : "text-muted hover:text-ink"}`}>
             <MessageCircle size={14} /> WhatsApp
           </button>
-          <button type="button" onClick={() => setMethod("email")} className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition ${method === "email" ? "bg-brand font-semibold text-warm" : "text-muted hover:text-ink"}`}>
+          <button type="button" onClick={() => setMethod("email")} className={`flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-sm transition ${method === "email" ? "bg-brand font-semibold text-warm" : "text-muted hover:text-ink"}`}>
             <Mail size={14} /> Email
           </button>
         </div>
@@ -127,7 +127,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           )}
           <input className={input} type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
           <input className={input} type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={mode === "signup" ? "new-password" : "current-password"} required minLength={6} />
-          <button type="submit" disabled={busy} className="w-full rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-warm transition hover:bg-brand-pressed disabled:opacity-50">
+          <button type="submit" disabled={busy} className="h-[52px] w-full rounded-full bg-brand px-5 text-[15px] font-bold text-warm transition hover:bg-brand-pressed disabled:opacity-50">
             {busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
           </button>
           {mode === "login" && (

@@ -79,9 +79,9 @@ export default async function LandingPage({ params }: Params) {
       <div className="mx-auto max-w-[1248px] px-5 pb-16 pt-8 sm:px-6">
         {/* Breadcrumb — visible, matching the JSON-LD trail */}
         <nav aria-label="Breadcrumb" className="text-xs text-dim">
-          <Link href="/" className="hover:text-ink">Home</Link>
+          <Link href="/" className="py-1.5 hover:text-ink">Home</Link>
           <span className="px-1.5">/</span>
-          <Link href="/stays" className="hover:text-ink">Stays</Link>
+          <Link href="/stays" className="py-1.5 hover:text-ink">Stays</Link>
           {page.city && (
             <>
               <span className="px-1.5">/</span>
@@ -90,7 +90,7 @@ export default async function LandingPage({ params }: Params) {
           )}
         </nav>
 
-        <h1 className="headline mt-3 text-[34px] text-ink sm:text-[40px]">{page.heading}</h1>
+        <h1 className="headline mt-3 text-[clamp(34px,4vw,52px)] text-ink">{page.heading}</h1>
 
         {/* Live facts — always true because they're computed, never written */}
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted">
@@ -107,18 +107,10 @@ export default async function LandingPage({ params }: Params) {
           )}
         </div>
 
-        {/* Curated intro — the reason this page is allowed to exist */}
-        <div className="mt-6 max-w-3xl space-y-3.5 text-[15px] leading-relaxed text-muted">
-          {page.intro.map((p, i) => (
-            <p key={i}>{p}</p>
-          ))}
-        </div>
-
-        {common.length > 0 && (
-          <p className="mt-5 max-w-3xl text-sm text-dim">
-            <span className="text-muted">Standard across these stays:</span> {common.join(" · ")}
-          </p>
-        )}
+        {/* Curated intro — the reason this page is allowed to exist. The lead
+            sits above the stays; the rest of the guide follows them, so a phone
+            sees photos in its first screen rather than three paragraphs. */}
+        <p className="mt-6 max-w-3xl text-[15px] leading-relaxed text-muted">{page.intro[0]}</p>
 
         {/* The listings */}
         <div className="mt-8 grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
@@ -138,6 +130,22 @@ export default async function LandingPage({ params }: Params) {
           ))}
         </div>
 
+        {(page.intro.length > 1 || common.length > 0) && (
+          <section className="mt-14 max-w-3xl">
+            <h2 className="headline text-2xl text-ink">Good to know</h2>
+            <div className="mt-3 space-y-3.5 text-[15px] leading-relaxed text-muted">
+              {page.intro.slice(1).map((p, i) => (
+                <p key={i}>{p}</p>
+              ))}
+            </div>
+            {common.length > 0 && (
+              <p className="mt-5 text-sm text-dim">
+                <span className="text-muted">Standard across these stays:</span> {common.join(" · ")}
+              </p>
+            )}
+          </section>
+        )}
+
         {/* Cross-links: every landing page is one click from its siblings, so
             none of them is an orphan and crawl depth stays shallow. */}
         {related.length > 0 && (
@@ -148,14 +156,14 @@ export default async function LandingPage({ params }: Params) {
                 <Link
                   key={r.slug}
                   href={`/${r.slug}`}
-                  className="rounded-full border border-line bg-surface px-4 py-1.5 text-sm text-muted transition hover:border-line-hi hover:text-ink"
+                  className="rounded-full border border-line bg-surface px-4 py-2 text-sm text-muted transition hover:border-line-hi hover:text-ink"
                 >
                   {r.heading}
                 </Link>
               ))}
               <Link
                 href="/stays"
-                className="inline-flex items-center gap-1 rounded-full border border-line bg-surface px-4 py-1.5 text-sm text-muted transition hover:border-line-hi hover:text-ink"
+                className="inline-flex items-center gap-1 rounded-full border border-line bg-surface px-4 py-2 text-sm text-muted transition hover:border-line-hi hover:text-ink"
               >
                 All stays <ArrowRight size={14} />
               </Link>

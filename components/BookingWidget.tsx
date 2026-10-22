@@ -132,7 +132,10 @@ export function BookingWidget({
   const dayState = (d: number) => {
     const date = new Date(view.y, view.m, d);
     const k = iso(date);
-    if (calendarUnknown || date < today || booked.has(k)) return "disabled";
+    // Past days fade; only days someone has booked are struck through, so a
+    // late-month calendar doesn't read as sold out.
+    if (calendarUnknown || date < today) return "past";
+    if (booked.has(k)) return "disabled";
     if (isNight) {
       if (ci && k === iso(ci)) return "edge";
       if (co && k === iso(co)) return "edge";
@@ -226,7 +229,8 @@ export function BookingWidget({
                 <button
                   key={i}
                   type="button"
-                  disabled={st === "disabled"}
+                  disabled={st === "disabled" || st === "past"}
+                  aria-label={st === "disabled" ? `${d}, booked` : undefined}
                   onClick={() => pick(new Date(view.y, view.m, d))}
                   className={`mx-auto grid h-10 w-full max-w-10 place-items-center text-[13px] font-semibold transition-colors ${
                     st === "edge"
@@ -234,8 +238,10 @@ export function BookingWidget({
                       : st === "in"
                         ? "max-w-none bg-ice-band text-brand-ink"
                         : st === "disabled"
-                          ? "text-dim/45 line-through"
-                          : "rounded-full text-ink hover:bg-surface-2"
+                          ? "text-dim/60 line-through"
+                          : st === "past"
+                            ? "text-dim/35"
+                            : "rounded-full text-ink hover:bg-surface-2"
                   }`}
                 >
                   {d}
@@ -354,7 +360,7 @@ export function BookingWidget({
         )}
 
         {waHref && (
-          <a href={waHref} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-1.5 text-sm font-semibold text-muted hover:text-brand">
+          <a href={waHref} target="_blank" rel="noopener noreferrer" className="mt-2 flex min-h-10 items-center justify-center gap-1.5 text-sm font-semibold text-muted hover:text-brand">
             <MessageCircle size={15} /> Request a price
           </a>
         )}
@@ -378,11 +384,11 @@ function Stepper({ value, min, max, onChange }: { value: number; min: number; ma
   return (
     <div className="flex items-center gap-3">
       {/* Stepper (BUILD_REFERENCE): minus is an outline circle, plus solid black. */}
-      <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min} className="grid h-9 w-9 place-items-center rounded-full text-ink shadow-[inset_0_0_0_1.5px_var(--color-line-hi)] disabled:opacity-30" aria-label="Decrease">
+      <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min} className="grid h-10 w-10 place-items-center rounded-full text-ink shadow-[inset_0_0_0_1.5px_var(--color-line-hi)] disabled:opacity-30" aria-label="Decrease">
         <Minus size={15} strokeWidth={2} />
       </button>
       <span className="tnum w-7 text-center text-xl font-bold text-ink">{value}</span>
-      <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max} className="grid h-9 w-9 place-items-center rounded-full bg-ink text-warm disabled:opacity-30" aria-label="Increase">
+      <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max} className="grid h-10 w-10 place-items-center rounded-full bg-ink text-warm disabled:opacity-30" aria-label="Increase">
         <Plus size={15} strokeWidth={2} />
       </button>
     </div>

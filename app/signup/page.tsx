@@ -5,6 +5,8 @@ import { EskerLogo } from "@/components/EskerLogo";
 import { AuthForm } from "@/components/AuthForm";
 import { getAccount } from "@/lib/auth";
 
+export const metadata = { title: "Create your account", robots: { index: false, follow: true } };
+
 export default async function SignupPage() {
   if (await getAccount()) redirect("/account");
 

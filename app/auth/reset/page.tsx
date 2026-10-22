@@ -33,7 +33,7 @@ export default function ResetPasswordPage() {
     }
   };
 
-  const input = "w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-brand/40";
+  const input = "h-12 w-full rounded-[14px] border border-line bg-surface px-4 text-[15px] text-ink outline-none transition-colors placeholder:text-dim focus:border-brand";
 
   return (
     <main className="flex min-h-full items-center justify-center px-6 py-16">
@@ -49,7 +49,7 @@ export default function ResetPasswordPage() {
         ) : (
           <form onSubmit={submit} className="mt-6 space-y-3">
             <input className={input} type="password" placeholder="New password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required minLength={6} />
-            <button type="submit" disabled={busy} className="w-full rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-warm transition hover:bg-brand-pressed disabled:opacity-50">
+            <button type="submit" disabled={busy} className="h-[52px] w-full rounded-full bg-brand px-5 text-[15px] font-bold text-warm transition hover:bg-brand-pressed disabled:opacity-50">
               {busy ? "Updating…" : "Update password"}
             </button>
             {error && <p className="text-sm text-red">{error}</p>}

@@ -87,7 +87,7 @@ export function PhoneOtpForm({
     }
   };
 
-  const input = "w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-dim focus:border-brand/40";
+  const input = "h-12 w-full rounded-[14px] border border-line bg-surface px-4 text-[15px] text-ink outline-none transition-colors placeholder:text-dim focus:border-brand";
 
   return step === "phone" ? (
     <form onSubmit={send} className="space-y-3">
@@ -107,7 +107,7 @@ export function PhoneOtpForm({
       <button
         type="submit"
         disabled={busy || !num.trim() || (showName && !name.trim())}
-        className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-warm transition hover:bg-brand-pressed disabled:opacity-50"
+        className="inline-flex h-[52px] w-full items-center justify-center gap-1.5 rounded-full bg-brand px-5 text-[15px] font-bold text-warm transition hover:bg-brand-pressed disabled:opacity-50"
       >
         {busy ? <Loader2 size={14} className="animate-spin" /> : <MessageCircle size={14} />} {busy ? "Sending…" : cta}
       </button>
@@ -135,7 +135,7 @@ export function PhoneOtpForm({
         type="button"
         onClick={() => void verify()}
         disabled={busy || code.length !== 6}
-        className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-warm transition hover:bg-brand-pressed disabled:opacity-50"
+        className="inline-flex h-[52px] w-full items-center justify-center gap-1.5 rounded-full bg-brand px-5 text-[15px] font-bold text-warm transition hover:bg-brand-pressed disabled:opacity-50"
       >
         {busy && <Loader2 size={14} className="animate-spin" />} {busy ? "Checking…" : "Verify & continue"}
       </button>

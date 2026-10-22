@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Check, Upload, ShieldCheck, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Copy, Check, Camera, ShieldCheck, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { createBooking, verifyIdUpload } from "@/app/book/actions";
 import type { BankAccount } from "@/lib/bankAccounts";
 import { holdLabel } from "@/lib/booking/hold";
@@ -144,7 +144,6 @@ export function CheckoutForm({
 
   const label = "mb-1.5 block text-sm font-semibold text-ink";
   const input = "h-12 w-full rounded-[14px] border border-line bg-surface px-4 text-[15px] text-ink outline-none transition-colors placeholder:text-dim focus:border-brand";
-  const file = "w-full rounded-[14px] border border-dashed border-line-hi bg-surface px-3.5 py-3 text-sm text-muted file:mr-3 file:h-9 file:rounded-full file:border-0 file:bg-ink file:px-4 file:text-[13px] file:font-semibold file:text-warm";
   const heading = "headline text-2xl";
 
   return (
@@ -160,17 +159,17 @@ export function CheckoutForm({
         <h2 className={heading}>Your details</h2>
         <div className="mt-3 space-y-3">
           <div>
-            <label className={label}>Full name</label>
-            <input name="name" defaultValue={prefill.name} className={input} required autoComplete="name" />
+            <label htmlFor="co-name" className={label}>Full name</label>
+            <input id="co-name" name="name" defaultValue={prefill.name} className={input} required autoComplete="name" />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className={label}>Phone</label>
-              <input name="phone" defaultValue={prefill.phone} className={input} required autoComplete="tel" placeholder="03xx xxxxxxx" />
+              <label htmlFor="co-phone" className={label}>Phone</label>
+              <input id="co-phone" name="phone" type="tel" defaultValue={prefill.phone} className={input} required autoComplete="tel" placeholder="03xx xxxxxxx" />
             </div>
             <div>
-              <label className={label}>Email</label>
-              <input name="email" type="email" defaultValue={prefill.email} className={input} autoComplete="email" placeholder="you@email.com" />
+              <label htmlFor="co-email" className={label}>Email</label>
+              <input id="co-email" name="email" type="email" defaultValue={prefill.email} className={input} autoComplete="email" placeholder="you@email.com" />
             </div>
           </div>
         </div>
@@ -189,7 +188,7 @@ export function CheckoutForm({
               key={t}
               type="button"
               onClick={() => selectDocType(t)}
-              className={`h-9 rounded-full px-4 font-semibold transition-colors ${docType === t ? "bg-surface text-ink shadow-[0_1px_0_var(--color-line)]" : "text-muted hover:text-ink"}`}
+              className={`h-10 rounded-full px-5 font-semibold transition-colors ${docType === t ? "bg-surface text-ink shadow-[0_1px_0_var(--color-line)]" : "text-muted hover:text-ink"}`}
             >
               {t === "cnic" ? "CNIC" : "Passport"}
             </button>
@@ -198,14 +197,18 @@ export function CheckoutForm({
 
         <div className={`mt-3 grid gap-3 ${docType === "cnic" ? "sm:grid-cols-2" : ""}`}>
           <div>
-            <label className={label}>{docType === "cnic" ? "CNIC front" : "Passport (photo page)"}</label>
-            <input name="cnicFront" type="file" accept="image/*" className={file} onChange={onFrontIdChange} />
+            <FileTile
+              id="co-id-front"
+              name="cnicFront"
+              label={docType === "cnic" ? "CNIC front" : "Passport (photo page)"}
+              hint={docType === "cnic" ? "The side with your photo" : "The page with your photo"}
+              onChange={onFrontIdChange}
+            />
             <IdStatusLine status={frontStatus} message={frontMsg} okText="Looks good — ID verified." checkingText="Checking your ID…" />
           </div>
           {docType === "cnic" && (
             <div>
-              <label className={label}>CNIC back</label>
-              <input name="cnicBack" type="file" accept="image/*" className={file} onChange={onBackIdChange} />
+              <FileTile id="co-id-back" name="cnicBack" label="CNIC back" hint="The side with the address" onChange={onBackIdChange} />
               <IdStatusLine status={backStatus} message={backMsg} okText="Looks good — back verified." checkingText="Checking the back…" />
             </div>
           )}
@@ -231,7 +234,7 @@ export function CheckoutForm({
             >
               <div className="flex items-center gap-2 text-[15px] font-semibold text-ink">
                 <Tick on={payMethod === "safepay"} />
-                Pay online now <span className="label rounded-full bg-ice-tint px-2 py-0.5 text-[9.5px] tracking-[0.1em] text-brand-ink">Recommended</span>
+                Pay online now <span className="label rounded-full bg-ice-tint px-2 py-0.5 text-[10.5px] tracking-[0.1em] text-brand-ink">Recommended</span>
               </div>
               <div className="mt-1 pl-7 text-[13px] text-muted">Card, through Safepay&apos;s secure checkout. Confirms instantly.</div>
             </button>
@@ -267,11 +270,11 @@ export function CheckoutForm({
             <div key={a.id} className="flex items-center justify-between gap-3 rounded-[20px] bg-surface p-4 shadow-[0_1px_0_var(--color-line)]">
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-ink">
-                  {a.title} · {a.bank} {a.primary && <span className="label ml-1 rounded-full bg-ice-tint px-2 py-0.5 text-[9.5px] tracking-[0.1em] text-brand-ink">Primary</span>}
+                  {a.title} · {a.bank} {a.primary && <span className="label ml-1 rounded-full bg-ice-tint px-2 py-0.5 text-[10.5px] tracking-[0.1em] text-brand-ink">Primary</span>}
                 </div>
                 <div className="tnum truncate text-sm text-muted">{a.iban}</div>
               </div>
-              <button type="button" onClick={() => copy(a.iban)} className="inline-flex h-9 shrink-0 items-center gap-1 rounded-full px-3.5 text-[13px] font-semibold text-ink shadow-[inset_0_0_0_1.5px_var(--color-line-hi)] transition-colors hover:text-brand">
+              <button type="button" onClick={() => copy(a.iban)} className="inline-flex h-10 shrink-0 items-center gap-1 rounded-full px-3.5 text-[13px] font-semibold text-ink shadow-[inset_0_0_0_1.5px_var(--color-line-hi)] transition-colors hover:text-brand">
                 {copied === a.iban ? <Check size={13} className="text-green" /> : <Copy size={13} />} {copied === a.iban ? "Copied" : "Copy"}
               </button>
             </div>
@@ -279,12 +282,15 @@ export function CheckoutForm({
         </div>
 
         <div className={payMethod === "safepay" ? "hidden" : "mt-4"}>
-          <label className={label}>
-            <span className="inline-flex items-center gap-1.5"><Upload size={14} /> Payment screenshot</span>
-          </label>
           {/* `required` only on the transfer path — a hidden required input
               blocks submit invisibly on the Safepay path. */}
-          <input name="proof" type="file" accept="image/*" className={file} required={payMethod !== "safepay"} />
+          <FileTile
+            id="co-proof"
+            name="proof"
+            label="Payment screenshot"
+            hint="Your bank app's confirmation screen"
+            required={payMethod !== "safepay"}
+          />
         </div>
 
         <p className="mt-4 flex items-start gap-2 rounded-[14px] bg-ice-tint px-3.5 py-3 text-[13px] text-brand-ink">
@@ -356,5 +362,71 @@ function IdStatusLine({
       {status === "bad" && <AlertCircle size={13} className="mt-0.5 shrink-0" />}
       {status === "checking" ? checkingText : status === "ok" ? okText : message}
     </p>
+  );
+}
+
+/**
+ * An ID or payment-screenshot upload: a tile with a camera mark that shows the
+ * picked photo, in place of the browser's "Choose File / No file chosen". The
+ * real input covers the tile, transparent, so taps, keyboard focus, the
+ * phone's camera-or-gallery sheet and `required` all behave natively.
+ */
+function FileTile({
+  id,
+  name,
+  label,
+  hint,
+  required,
+  onChange,
+}: {
+  id: string;
+  name: string;
+  label: ReactNode;
+  hint: string;
+  required?: boolean;
+  onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
+}) {
+  const [picked, setPicked] = useState<{ name: string; url: string } | null>(null);
+  // Release each preview once it's replaced or the tile goes away.
+  useEffect(
+    () => () => {
+      if (picked) URL.revokeObjectURL(picked.url);
+    },
+    [picked],
+  );
+
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1.5 block text-sm font-semibold text-ink">
+        {label}
+      </label>
+      <div className="relative flex min-h-[76px] items-center gap-3.5 rounded-[18px] border border-dashed border-line-hi bg-surface p-3 transition-colors hover:border-brand has-[:focus-visible]:border-brand has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand/25">
+        {picked ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={picked.url} alt="" className="h-[52px] w-[72px] shrink-0 rounded-[10px] object-cover" />
+        ) : (
+          <span className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-[14px] bg-ice-tint text-brand">
+            <Camera size={22} strokeWidth={1.8} />
+          </span>
+        )}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[15px] font-semibold text-ink">{picked ? picked.name : "Take a photo or upload"}</span>
+          <span className="block text-[13px] text-muted">{picked ? "Tap to choose a different photo" : hint}</span>
+        </span>
+        <input
+          id={id}
+          name={name}
+          type="file"
+          accept="image/*"
+          required={required}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            setPicked(f ? { name: f.name, url: URL.createObjectURL(f) } : null);
+            onChange?.(e);
+          }}
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        />
+      </div>
+    </div>
   );
 }

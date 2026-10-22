@@ -114,11 +114,11 @@ export default async function BookPage({
 
   return (
     <main className="min-h-full pb-16">
-      <SiteNav theme="light" account={account} />
+      <SiteNav theme="light" width="narrow" account={account} />
       <TrackEvent event="InitiateCheckout" params={{ content_ids: [id], value: advance, currency: "PKR" }} />
 
       <div className="mx-auto max-w-[1104px] px-5 py-8 sm:px-6">
-        <Link href={stayPath(listing)} className="inline-flex items-center gap-1 text-sm font-semibold text-muted hover:text-ink">
+        <Link href={stayPath(listing)} className="-my-2 inline-flex items-center gap-1 py-2 text-sm font-semibold text-muted hover:text-ink">
           <ArrowLeft size={15} /> Back to the stay
         </Link>
         <h1 className="headline mt-4 text-[clamp(34px,4.4vw,44px)]">Confirm and pay</h1>

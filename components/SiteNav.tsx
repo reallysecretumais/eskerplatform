@@ -21,13 +21,16 @@ const LINKS: { label: string; href: string; accent?: boolean; external?: boolean
 // white, Esker Exclusive in ice) and, once the guest scrolls past the hero,
 // the light bar slides down and stays, so the menu is never a scroll away.
 // `theme="light"` is that sticky bar on inner pages (black, Esker Exclusive in
-// Esker Blue). Phones get a menu sheet.
+// Esker Blue). Phones get a menu sheet. `width="narrow"` matches the 1104px
+// column of a stay page and checkout, so the wordmark lines up with the title.
 export function SiteNav({
   theme = "hero",
   account = null,
+  width = "wide",
 }: {
   theme?: "hero" | "light";
   account?: { name?: string | null } | null;
+  width?: "wide" | "narrow";
 }) {
   const [open, setOpen] = useState(false);
   const onPhoto = theme === "hero";
@@ -112,7 +115,7 @@ export function SiteNav({
   };
 
   const lightBar = (
-    <div className="mx-auto max-w-[1248px] px-5 sm:px-6">{bar(false)}</div>
+    <div className={`mx-auto px-5 sm:px-6 ${width === "narrow" ? "max-w-[1104px]" : "max-w-[1248px]"}`}>{bar(false)}</div>
   );
 
   return (

@@ -212,7 +212,7 @@ function Section({
           </h2>
           {lead && <p className="text-base leading-normal text-muted">{lead}</p>}
         </div>
-        <Link href={link.href} className="text-[15px] font-bold text-brand hover:text-brand-ink">
+        <Link href={link.href} className="-my-2.5 py-2.5 text-[15px] font-bold text-brand hover:text-brand-ink">
           {link.label} →
         </Link>
       </div>

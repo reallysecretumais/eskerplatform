@@ -17,9 +17,11 @@ import { EskerLogo } from "@/components/EskerLogo";
 // The registered address is deliberately NOT here: it lives on /contact only
 // (founder's correction, ce3e421).
 
-const col = "flex flex-col gap-3";
+// On phones each link is a 40px row (a thumb-sized target); from md up they
+// sit closer, spaced by the column gap.
+const col = "flex flex-col md:gap-3";
 const head = "label text-[11px] text-ash-label";
-const link = "text-warm transition-colors hover:text-ice";
+const link = "inline-flex min-h-10 items-center text-warm transition-colors hover:text-ice md:min-h-0";
 
 export function SiteFooter({
   cities = [],

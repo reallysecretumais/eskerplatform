@@ -117,7 +117,7 @@ export function PropertyConcierge({ property, listings }: { property: SlimListin
       {thread.length === 0 && !busy && (
         <div className="mt-4 flex flex-wrap gap-2">
           {SUGGEST.map((s) => (
-            <button key={s} type="button" onClick={() => ask(s)} className="rounded-full border border-line bg-bg px-3.5 py-1.5 text-xs text-muted transition hover:border-line-hi hover:text-ink">
+            <button key={s} type="button" onClick={() => ask(s)} className="rounded-full border border-line bg-bg px-3.5 py-2 text-[13px] text-muted transition hover:border-line-hi hover:text-ink">
               {s}
             </button>
           ))}
@@ -129,9 +129,9 @@ export function PropertyConcierge({ property, listings }: { property: SlimListin
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask anything about this place…"
-          className="min-w-0 flex-1 bg-transparent px-3 py-1.5 text-sm text-ink outline-none placeholder:text-dim"
+          className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-ink outline-none placeholder:text-dim"
         />
-        <button type="submit" disabled={busy} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-warm transition hover:bg-brand-pressed disabled:opacity-50">
+        <button type="submit" disabled={busy} className="h-10 rounded-full bg-brand px-5 text-sm font-semibold text-warm transition hover:bg-brand-pressed disabled:opacity-50">
           Ask
         </button>
       </form>

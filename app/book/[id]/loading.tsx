@@ -5,7 +5,7 @@ import { Block, HeaderSkeleton } from "@/components/Skeletons";
 export default function Loading() {
   return (
     <main className="min-h-full pb-16">
-      <HeaderSkeleton />
+      <HeaderSkeleton narrow />
       <div className="mx-auto max-w-[1104px] px-5 py-8 sm:px-6" aria-busy="true" aria-label="Checking your dates">
         <Block className="h-4 w-28" />
         <Block className="mt-4 h-11 w-72" />

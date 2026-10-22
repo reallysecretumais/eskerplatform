@@ -11,10 +11,10 @@ export function Block({ className = "", style }: { className?: string; style?: R
   return <div className={`animate-pulse rounded-[14px] bg-surface-2 motion-reduce:animate-none ${className}`} style={style} />;
 }
 
-export function HeaderSkeleton() {
+export function HeaderSkeleton({ narrow = false }: { narrow?: boolean }) {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-bg/95">
-      <div className="mx-auto flex h-[72px] max-w-[1248px] items-center justify-between px-5 sm:px-6">
+      <div className={`mx-auto flex h-[72px] items-center justify-between px-5 sm:px-6 ${narrow ? "max-w-[1104px]" : "max-w-[1248px]"}`}>
         <EskerLogo className="text-ink" />
         <Block className="hidden h-10 w-24 rounded-full md:block" />
       </div>

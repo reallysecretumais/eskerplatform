@@ -119,10 +119,10 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
           beacon for an EXTERNAL (resale) id would fail the FK. Those view counts
           only feed host dashboards, and external units aren't host listings. */}
       {listing.source !== "external" && <TrackListingView id={id} />}
-      <SiteNav theme="light" account={account} />
+      <SiteNav theme="light" width="narrow" account={account} />
 
       <div className="mx-auto max-w-[1104px] px-5 py-8 sm:px-6">
-        <Link href="/stays" className="inline-flex items-center gap-1 text-sm font-semibold text-muted hover:text-ink">
+        <Link href="/stays" className="-my-2 inline-flex items-center gap-1 py-2 text-sm font-semibold text-muted hover:text-ink">
           <ArrowLeft size={15} /> All stays
         </Link>
 
@@ -169,7 +169,7 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
         <div className="mt-6">
           {conciergeOn && <PropertyConcierge property={slimListings([listing])[0]} listings={slimListings(all)} />}
           <div className={conciergeOn ? "mt-2 px-1" : "px-1"}>
-            <ChatEntry label="Message us about this place" propertyId={listing.id} />
+            <ChatEntry label="Message us about this place" propertyId={listing.id} className="-my-2 py-2" />
           </div>
         </div>
 
