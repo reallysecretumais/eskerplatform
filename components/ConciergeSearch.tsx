@@ -94,7 +94,7 @@ export function ConciergeSearch({
           onChange={(e) => setValue(e.target.value)}
           placeholder="Mujhe F-7 mein 2 din ke liye apartment chahiye…"
           aria-label="Describe the stay you're looking for"
-          className="min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-dim"
+          className="min-w-0 flex-1 text-ellipsis bg-transparent text-base text-ink outline-none placeholder:text-dim"
         />
         {voiceEnabled && (
           <button

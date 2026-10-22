@@ -153,10 +153,9 @@ function normalizeListing(row: Record<string, unknown>): PublicListing {
 const cachedListings = unstable_cache(
   async (): Promise<PublicListing[]> => {
     const { data, error } = await anon().from("public_listings").select("*");
-    if (error) {
-      console.error("[home] public_listings read failed:", error.message);
-      return [];
-    }
+    // Thrown, not returned: unstable_cache would otherwise keep an empty
+    // catalogue for the full ten minutes after a single failed read.
+    if (error) throw new Error(`public_listings read failed: ${error.message}`);
     return (data ?? []).map(normalizeListing);
   },
   ["public-listings"],
@@ -164,7 +163,12 @@ const cachedListings = unstable_cache(
 );
 
 export async function getListings(): Promise<PublicListing[]> {
-  return cachedListings();
+  try {
+    return await cachedListings();
+  } catch (e) {
+    console.error("[listings]", e instanceof Error ? e.message : e);
+    return [];
+  }
 }
 
 // Markets (market → city → area; see supabase/18_geography.sql). Public

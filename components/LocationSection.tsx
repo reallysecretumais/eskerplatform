@@ -3,20 +3,22 @@ import { MapPin } from "lucide-react";
 // §6 — Location intelligence. Leads with the human-readable area, then a real
 // neighborhood map (no API key needed). Exact landmark distances ("12 min from
 // Centaurus") come from public_facts / the concierge once filled.
-export function LocationSection({ area }: { area?: string | null }) {
+export function LocationSection({ area, city }: { area?: string | null; city?: string | null }) {
   if (!area) return null;
-  const map = `https://www.google.com/maps?q=${encodeURIComponent(`${area}, Pakistan`)}&z=14&output=embed`;
+  // Area AND city: "B-17, Pakistan" alone can land the map anywhere.
+  const place = [area, city, "Pakistan"].filter(Boolean).join(", ");
+  const map = `https://www.google.com/maps?q=${encodeURIComponent(place)}&z=14&output=embed`;
 
   return (
     <section>
       <h2 className="headline mb-3 text-2xl">Where you&apos;ll be</h2>
       <div className="mb-3 inline-flex items-center gap-1.5 text-sm text-muted">
-        <MapPin size={16} strokeWidth={1.8} className="text-brand" /> {area}
+        <MapPin size={16} strokeWidth={1.8} className="text-brand" /> {[area, city].filter(Boolean).join(", ")}
       </div>
       <div className="overflow-hidden rounded-[22px] border border-line">
         <iframe
           src={map}
-          title={`Map of ${area}`}
+          title={`Map of ${place}`}
           loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
           className="h-64 w-full border-0 sm:h-72"

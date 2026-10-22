@@ -37,7 +37,10 @@ export function Reviews({ reviews, summary, exclusive }: { reviews: Review[]; su
         {reviews.map((r) => (
           <figure key={r.id} className="rounded-[22px] border border-line bg-surface p-4">
             <Stars value={r.rating} size={13} />
-            <blockquote className="mt-2 text-sm leading-relaxed text-ink">“{r.body}”</blockquote>
+            {/* A rating can come without words; never print empty quotes ("--" in the wild). */}
+            {r.body && r.body.replace(/[\s\-–—.]/g, "") ? (
+              <blockquote className="mt-2 text-sm leading-relaxed text-ink">“{r.body.trim()}”</blockquote>
+            ) : null}
             <figcaption className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted">
               <span className="font-medium text-ink">{r.author_name}</span>
               {r.author_location ? <span>· {r.author_location}</span> : null}

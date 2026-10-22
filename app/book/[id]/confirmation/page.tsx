@@ -5,6 +5,7 @@ import { SiteNav } from "@/components/SiteNav";
 import { ChatEntry } from "@/components/chat/ChatEntry";
 import { getAccount } from "@/lib/auth";
 import { holdLabel } from "@/lib/booking/hold";
+import { SiteFooter } from "@/components/SiteFooter";
 
 export const metadata: Metadata = { title: "Booking received", robots: { index: false, follow: false } };
 
@@ -58,6 +59,9 @@ export default async function ConfirmationPage({ searchParams }: { searchParams:
             <ChatEntry label="Questions? Chat with us about this booking" bookingId={bookingId} />
           </div>
         )}
+      </div>
+      <div className="mt-8">
+        <SiteFooter />
       </div>
     </main>
   );

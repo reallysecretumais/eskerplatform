@@ -18,7 +18,7 @@ import { LocationSection } from "@/components/LocationSection";
 import { Reviews } from "@/components/Reviews";
 import { TrackEvent } from "@/components/TrackEvent";
 import { TrackListingView } from "@/components/TrackListingView";
-import { findListingByParam, getListings, getAvailability, slimListings, getListingHost, AvailabilityUnavailable } from "@/lib/data/listings";
+import { findListingByParam, getListings, getMarkets, getAvailability, slimListings, getListingHost, AvailabilityUnavailable } from "@/lib/data/listings";
 import { getExternalBookability } from "@/lib/data/externalBooking";
 import { getWebsiteAi } from "@/lib/settings";
 import { HostCard } from "@/components/HostCard";
@@ -26,6 +26,8 @@ import { getReviews } from "@/lib/data/reviews";
 import { getAccount } from "@/lib/auth";
 import { NF } from "@/lib/listings";
 import { brand } from "@/lib/brand";
+import { SiteFooter } from "@/components/SiteFooter";
+import { liveCities } from "@/lib/geo";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -95,6 +97,10 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
   const byPrice = (a: typeof listing, b: typeof listing) =>
     Math.abs(a.price - listing.price) - Math.abs(b.price - listing.price);
   const related = [...sameArea.sort(byPrice), ...sameCategory.sort(byPrice)].slice(0, 3);
+  // "More stays in B-17" only when they really are all in B-17.
+  const relatedTitle =
+    listing.area && related.length > 0 && related.every((r) => r.area === listing.area) ? `More stays in ${listing.area}` : "Similar stays";
+  const footerCities = liveCities(all, await getMarkets());
   const areaPage = areaLandingFor(listing, all);
 
   // Breadcrumb: Home › Stays › [area page, when one exists] › this listing.
@@ -106,7 +112,7 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
   ];
 
   return (
-    <main className="min-h-full pb-28 lg:pb-16">
+    <main className="min-h-full pb-[76px] lg:pb-0">
       <JsonLd data={[listingLd(listing, summary), breadcrumbLd(breadcrumbTrail)]} />
       <TrackEvent event="ViewContent" params={{ content_ids: [id], content_type: "product", value: listing.price, currency: "PKR" }} />
       {/* Esker-run only: listing_views.property_id references `properties`, so a
@@ -219,7 +225,7 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
             <PakistanDetails facts={listing.public_facts} />
 
             {/* Where you'll be (§6) */}
-            <LocationSection area={listing.area} />
+            <LocationSection area={listing.area} city={listing.city} />
 
             {/* Hosted by … (self-listed places only) */}
             {host && <HostCard host={host} />}
@@ -234,7 +240,7 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
               <section>
                 <div className="mb-5 flex items-baseline justify-between">
                   <h2 className="headline text-2xl">
-                    {listing.area ? `More stays in ${listing.area}` : "More stays"}
+                    {relatedTitle}
                   </h2>
                   {areaPage && (
                     <Link href={`/${areaPage.slug}`} className="text-[15px] font-bold text-brand hover:text-brand-ink">
@@ -277,6 +283,9 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
             />
           </aside>
         </div>
+      </div>
+      <div className="mt-16 lg:mt-20">
+        <SiteFooter cities={footerCities} />
       </div>
     </main>
   );

@@ -7,7 +7,8 @@ import { ConciergeStream } from "@/components/ConciergeStream";
 import { getListings, getMarkets, slimListings } from "@/lib/data/listings";
 import { getAccount } from "@/lib/auth";
 import { getWebsiteAi } from "@/lib/settings";
-import { normalizeCategory } from "@/lib/listings";
+import { normalizeCategory, byStrength } from "@/lib/listings";
+import { SiteFooter } from "@/components/SiteFooter";
 import { activeMarkets, citiesText, liveCities } from "@/lib/geo";
 import { landingPages } from "@/lib/landings";
 import { stayPath } from "@/lib/slug";
@@ -48,9 +49,9 @@ export default async function StaysPage({ searchParams }: { searchParams: Promis
   if (aiSearchOn && sp.q && sp.q.trim()) {
     const listings = await getListings();
     return (
-      <main className="min-h-full pb-16">
+      <main className="min-h-full">
         <SiteNav theme="light" account={account} />
-        <div className="mx-auto max-w-[1248px] px-5 py-8 sm:px-6">
+        <div className="mx-auto max-w-[1248px] px-5 pb-16 pt-8 sm:px-6">
           <div className="label mb-5 flex items-center gap-2 text-xs text-brand">
             <span className="h-[7px] w-[7px] rounded-full bg-brand" aria-hidden /> AI concierge
           </div>
@@ -76,7 +77,9 @@ export default async function StaysPage({ searchParams }: { searchParams: Promis
   // results, the category pills, and the by-city area groups.
   const scoped = selectedMarket ? all.filter((l) => marketSlugOf(l) === selectedMarket.slug) : all;
 
-  let results = scoped;
+  // Strongest first — Esker Exclusive, then stays with photos, then price —
+  // the same order the homepage and the app use (lib/listings byStrength).
+  let results = [...scoped].sort(byStrength);
   if (sp.tier === "exclusive") results = results.filter((l) => l.esker_exclusive);
   if (sp.category) results = results.filter((l) => l.category && normalizeCategory(l.category) === normalizeCategory(sp.category!));
   if (sp.area) results = results.filter((l) => (l.area ?? "").toLowerCase() === sp.area!.toLowerCase());
@@ -123,9 +126,9 @@ export default async function StaysPage({ searchParams }: { searchParams: Promis
       : [];
 
   return (
-    <main className="min-h-full pb-16">
+    <main className="min-h-full">
       <SiteNav theme="light" account={account} />
-      <div className="mx-auto max-w-[1248px] px-5 py-8 sm:px-6 sm:py-10">
+      <div className="mx-auto max-w-[1248px] px-5 pt-8 sm:px-6 sm:pt-10">
         <h1 className="headline text-[clamp(34px,4vw,52px)]">{heading}</h1>
 
         <ConciergeBar />
@@ -199,6 +202,9 @@ export default async function StaysPage({ searchParams }: { searchParams: Promis
             <Link href="/stays" className="mt-3 inline-block text-[15px] font-bold text-brand hover:text-brand-ink">View all stays</Link>
           </div>
         )}
+      </div>
+      <div className="mt-16">
+        <SiteFooter cities={liveCities(all, marketRows)} />
       </div>
     </main>
   );

@@ -84,7 +84,7 @@ export function StayCard({ title, category, area, city, price, priceUnit, exclus
               alt={title}
               loading="lazy"
               decoding="async"
-              className="block h-full w-full object-cover"
+              className="block h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
             />
           )}
         </span>
@@ -96,7 +96,7 @@ export function StayCard({ title, category, area, city, price, priceUnit, exclus
         <PriceChip price={price} unit={unit} size={f.chip} />
       </span>
       <span className={`flex flex-col ${f.body}`}>
-        <span className={`font-bold leading-tight text-ink ${f.title}`}>{title}</span>
+        <span className={`font-bold leading-tight text-ink transition-colors group-hover:text-brand ${f.title}`}>{title}</span>
         {facts && <span className={size === "feature" ? "text-[15px] text-muted" : "text-sm text-dim"}>{facts}</span>}
       </span>
     </>
@@ -104,7 +104,7 @@ export function StayCard({ title, category, area, city, price, priceUnit, exclus
 
   // Pressed: the spec's 0.98 scale, 200ms ease-out; off under reduced motion.
   const cls =
-    "flex min-w-0 flex-col text-ink no-underline transition-transform duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)] active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100";
+    "group flex min-w-0 flex-col text-ink no-underline transition-transform duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)] active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100";
   return href ? (
     <Link href={href} className={cls}>
       {body}
