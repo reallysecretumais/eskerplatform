@@ -11,6 +11,9 @@ import { EskerLogo } from "@/components/EskerLogo";
 // links (which payment gateways require to be visible) can never go missing
 // from one of them.
 //
+// Phones get extra room at the foot so the floating chat button never sits on
+// the last line.
+//
 // The registered address is deliberately NOT here: it lives on /contact only
 // (founder's correction, ce3e421).
 
@@ -29,7 +32,7 @@ export function SiteFooter({
 }) {
   return (
     <footer className="bg-ink text-warm">
-      <div className="mx-auto flex max-w-[1248px] flex-col gap-11 px-5 pb-10 pt-16 sm:px-6">
+      <div className="mx-auto flex max-w-[1248px] flex-col gap-11 px-5 pb-24 pt-16 sm:px-6 md:pb-10">
         <div className="flex flex-wrap justify-between gap-10">
           <div className="flex max-w-[420px] flex-col gap-[18px]">
             <EskerLogo size="footer" />

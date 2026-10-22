@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { brand } from "@/lib/brand";
@@ -31,6 +32,21 @@ export function SiteNav({
   const [open, setOpen] = useState(false);
   const onPhoto = theme === "hero";
   const [pastHero, setPastHero] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  // The menu sheet holds the page still behind it and closes on Escape.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   // Hero pages: show the light bar once most of the first screen has gone by.
   // One passive listener, a boolean that only changes at the threshold.
@@ -105,7 +121,10 @@ export function SiteNav({
         <>
           {bar(true)}
           {/* The same menu, light, once the hero has scrolled away. `inert`
-              while hidden so it never doubles the tab order. */}
+              while hidden so it never doubles the tab order. Portalled to
+              <body>: inside the hero's stacking context the sections below
+              would paint over it. */}
+          {mounted && createPortal(
           <header
             inert={!pastHero}
             className={`fixed inset-x-0 top-0 z-40 border-b border-line bg-bg/95 backdrop-blur transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none ${
@@ -113,13 +132,15 @@ export function SiteNav({
             }`}
           >
             {lightBar}
-          </header>
+          </header>,
+          document.body,
+          )}
         </>
       ) : (
         <header className="sticky top-0 z-40 border-b border-line bg-bg/95 backdrop-blur">{lightBar}</header>
       )}
 
-      {open && (
+      {open && mounted && createPortal(
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-ink/55" onClick={() => setOpen(false)} aria-hidden />
           <div className="absolute right-0 top-0 flex h-full w-[min(20rem,86vw)] flex-col bg-bg p-6">
@@ -156,7 +177,8 @@ export function SiteNav({
               </Link>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
