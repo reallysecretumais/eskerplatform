@@ -4,6 +4,7 @@ import { CircleCheck, ShieldCheck } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { ChatEntry } from "@/components/chat/ChatEntry";
 import { getAccount } from "@/lib/auth";
+import { holdLabel } from "@/lib/booking/hold";
 
 export const metadata: Metadata = { title: "Booking received", robots: { index: false, follow: false } };
 
@@ -35,7 +36,7 @@ export default async function ConfirmationPage({ searchParams }: { searchParams:
           {paidOnline ? (
             <Step n={1} title="Payment settled" body="Safepay has confirmed your payment — no screenshots, nothing to verify by hand." />
           ) : (
-            <Step n={1} title="We verify your payment" body="Your dates are held for you while the team checks your screenshot against the transfer — usually within a few hours." />
+            <Step n={1} title="We verify your payment" body={`Your dates are held for ${holdLabel("transfer")} while the team checks your screenshot against the transfer.`} />
           )}
           <Step n={2} title="You're confirmed" body="You'll get a confirmation, then check-in details before your stay." />
           <Step n={3} title="Held, not handed over" body="Esker holds your advance until you check in." icon />

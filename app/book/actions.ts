@@ -10,12 +10,12 @@ import { notifyBookingReceived } from "@/lib/notifyGuest";
 import { capiEvent } from "@/lib/analytics";
 import { getExternalBookability, hasAuthorizedRequest, refreshExternalCalendar } from "@/lib/data/externalBooking";
 import { notifyStaff } from "@/lib/notifyStaff";
+import { blocksDates, holdUntil, isExpiringHold } from "@/lib/booking/hold";
 import { rs } from "@/lib/listings";
 
 const ACTIVE = ["awaiting_payment", "payment_collected", "handed_over", "awaiting_checkin", "currently_staying", "needs_attention"];
-// Unpaid WEBSITE holds free their dates after this long (matches the
-// public_availability view), so an abandoned checkout never locks a property.
-const HOLD_HOURS = 18;
+// How long an unpaid booking keeps its dates (30 min card, 18 h transfer) is
+// decided once, in lib/booking/hold.ts, and stamped on the row as hold_until.
 const BUCKET = "guest-docs";
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -25,7 +25,7 @@ export type BookingResult = {
   message?: string;
   /** Safepay path: the hosted-checkout URL the client must redirect to. The
    *  booking exists (awaiting_payment) and the CRM webhook settles it; an
-   *  abandoned checkout auto-releases with the standard 18h website hold. */
+   *  abandoned checkout releases its dates when its 30-minute card hold ends. */
   checkoutUrl?: string;
 };
 
@@ -151,24 +151,38 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
     externalCost = Math.round((Number(ext?.typical_cost) || 0) * nights);
   }
 
-  // 3. No double-booking. (An unpaid WEBSITE hold older than HOLD_HOURS no
-  //    longer blocks — its dates have auto-released.)
+  // 3. No double-booking. An unpaid WEBSITE hold whose time is up no longer
+  //    blocks (lib/booking/hold.ts — the same rule the public windows apply).
   const clashBase = admin
     .from("bookings")
-    .select("id, status, source, created_at")
+    .select("id, status, source, created_at, hold_until, account_id, guest_id")
     .is("lost_reason", null)
     .in("status", ACTIVE)
     .lt("checkin", checkout)
     .gt("checkout", checkin);
-  const { data: clashes } = await (isExternal
+  const { data: clashes, error: clashErr } = await (isExternal
     ? clashBase.eq("external_property_id", propertyId)
     : clashBase.eq("property_id", propertyId));
-  const holdCutoff = Date.now() - HOLD_HOURS * 3600 * 1000;
-  const realClash = (clashes ?? []).some((c) =>
-    c.status === "awaiting_payment" && c.source === "Website"
-      ? new Date(c.created_at as string).getTime() > holdCutoff
-      : true,
-  );
+  // A clash check that couldn't run is not a clear calendar. Fail closed.
+  if (clashErr) {
+    console.error("[book] clash check failed:", clashErr.message);
+    return { ok: false, message: "We couldn't check these dates just now. Please try again in a moment." };
+  }
+
+  // The guest's OWN unpaid hold on these nights is not a clash. A guest who
+  // backs out of the card page and comes back to pay by transfer would
+  // otherwise be told their own dates were "just taken". A hold that belongs
+  // to an account matches only that signed-in account; one made without an
+  // account matches the guest by phone. The new booking replaces it (step 6).
+  const { data: phoneGuest } = phone
+    ? await admin.from("guests").select("id").eq("phone", phone).limit(1).maybeSingle()
+    : { data: null };
+  type Clash = { id: string; status: string; source: string | null; created_at: string; hold_until: string | null; account_id: string | null; guest_id: string | null };
+  const isMine = (c: Clash) =>
+    isExpiringHold(c) && (c.account_id ? c.account_id === accountId : !!phoneGuest && c.guest_id === phoneGuest.id);
+  const rows = (clashes ?? []) as Clash[];
+  const myHolds = rows.filter(isMine).map((c) => c.id);
+  const realClash = rows.some((c) => !isMine(c) && blocksDates(c));
   if (realClash) return { ok: false, message: "Sorry — those dates were just taken. Please pick others." };
 
   if (isExternal) {
@@ -280,6 +294,14 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
 
   // 6. Create the booking (screenshot path: awaiting team verification;
   //    Safepay path: awaiting the gateway webhook, which settles it hands-free).
+  //    It replaces any earlier unpaid hold of this guest's on these nights, so
+  //    one guest never holds the same dates twice. Paid rows are never touched
+  //    (isMine only matches awaiting_payment website holds); a late card
+  //    payment on the old one moves it out of awaiting_payment, and it blocks
+  //    again on its own.
+  if (myHolds.length) {
+    await admin.from("bookings").update({ hold_until: new Date().toISOString() }).in("id", myHolds);
+  }
   const note = `Website booking — ${advanceLabel(amount, exclusive)} advance ${rs(advance)} of ${rs(amount)} (balance ${rs(balance)} due at check-in). ${
     viaSafepay ? "Paying by Safepay — confirms automatically when the gateway settles." : "Verify the payment screenshot."
   }${email ? ` Email: ${email}.` : ""}${idNote}`;
@@ -304,9 +326,12 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
       status: "awaiting_payment",
       payment_status: "partial",
       // The CHANNEL, not the inventory type — `is_external` marks resale. Keeping
-      // this 'Website' preserves ad/channel attribution AND arms the 18h
-      // unpaid-hold auto-release, which keys on source = 'Website'.
+      // this 'Website' preserves ad/channel attribution AND arms the unpaid-hold
+      // release, which keys on source = 'Website'.
       source: "Website",
+      // When these dates go back on sale if no money arrives (D5): 30 minutes
+      // for a card checkout, 18 hours for a bank transfer.
+      hold_until: holdUntil(viaSafepay ? "card" : "transfer"),
       notes: note,
     })
     .select("id")
@@ -343,20 +368,22 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
     if (anchorErr || !anchor) {
       return { ok: false, message: "Couldn't start the payment — please try again, or pay by bank transfer." };
     }
-    const checkout = await createSafepayCheckout({
+    const gateway = await createSafepayCheckout({
       amountPkr: advance,
       bookingId: anchor.id, // metadata order_id = the anchor
       redirectUrl: `${site}/book/${propertyId}/confirmation?b=${booking.id}&via=safepay`,
-      cancelUrl: `${site}/book/${propertyId}?cancelled=1`,
+      // Back to checkout with the same dates, carrying this booking so the page
+      // recognises the guest's own hold and offers the other method.
+      cancelUrl: `${site}/book/${propertyId}?checkin=${checkin}&checkout=${checkout}&resume=${booking.id}`,
     });
-    if (!checkout.ok) {
+    if (!gateway.ok) {
       return {
         ok: false,
-        message: `${checkout.message} Your dates are held for a while — you can also pay by bank transfer and upload the screenshot.`,
+        message: `${gateway.message} You can also pay by bank transfer instead.`,
       };
     }
-    await admin.from("gateway_payments").update({ tracker: checkout.tracker }).eq("id", anchor.id);
-    checkoutUrl = checkout.url;
+    await admin.from("gateway_payments").update({ tracker: gateway.tracker }).eq("id", anchor.id);
+    checkoutUrl = gateway.url;
   } else {
     const proofPath = `payments/${booking.id}/pay-${Date.now()}.${ext(proof!)}`;
     const upP = await admin.storage.from(BUCKET).upload(proofPath, proof!, { contentType: proof!.type, upsert: false });

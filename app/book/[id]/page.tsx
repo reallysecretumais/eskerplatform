@@ -13,6 +13,8 @@ import { stayPath } from "@/lib/slug";
 import { TrackEvent } from "@/components/TrackEvent";
 import type { Metadata } from "next";
 import { getBankAccounts } from "@/lib/data/bankAccounts";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { blocksDates, isExpiringHold } from "@/lib/booking/hold";
 
 export const metadata: Metadata = { title: "Confirm & pay", robots: { index: false, follow: false } };
 
@@ -37,7 +39,7 @@ export default async function BookPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ checkin?: string; checkout?: string }>;
+  searchParams: Promise<{ checkin?: string; checkout?: string; resume?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
@@ -52,14 +54,18 @@ export default async function BookPage({
     checkin && checkout ? Math.round((new Date(`${checkout}T00:00:00`).getTime() - new Date(`${checkin}T00:00:00`).getTime()) / 86_400_000) : 0;
   if (!checkin || !checkout || checkin < today || nights < 1) redirect(`/stays/${id}`);
 
-  // Don't allow checkout for taken dates.
+  // Don't allow checkout for taken dates — except the guest's own card hold,
+  // when Safepay sends them back here after a payment that didn't go through.
   const busy = await getAvailability(id);
+  const resumed = sp.resume ? await ownHold(sp.resume, id, checkin, checkout) : false;
   // Where a transfer should go — the CRM's Settings, read server-side because
   // CheckoutForm is a client component.
   const accounts = await getBankAccounts();
   const booked = bookedSet(busy);
-  for (let d = new Date(`${checkin}T00:00:00`), g = 0; d < new Date(`${checkout}T00:00:00`) && g < 400; d.setDate(d.getDate() + 1), g++) {
-    if (booked.has(d.toISOString().slice(0, 10))) redirect(`/stays/${id}`);
+  if (!resumed) {
+    for (let d = new Date(`${checkin}T00:00:00`), g = 0; d < new Date(`${checkout}T00:00:00`) && g < 400; d.setDate(d.getDate() + 1), g++) {
+      if (booked.has(d.toISOString().slice(0, 10))) redirect(`/stays/${id}`);
+    }
   }
 
   const price = listing.price;
@@ -88,7 +94,7 @@ export default async function BookPage({
 
         <div className="mt-6 grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <CheckoutForm propertyId={id} checkin={checkin} checkout={checkout} advanceLabel={advanceLabel} balanceLabel={balanceLabel} pctLabel={pctLabel} prefill={prefill} accounts={accounts} safepayReady={isSafepayConfigured()} />
+            <CheckoutForm propertyId={id} checkin={checkin} checkout={checkout} advanceLabel={advanceLabel} balanceLabel={balanceLabel} pctLabel={pctLabel} prefill={prefill} accounts={accounts} safepayReady={isSafepayConfigured()} cardDeclined={resumed} />
           </div>
 
           {/* Order summary */}
@@ -131,6 +137,26 @@ export default async function BookPage({
       </div>
     </main>
   );
+}
+
+/**
+ * Is `bookingId` a still-live unpaid website hold on exactly these nights of
+ * this stay? That is the booking the guest just tried to pay by card; its own
+ * hold must not read as "taken" to them. createBooking applies the same
+ * own-hold rule server-side, so this only decides what the page shows.
+ * The id is a v4 uuid that only reaches this guest, via Safepay's cancel link.
+ */
+async function ownHold(bookingId: string, listingId: string, checkin: string, checkout: string): Promise<boolean> {
+  if (!/^[0-9a-f-]{36}$/i.test(bookingId)) return false;
+  const { data } = await createAdminClient()
+    .from("bookings")
+    .select("status, source, created_at, hold_until, lost_reason, checkin, checkout, property_id, external_property_id")
+    .eq("id", bookingId)
+    .maybeSingle();
+  if (!data || data.lost_reason) return false;
+  const sameStay = data.property_id === listingId || data.external_property_id === listingId;
+  const sameNights = String(data.checkin).slice(0, 10) === checkin && String(data.checkout).slice(0, 10) === checkout;
+  return sameStay && sameNights && isExpiringHold(data) && blocksDates(data);
 }
 
 function Row({ label, value }: { label: string; value: string }) {

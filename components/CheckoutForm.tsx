@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Copy, Check, Upload, ShieldCheck, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { createBooking, verifyIdUpload } from "@/app/book/actions";
 import type { BankAccount } from "@/lib/bankAccounts";
+import { holdLabel } from "@/lib/booking/hold";
 
 type IdStatus = "idle" | "checking" | "ok" | "bad";
 
@@ -21,6 +22,7 @@ export function CheckoutForm({
   prefill,
   accounts,
   safepayReady = false,
+  cardDeclined = false,
 }: {
   propertyId: string;
   checkin: string;
@@ -35,6 +37,9 @@ export function CheckoutForm({
   /** Safepay keys exist on THIS deployment — the online option renders.
    *  Fail-closed: the live site shows nothing until production keys are set. */
   safepayReady?: boolean;
+  /** Safepay sent the guest back without a payment. Their dates are still
+   *  held; offer the other method (BUILD_REFERENCE "Payment failed"). */
+  cardDeclined?: boolean;
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -42,7 +47,9 @@ export function CheckoutForm({
   // Online-first (founder decision): Safepay is the default whenever available;
   // bank transfer + screenshot stays one tap away for everyone else.
   const [payMethod, setPayMethod] = useState<"safepay" | "transfer">(safepayReady ? "safepay" : "transfer");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    cardDeclined ? "Your card payment didn't go through. Try again, or pay by bank transfer." : null,
+  );
   const [copied, setCopied] = useState<string | null>(null);
   const [docType, setDocType] = useState<"cnic" | "passport">("cnic");
   const [frontStatus, setFrontStatus] = useState<IdStatus>("idle");
@@ -299,8 +306,8 @@ export function CheckoutForm({
         )}
         <p className="mt-2 text-center text-xs text-muted">
           {payMethod === "safepay"
-            ? "Your booking confirms automatically the moment the payment goes through."
-            : "Your dates are held for you while we verify — usually within a few hours."}
+            ? `We hold your dates for ${holdLabel("card")} while you pay. Your booking confirms the moment the payment goes through.`
+            : `We hold your dates for ${holdLabel("transfer")} while we check your transfer.`}
         </p>
         <p className="mt-3 text-center text-xs text-muted">
           By confirming, you agree to Esker&apos;s{" "}
