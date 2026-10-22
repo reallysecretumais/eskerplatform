@@ -1,6 +1,18 @@
 # SESSION HANDOFF — Esker Stays
 
-> Read this first to resume. Pairs with `CLAUDE.md` (rules), `PROJECT_ARCHITECTURE.md` (how it's built), `ROADMAP.md`, `PHASE1_LAUNCH_CHECKLIST.md` (status + founder actions), `DEPLOYMENT.md`, and `Esker_Platform_AI_First_Master_Plan.md` (vision). Last updated: **2026‑08‑02**.
+> Read this first to resume. Pairs with `CLAUDE.md` (rules), `PROJECT_ARCHITECTURE.md` (how it's built), `ROADMAP.md`, `PHASE1_LAUNCH_CHECKLIST.md` (status + founder actions), `DEPLOYMENT.md`, and `Esker_Platform_AI_First_Master_Plan.md` (vision). Last updated: **2026‑10‑22**.
+
+## NEW 2026‑10‑22 — Esker Blue website, D5 hold, fail-closed availability (COMMITTED, NOT PUSHED)
+
+Six commits on local `main`, waiting on the founder's OK to push (a push deploys eskerrentals.com). **Migration `24_booking_holds.sql` must be run BEFORE the push**: the booking insert writes `bookings.hold_until`.
+
+- **Homepage from the Website board** (`c95ed41`): measured against the board at 1440 (features land within 1–2px) and read at 390. Live data only; the board's one-line plaque has no field yet, so cards show the facts line.
+- **Esker Blue on every page** (`8d4103e`): gold, Sora, Inter and the serif are gone; `rs()` is the one money formatter. Host and partner portals included; `/invest` untouched.
+- **Payment lines** (`6af73bd`): `lib/payments.ts` is the one list (card via Safepay + bank transfer live; Easypaisa/JazzCash/SadaPay flagged not live). Host PAYOUT methods (`PayoutCard`, `hostConstants`) are a different list and unchanged.
+- **D5 hold** (`0864379`): `lib/booking/hold.ts` (card 30 min, transfer 18 h) stamps `hold_until`; migration 24 makes both availability views read it. A guest's own unpaid hold isn't a clash against them; Safepay's cancel link returns them to checkout with "Your card payment didn't go through". Test: `node scripts/hold.test.mts`.
+- **Fail closed** (`9ee4991`): `getBusyByProperty`/`getAvailability` throw `AvailabilityUnavailable` instead of returning "everything free"; app routes answer 503, the stay calendar and checkout say they couldn't check. `/api/health` reports `availability.readable`.
+
+**Open for the founder:** the day‑7 cancellation wording (code already refunds day 7 in full); every external listing's public title starts with what looks like the owner's first name ("Sayan's…", "Talal's…"); the CRM's verify panel still counts 18 h for card checkouts; a Safepay link stays payable for 7 days while the card hold is 30 minutes.
 
 ## NEW 2026‑08‑02 — AVAILABILITY IS THREE‑VALUED (deployed) → read `AVAILABILITY_TRUTH_PLAN.md`
 

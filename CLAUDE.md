@@ -13,7 +13,7 @@ The public, AI-first short-stay **booking website** — the consumer-facing "fac
 Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4 (`@theme` tokens in `app/globals.css`) · `@supabase/ssr` · lucide-react. Reads through `lib/supabase/server.ts` (anon). Keys in git-ignored `.env.local` (URL + anon only).
 
 ## Design direction (decided)
-Concept B — **the AI concierge is the hero, set on photography**; browsable listings below. Light, airy, premium, photography-led — the bright opposite of the dark CRM. Esker gold (`#C9A84C`) as a sparing accent; editorial serif (Fraunces) for headlines/prices, Inter for UI. Mobile-first. Tokens: `bg-bg`, `bg-surface`, `text-ink`, `text-gold`, `border-line`, `font-serif`.
+Concept B — **the AI concierge is the hero, set on photography**; browsable listings below. Since 2026-10-22 the look is **V3 "Esker Blue"**, shared with the guest app (founder decision D4): Esker Blue `#2638A8`, ice `#D0D8FF`, warm white, Instrument Sans headlines at 84% width, Manrope for every number. The spec and the board live in the app repo (`design/BUILD_REFERENCE.md`, `design/live/Website.dc.html`); tokens in `app/globals.css`; details in PROJECT_ARCHITECTURE "Design system". Mobile-first.
 
 ## Name
 Working name "Esker Stays" is a placeholder — keep it changeable. Never hardcode the brand in components; read from `lib/brand.ts`.
