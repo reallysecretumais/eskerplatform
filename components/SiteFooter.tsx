@@ -51,7 +51,7 @@ export function SiteFooter({
             <div className={col}>
               <span className={head}>Help</span>
               <a href={`https://wa.me/${company.whatsapp}`} target="_blank" rel="noopener noreferrer" className={link}>
-                WhatsApp <span className="tnum">{company.phoneDisplay}</span>
+                Message us on WhatsApp
               </a>
               <Link href="/contact" className={link}>Contact</Link>
               <Link href="/host" className={link}>For property owners</Link>

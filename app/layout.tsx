@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Instrument_Sans, Manrope } from "next/font/google";
+import { Instrument_Sans, Manrope, Sora } from "next/font/google";
 import "./globals.css";
 import { brand } from "@/lib/brand";
 import { SITE_URL, SITE_NAME, defaultTitle, defaultDesc, keywords } from "@/lib/seo";
@@ -24,6 +24,14 @@ const manrope = Manrope({
   subsets: ["latin"],
   variable: "--font-manrope",
   display: "swap",
+});
+
+// The wordmark's own face (components/EskerLogo.tsx) and nothing else.
+const wordmark = Sora({
+  subsets: ["latin"],
+  variable: "--font-sora",
+  display: "swap",
+  weight: ["500", "600"],
 });
 
 // Every property photo comes from Supabase storage — warm the connection before
@@ -88,7 +96,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${instrument.variable} ${manrope.variable} h-full`}>
+    <html lang="en" className={`${instrument.variable} ${manrope.variable} ${wordmark.variable} h-full`}>
       <head>{SUPABASE_ORIGIN && <link rel="preconnect" href={SUPABASE_ORIGIN} crossOrigin="anonymous" />}</head>
       <body className="min-h-full">
         <MetaPixel />

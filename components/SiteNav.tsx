@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { brand } from "@/lib/brand";
@@ -15,10 +15,12 @@ const LINKS: { label: string; href: string; accent?: boolean; external?: boolean
   { label: "Help", href: `https://wa.me/${company.whatsapp}`, external: true },
 ];
 
-// Site navigation, from the Website board: the lockup, three links, and an
-// outlined Sign in pill. `theme="hero"` sits over the hero's overlay (warm
-// white, Esker Exclusive in ice); `theme="light"` is the sticky bar for inner
-// pages (black, Esker Exclusive in Esker Blue). Phones get a menu sheet.
+// Site navigation, from the Website board: the wordmark, three links, and an
+// outlined Sign in pill. `theme="hero"` sits over the hero's photo-wall (warm
+// white, Esker Exclusive in ice) and, once the guest scrolls past the hero,
+// the light bar slides down and stays, so the menu is never a scroll away.
+// `theme="light"` is that sticky bar on inner pages (black, Esker Exclusive in
+// Esker Blue). Phones get a menu sheet.
 export function SiteNav({
   theme = "hero",
   account = null,
@@ -28,67 +30,93 @@ export function SiteNav({
 }) {
   const [open, setOpen] = useState(false);
   const onPhoto = theme === "hero";
+  const [pastHero, setPastHero] = useState(false);
+
+  // Hero pages: show the light bar once most of the first screen has gone by.
+  // One passive listener, a boolean that only changes at the threshold.
+  useEffect(() => {
+    if (!onPhoto) return;
+    const check = () => setPastHero(window.scrollY > window.innerHeight * 0.7);
+    check();
+    window.addEventListener("scroll", check, { passive: true });
+    return () => window.removeEventListener("scroll", check);
+  }, [onPhoto]);
   const authHref = account ? "/account" : "/login";
   const authLabel = account ? (account.name ? account.name.split(" ")[0] : "Account") : "Sign in";
 
-  const plain = onPhoto ? "text-warm hover:text-ice" : "text-ink hover:text-brand";
-  const accent = onPhoto ? "text-ice hover:text-warm" : "text-brand hover:text-brand-ink";
-
-  const bar = (
-    <nav className={`flex items-center justify-between gap-4 ${onPhoto ? "h-[84px]" : "h-[72px]"}`}>
-      <Link href="/" aria-label={brand.name} className={onPhoto ? "text-warm" : "text-ink"}>
-        <EskerLogo size="nav" className={onPhoto ? "" : "h-[49px] w-[60px]"} />
-      </Link>
-
-      <div className="hidden items-center gap-[26px] text-[15px] font-semibold md:flex">
-        {LINKS.map((l) =>
-          l.external ? (
-            <a key={l.label} href={l.href} target="_blank" rel="noopener noreferrer" className={l.accent ? accent : plain}>
-              {l.label}
-            </a>
-          ) : (
-            <Link key={l.label} href={l.href} className={l.accent ? accent : plain}>
-              {l.label}
-            </Link>
-          ),
-        )}
-        {account && (
-          <Link href="/messages" className={`inline-flex items-center gap-1.5 ${plain}`}>
-            Messages
-            <MessagesBadge />
-          </Link>
-        )}
-        <Link
-          href={authHref}
-          className={`inline-flex h-10 items-center rounded-full px-[18px] transition-colors ${
-            onPhoto
-              ? "text-warm shadow-[inset_0_0_0_1.5px_rgba(244,243,239,0.6)] hover:bg-warm/10"
-              : "text-ink shadow-[inset_0_0_0_1.5px_var(--color-line-hi)] hover:bg-surface-2"
-          }`}
-        >
-          {authLabel}
+  const bar = (dark: boolean) => {
+    const plain = dark ? "text-warm hover:text-ice" : "text-ink hover:text-brand";
+    const accent = dark ? "text-ice hover:text-warm" : "text-brand hover:text-brand-ink";
+    return (
+      <nav className={`flex items-center justify-between gap-4 ${dark ? "h-[84px]" : "h-[72px]"}`}>
+        <Link href="/" aria-label={brand.name} className={dark ? "text-warm" : "text-ink"}>
+          <EskerLogo size="nav" />
         </Link>
-      </div>
 
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={`grid h-11 w-11 place-items-center rounded-full md:hidden ${onPhoto ? "text-warm" : "text-ink"}`}
-        aria-label="Open menu"
-      >
-        <Menu size={24} strokeWidth={1.8} />
-      </button>
-    </nav>
+        <div className="hidden items-center gap-[26px] text-[15px] font-semibold md:flex">
+          {LINKS.map((l) =>
+            l.external ? (
+              <a key={l.label} href={l.href} target="_blank" rel="noopener noreferrer" className={l.accent ? accent : plain}>
+                {l.label}
+              </a>
+            ) : (
+              <Link key={l.label} href={l.href} className={l.accent ? accent : plain}>
+                {l.label}
+              </Link>
+            ),
+          )}
+          {account && (
+            <Link href="/messages" className={`inline-flex items-center gap-1.5 ${plain}`}>
+              Messages
+              <MessagesBadge />
+            </Link>
+          )}
+          <Link
+            href={authHref}
+            className={`inline-flex h-10 items-center rounded-full px-[18px] transition-colors ${
+              dark
+                ? "text-warm shadow-[inset_0_0_0_1.5px_rgba(244,243,239,0.6)] hover:bg-warm/10"
+                : "text-ink shadow-[inset_0_0_0_1.5px_var(--color-line-hi)] hover:bg-surface-2"
+            }`}
+          >
+            {authLabel}
+          </Link>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={`grid h-11 w-11 place-items-center rounded-full md:hidden ${dark ? "text-warm" : "text-ink"}`}
+          aria-label="Open menu"
+        >
+          <Menu size={24} strokeWidth={1.8} />
+        </button>
+      </nav>
+    );
+  };
+
+  const lightBar = (
+    <div className="mx-auto max-w-[1248px] px-5 sm:px-6">{bar(false)}</div>
   );
 
   return (
     <>
       {onPhoto ? (
-        bar
+        <>
+          {bar(true)}
+          {/* The same menu, light, once the hero has scrolled away. `inert`
+              while hidden so it never doubles the tab order. */}
+          <header
+            inert={!pastHero}
+            className={`fixed inset-x-0 top-0 z-40 border-b border-line bg-bg/95 backdrop-blur transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none ${
+              pastHero ? "translate-y-0" : "-translate-y-full"
+            }`}
+          >
+            {lightBar}
+          </header>
+        </>
       ) : (
-        <header className="sticky top-0 z-40 border-b border-line bg-bg/95 backdrop-blur">
-          <div className="mx-auto max-w-[1248px] px-5 sm:px-6">{bar}</div>
-        </header>
+        <header className="sticky top-0 z-40 border-b border-line bg-bg/95 backdrop-blur">{lightBar}</header>
       )}
 
       {open && (
@@ -96,7 +124,7 @@ export function SiteNav({
           <div className="absolute inset-0 bg-ink/55" onClick={() => setOpen(false)} aria-hidden />
           <div className="absolute right-0 top-0 flex h-full w-[min(20rem,86vw)] flex-col bg-bg p-6">
             <div className="flex items-center justify-between">
-              <EskerLogo size="nav" className="h-[49px] w-[60px] text-ink" />
+              <EskerLogo size="nav" className="text-ink" />
               <button type="button" onClick={() => setOpen(false)} aria-label="Close menu" className="grid h-11 w-11 place-items-center rounded-full text-ink">
                 <X size={22} strokeWidth={1.8} />
               </button>

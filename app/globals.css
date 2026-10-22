@@ -58,6 +58,8 @@
   --font-sans: var(--font-instrument), "Helvetica Neue", Arial, sans-serif;
   --font-display: var(--font-instrument), "Helvetica Neue", Arial, sans-serif;
   --font-num: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  /* The website's typographic wordmark only (components/EskerLogo.tsx). */
+  --font-wordmark: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* Headlines: Instrument Sans 700 at the board's widths. The web can use the
@@ -99,6 +101,39 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* Headlines break into balanced lines; paragraphs avoid a lonely last word. */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+}
+
+/* In-page jumps ("Select dates" scrolling to the calendar) glide, unless the
+   guest has asked for less motion. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Keyboard focus: one clear Esker Blue ring everywhere (ice on dark), never
+   the browser default, and never on a mouse click. */
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+.bg-ink :focus-visible,
+.bg-brand :focus-visible {
+  outline-color: var(--color-ice);
+}
+:focus:not(:focus-visible) {
+  outline: none;
 }
 
 /* Premium, restrained scrollbar */
@@ -145,6 +180,40 @@ body {
 .rise-5 { animation-delay: 0.41s; }
 .rise-6 { animation-delay: 0.5s; }
 
+/* ── Hero photo-wall ──────────────────────────────────────────────
+   Columns of real photos drift slowly in alternating directions behind the
+   concierge (content duplicated, translated -50% for a seamless loop). On
+   touch devices a gentle CSS sway replaces the pointer-tilt rAF loop (zero JS
+   per frame); it keeps the base -5deg cant. Transform-only, GPU. */
+@keyframes esker-marquee {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+.marq {
+  animation: esker-marquee 56s linear infinite;
+  will-change: transform;
+}
+.marq-rev {
+  animation-direction: reverse;
+}
+@keyframes esker-hero-sway {
+  0%   { transform: rotateZ(-5deg) rotateX(1.6deg) rotateY(-4.5deg); }
+  50%  { transform: rotateZ(-5deg) rotateX(-1.6deg) rotateY(4.5deg); }
+  100% { transform: rotateZ(-5deg) rotateX(1.6deg) rotateY(-4.5deg); }
+}
+.hero-sway {
+  animation: esker-hero-sway 16s ease-in-out infinite;
+}
+
+/* Scroll cue — a faint drifting chevron at the hero's bottom edge. */
+@keyframes esker-cue {
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(6px); opacity: 0.9; }
+}
+.scroll-cue {
+  animation: esker-cue 2.4s ease-in-out infinite;
+}
+
 /* Voice concierge overlay entrance — gentle fade + lift. */
 @keyframes esker-voice-in {
   from { opacity: 0; transform: scale(0.985); }
@@ -188,7 +257,12 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rise {
+  .rise,
+  .hero-sway,
+  .scroll-cue {
+    animation: none;
+  }
+  .marq {
     animation: none;
   }
   .voice-in {

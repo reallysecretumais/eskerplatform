@@ -7,12 +7,13 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { ConciergeSearch } from "@/components/ConciergeSearch";
 import { CategoryShowcase } from "@/components/CategoryShowcase";
 import { StayCard } from "@/components/StayCard";
-import { getListings, getMarkets, slimListings, type PublicListing } from "@/lib/data/listings";
+import { HeroCollage } from "@/components/HeroCollage";
+import { ChevronDown } from "lucide-react";
+import { getListings, getMarkets, slimListings, pickCollagePhotos, type PublicListing } from "@/lib/data/listings";
 import { homeSections, categoryCounts, byStrength, MORE_SECTION_MAX, EXCLUSIVE_SECTION_MAX } from "@/lib/listings";
 import { activeMarkets, byMarket, citiesText, liveCities } from "@/lib/geo";
 import { guestPaymentSentence } from "@/lib/payments";
 import { isSafepayConfigured } from "@/lib/safepay";
-import { crop } from "@/lib/img";
 import { getAccount } from "@/lib/auth";
 import { getWebsiteAi } from "@/lib/settings";
 import { JsonLd } from "@/components/JsonLd";
@@ -54,12 +55,9 @@ export default async function HomePage() {
   const cities = citiesText(liveCityNames) || brand.launchCities.join(" & ");
   const marketGroups = activeMarkets(listings, markets).length >= 2 ? byMarket(sections.all, markets) : [];
 
-  // The hero's three photos: the strongest stays' lead shots, Exclusives first.
-  const heroPhotos = [...listings]
-    .sort(byStrength)
-    .map((l) => l.photos?.[0])
-    .filter((p): p is string => !!p)
-    .slice(0, 3);
+  // The hero's photo-wall: the strongest stays first, a few photos each,
+  // interleaved so neighbouring tiles are different places.
+  const collagePhotos = pickCollagePhotos([...listings].sort(byStrength), 8, 18);
 
   // Footer quick links: the board's Farmhouses link, for whichever categories
   // actually have stays (plural labels, as the category tiles use).
@@ -71,38 +69,27 @@ export default async function HomePage() {
     <main className="min-h-full">
       <JsonLd data={[organizationLd(liveCityNames.length ? liveCityNames : undefined), websiteLd()]} />
 
-      {/* ── Hero: the only place text sits on a photo, under a 68% black overlay ── */}
-      <section className="relative overflow-hidden bg-ink text-warm">
-        <div className="absolute inset-0 flex" aria-hidden>
-          {heroPhotos.map((p, i) => (
-            // eslint-disable-next-line @next/next/no-img-element -- Supabase transforms are the image CDN
-            <img
-              key={p}
-              src={crop(p, 720, 1000, 60)}
-              alt=""
-              fetchPriority={i === 0 ? "high" : "auto"}
-              decoding="async"
-              className={`block h-full min-w-0 flex-1 object-cover ${i > 0 ? "max-sm:hidden" : ""}`}
-            />
-          ))}
-        </div>
-        <div className="absolute inset-0 bg-ink/[0.68]" aria-hidden />
+      {/* ── Hero: the concierge over a living wall of real stays ── */}
+      <section className="relative isolate flex min-h-[min(92vh,900px)] flex-col overflow-hidden bg-ink text-warm">
+        <HeroCollage photos={collagePhotos} />
 
-        <div className="relative mx-auto max-w-[1248px] px-5 sm:px-6">
+        <div className="relative z-10 mx-auto flex w-full max-w-[1248px] flex-1 flex-col px-5 sm:px-6">
           <SiteNav account={account} />
-          <div className="flex flex-col items-center gap-6 pb-20 pt-14 text-center sm:pb-24 sm:pt-[92px]">
-            <span className="label flex items-center gap-2 text-xs text-ice">
+          <div className="my-auto flex flex-col items-center gap-6 pb-14 pt-10 text-center sm:pb-16 sm:pt-12">
+            <span className="rise rise-1 label flex items-center gap-2 text-xs text-ice">
               <span className="h-[7px] w-[7px] rounded-full bg-ice" aria-hidden />
               AI concierge · English or Roman Urdu
             </span>
-            <h1 className="headline stretch-82 max-w-[900px] text-[clamp(48px,8vw,104px)] leading-[0.9] tracking-[-0.03em] [text-wrap:balance]">
+            <h1 className="rise rise-2 headline stretch-82 max-w-[900px] text-[clamp(48px,8vw,104px)] leading-[0.9] tracking-[-0.03em] [text-wrap:balance]">
               Where would you like to <span className="text-ice">stay?</span>
             </h1>
-            <p className="max-w-[520px] text-lg leading-normal text-veil">
+            <p className="rise rise-3 max-w-[520px] text-lg leading-normal text-veil">
               Describe it in your own words. We&apos;ll find the right place from real, available stays.
             </p>
-            <ConciergeSearch listings={slim} aiEnabled={ai.search.enabled} voiceEnabled={ai.voice.enabled} />
-            <ul className="mt-2 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-veil">
+            <div className="rise rise-4 w-full">
+              <ConciergeSearch listings={slim} aiEnabled={ai.search.enabled} voiceEnabled={ai.voice.enabled} />
+            </div>
+            <ul className="rise rise-5 mt-2 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-veil">
               {TRUST.map((t) => (
                 <li key={t} className="flex items-center gap-2">
                   <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="text-ice" aria-hidden>
@@ -112,6 +99,11 @@ export default async function HomePage() {
                 </li>
               ))}
             </ul>
+          </div>
+
+          {/* Scroll cue — the stays continue below */}
+          <div className="pointer-events-none mb-6 flex justify-center" aria-hidden>
+            <ChevronDown size={20} className="scroll-cue text-warm/60" />
           </div>
         </div>
       </section>
