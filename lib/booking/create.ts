@@ -10,6 +10,8 @@ import { getExternalBookability, hasAuthorizedRequest, refreshExternalCalendar }
 import { blocksDates, holdUntil, isExpiringHold } from "@/lib/booking/hold";
 import { rs } from "@/lib/listings";
 import { toE164Pk } from "@/lib/otp";
+import { pkToday } from "@/lib/pkDate";
+import { company } from "@/lib/contact";
 
 /**
  * THE BOOKING CORE — the one place a guest's booking is made, for the website's
@@ -88,6 +90,30 @@ export type BookingResult = {
 };
 
 const fail = (code: BookingErrorCode, message: string): BookingResult => ({ ok: false, code, message });
+
+/** Midnight at the start of a Pakistani day, as an instant: "2026-10-23T00:00:00+05:00". */
+const pkMidnight = (day: string) => `${day}T00:00:00+05:00`;
+
+/** The day after "YYYY-MM-DD". */
+function nextDay(day: string): string {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+}
+
+/** "2:00 PM" → "14:00", from lib/contact.ts. */
+function clock24(t: string): string {
+  const [, h, min, ap] = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(t.trim()) ?? [, "12", "00", "PM"];
+  const hour = (Number(h) % 12) + (ap.toUpperCase() === "PM" ? 12 : 0);
+  return `${String(hour).padStart(2, "0")}:${min}`;
+}
+
+/**
+ * How a stay is stored, the way the CRM records its own: check-in at 2:00 PM
+ * and check-out at 12:00 PM, Pakistani time (lib/contact.ts). A bare
+ * "2026-10-23" in these timestamptz columns lands at 05:00 PKT.
+ */
+const stayStart = (day: string) => `${day}T${clock24(company.checkIn)}:00+05:00`;
+const stayEnd = (day: string) => `${day}T${clock24(company.checkOut)}:00+05:00`;
 
 function ext(file: File): string {
   const fromName = file.name.split(".").pop();
@@ -255,7 +281,7 @@ export async function createBookingCore(input: CreateBookingInput): Promise<Book
   const isExternal = (listing as { source?: string }).source === "external";
 
   // 2. Dates.
-  const today = new Date().toISOString().slice(0, 10);
+  const today = pkToday();
   if (!checkin || !checkout || checkin < today || checkout <= checkin) {
     return fail("dates_invalid", "Please pick valid check-in and check-out dates.");
   }
@@ -290,13 +316,21 @@ export async function createBookingCore(input: CreateBookingInput): Promise<Book
 
   // 3. No double-booking. An unpaid WEBSITE hold whose time is up no longer
   //    blocks (lib/booking/hold.ts — the same rule the public windows apply).
+  //
+  //    Compared by NIGHT, in Pakistani days, like the public calendar: another
+  //    booking clashes if it starts before our check-out day and its check-out
+  //    falls after our first night. The columns are timestamptz, so comparing
+  //    them with bare dates read a guest leaving at 12:00 PM on the 23rd as
+  //    clashing with one arriving that afternoon, and every same-day
+  //    changeover was refused (founder, 23 Oct: "it says 23–24 is already
+  //    booked but I don't think it's booked").
   const clashBase = admin
     .from("bookings")
     .select("id, status, source, created_at, hold_until, account_id, guest_id")
     .is("lost_reason", null)
     .in("status", ACTIVE)
-    .lt("checkin", checkout)
-    .gt("checkout", checkin);
+    .lt("checkin", pkMidnight(checkout))
+    .gte("checkout", pkMidnight(nextDay(checkin)));
   const { data: clashes, error: clashErr } = await (isExternal
     ? clashBase.eq("external_property_id", propertyId)
     : clashBase.eq("property_id", propertyId));
@@ -466,8 +500,8 @@ export async function createBookingCore(input: CreateBookingInput): Promise<Book
       ...(isExternal
         ? { property_id: null, external_property_id: propertyId, is_external: true, cost: externalCost }
         : { property_id: propertyId }),
-      checkin,
-      checkout,
+      checkin: stayStart(checkin),
+      checkout: stayEnd(checkout),
       nights,
       // Per-NIGHT guest price. `rate_at_booking` is NOT NULL DEFAULT 0, so
       // leaving it unset silently yields 0 and breaks invoices (x0 bug).
