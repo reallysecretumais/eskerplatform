@@ -1,32 +1,91 @@
 @import "tailwindcss";
 
 /* ──────────────────────────────────────────────────────────────
-   ESKER STAYS — consumer design tokens (light, airy, premium).
-   The bright, aspirational opposite of the dark CRM. Exposed to
-   Tailwind v4 as utilities: bg-bg, bg-surface, text-ink, text-gold,
-   border-line, font-serif, etc. Gold is used sparingly — accents,
-   key prices, primary actions only.
+   ESKER BLUE — the website's design tokens (V3, 2026-10-22).
+
+   The same palette and type the guest app draws with, from the
+   founder's canvas. Sources, in order of authority:
+     esker-platform-app/design/live/Website.dc.html   wins on pixels
+     esker-platform-app/design/BUILD_REFERENCE.md     wins on rules
+     esker-platform-app/src/theme/tokens.ts           the app's copy
+   A value that isn't here isn't in the design.
+
+   Rules the tokens can't enforce on their own:
+     - One colour, used with intent. Esker Blue carries the brand;
+       ice marks ONE thing per area (a word, a chip, a dot) and is
+       never a large background.
+     - Blue backgrounds only for primary buttons, the price chip and
+       the Esker Standard panel.
+     - Pages are warm white, not pure white, so they sit with photos.
+     - No gradients, no glows, no coloured shadows.
+     - Instrument Sans says things; Manrope gives facts — every
+       price, date, count and small-caps label (`.tnum`, `label`).
    ────────────────────────────────────────────────────────────── */
 @theme {
-  --color-bg: #faf8f4; /* warm ivory page */
-  --color-surface: #ffffff; /* cards, panels */
-  --color-surface-2: #f4f1ea; /* subtle warm fill */
-  --color-line: #e7e2d8; /* hairline border */
-  --color-line-hi: #d9d2c4; /* stronger border */
-  --color-ink: #211f1a; /* near-black warm (dark sections / hero) */
-  --color-text: #1c1b18; /* primary text */
-  --color-muted: #6b675e; /* secondary text */
-  --color-dim: #9a958a; /* tertiary text, labels */
-  --color-gold: #c9a84c; /* PRIMARY ACCENT — Esker gold */
-  --color-gold-deep: #9c7d2e; /* gold text on light surfaces */
+  /* Light (the website is light-first) */
+  --color-bg: #f4f3ef; /* warm white — the page */
+  --color-surface: #ffffff; /* cards and panels on the page */
+  --color-surface-2: #ebe9e2; /* tiles, quiet fills (the board's category tile) */
+  --color-line: #e2e0d8; /* hairlines and card edges */
+  --color-line-hi: #c9c7bf; /* outline buttons, stronger edges */
+  --color-ink: #0b0b0b; /* black — dark sections, the hero, the footer */
+  --color-text: #0b0b0b; /* primary text */
+  --color-muted: #5e5d59; /* secondary text, 5.9:1 on warm white */
+  --color-dim: #6b6a65; /* labels and tertiary text on light (never #8a8984 here) */
+
+  /* Brand */
+  --color-brand: #2638a8; /* Esker Blue */
+  --color-brand-pressed: #23339a; /* primary pressed: 8% darker */
+  --color-brand-ink: #18246e; /* text and icons sitting on ice */
+  --color-ice: #d0d8ff; /* the one accent */
+  --color-ice-tint: #e3e7fa; /* icon wells on light */
+  --color-ice-band: #dce2fa; /* selected date range */
+  --color-ice-soft: #d9def5; /* body text on Esker Blue (the Standard panel) */
+
+  /* On dark and on photos */
+  --color-warm: #f4f3ef; /* text on black and on Esker Blue */
+  --color-veil: #cfcdc6; /* secondary text over the hero's overlay */
+  --color-ash: #9c9b96; /* secondary text on black */
+  --color-ash-label: #8a8984; /* small-caps labels on black */
+  --color-dark-line: #232323; /* hairlines on black */
+
+  /* Status */
   --color-green: #2f9e6e; /* available / positive */
   --color-red: #d9534f; /* alerts */
-  --color-blue: #4c7bd0; /* info / confirmed status */
+  --color-blue: #2638a8; /* info / confirmed status — Esker Blue */
   --color-orange: #c8842f; /* warning / awaiting status */
 
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
-    BlinkMacSystemFont, sans-serif;
-  --font-display: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-instrument), "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-instrument), "Helvetica Neue", Arial, sans-serif;
+  --font-num: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Headlines: Instrument Sans 700 at the board's widths. The web can use the
+   variable font's width axis, which the app had to cut into static files. */
+@utility headline {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-stretch: 84%;
+  letter-spacing: -0.025em;
+  line-height: 0.95;
+}
+@utility stretch-82 {
+  font-stretch: 82%;
+}
+@utility stretch-84 {
+  font-stretch: 84%;
+}
+@utility stretch-88 {
+  font-stretch: 88%;
+}
+
+/* Small caps labels: Manrope 600, +0.14em (AI CONCIERGE, THE ESKER STANDARD). */
+@utility label {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 html,
@@ -60,125 +119,31 @@ body {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--color-gold) 26%, transparent);
-  color: var(--color-ink);
+  background: var(--color-ice);
+  color: var(--color-brand-ink);
 }
 
-/* Tabular numerals for aligned prices */
+/* Every number a guest reads: Manrope, tabular, so prices line up. */
 .tnum {
-  font-feature-settings: "tnum" 1;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
 
-/* ── Hero collage motion ──────────────────────────────────────────
-   Slow, transform-only (compositor/GPU) so it stays cheap. Fully
-   disabled under prefers-reduced-motion. */
-@keyframes esker-kenburns {
-  from { transform: scale(1); }
-  to   { transform: scale(1.14); }
-}
-@keyframes esker-kenburns-alt {
-  from { transform: scale(1.12); }
-  to   { transform: scale(1); }
-}
+/* Staggered entrance — transform/opacity only; off under reduced motion. */
 @keyframes esker-rise {
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.kb {
-  animation: esker-kenburns 32s ease-in-out infinite alternate;
-  transform-origin: center;
-  will-change: transform;
-}
-.kb2 {
-  animation: esker-kenburns-alt 40s ease-in-out infinite alternate;
-  transform-origin: 40% 60%;
-  will-change: transform;
-}
 .rise {
   animation: esker-rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-/* Staggered entrance — the hero assembles piece by piece (delay utilities). */
 .rise-1 { animation-delay: 0.05s; }
 .rise-2 { animation-delay: 0.14s; }
 .rise-3 { animation-delay: 0.23s; }
 .rise-4 { animation-delay: 0.32s; }
 .rise-5 { animation-delay: 0.41s; }
 .rise-6 { animation-delay: 0.5s; }
-
-/* Touch-device hero motion: a gentle CSS sway replaces the pointer-tilt rAF
-   loop entirely (GPU-only, zero JS per frame). Keeps the base -5° cant. */
-@keyframes esker-hero-sway {
-  0%   { transform: rotateZ(-5deg) rotateX(1.6deg) rotateY(-4.5deg); }
-  50%  { transform: rotateZ(-5deg) rotateX(-1.6deg) rotateY(4.5deg); }
-  100% { transform: rotateZ(-5deg) rotateX(1.6deg) rotateY(-4.5deg); }
-}
-.hero-sway {
-  animation: esker-hero-sway 16s ease-in-out infinite;
-}
-
-/* One gold glint — a slow shimmer sweep across the primary CTA. Used exactly
-   once per page so it stays precious. */
-@keyframes esker-shimmer {
-  0%, 55% { background-position: 130% 0; }
-  100% { background-position: -30% 0; }
-}
-.shimmer {
-  background-image: linear-gradient(
-    115deg,
-    transparent 38%,
-    rgba(255, 255, 255, 0.35) 50%,
-    transparent 62%
-  );
-  background-size: 220% 100%;
-  background-repeat: no-repeat;
-  animation: esker-shimmer 5.5s ease-in-out infinite;
-}
-
-/* Scroll cue — a faint drifting chevron at the hero's bottom edge. */
-@keyframes esker-cue {
-  0%, 100% { transform: translateY(0); opacity: 0.5; }
-  50% { transform: translateY(6px); opacity: 0.9; }
-}
-.scroll-cue {
-  animation: esker-cue 2.4s ease-in-out infinite;
-}
-
-/* Hero cross-fade: a base photo is always visible; two overlay layers fade in
-   and out over the cycle, so the hero gently moves through real photos
-   full-bleed (never a half-empty mosaic). Pairs with the .kb drift on an
-   inner layer. */
-@keyframes esker-fade-b {
-  0%, 28% { opacity: 0; }
-  34%, 60% { opacity: 1; }
-  66%, 100% { opacity: 0; }
-}
-@keyframes esker-fade-c {
-  0%, 60% { opacity: 0; }
-  66%, 92% { opacity: 1; }
-  98%, 100% { opacity: 0; }
-}
-.fade-b {
-  animation: esker-fade-b 21s ease-in-out infinite;
-}
-.fade-c {
-  animation: esker-fade-c 21s ease-in-out infinite;
-}
-
-/* Hero photo-wall: columns of real photos drift slowly in alternating
-   directions behind the concierge. Content is duplicated and translated -50%
-   for a seamless loop. Transform-only (GPU). */
-@keyframes esker-marquee {
-  from { transform: translateY(0); }
-  to { transform: translateY(-50%); }
-}
-.marq {
-  animation: esker-marquee 56s linear infinite;
-  will-change: transform;
-}
-.marq-rev {
-  animation-direction: reverse;
-}
 
 /* Voice concierge overlay entrance — gentle fade + lift. */
 @keyframes esker-voice-in {
@@ -223,20 +188,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .kb,
-  .kb2,
-  .rise,
-  .hero-sway,
-  .shimmer,
-  .scroll-cue {
-    animation: none;
-  }
-  .fade-b,
-  .fade-c {
-    animation: none;
-    opacity: 0;
-  }
-  .marq {
+  .rise {
     animation: none;
   }
   .voice-in {

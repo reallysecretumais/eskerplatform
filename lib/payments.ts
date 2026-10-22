@@ -21,6 +21,17 @@ export const payments = {
   methods: ["Easypaisa", "JazzCash", "Bank transfer", "SadaPay"],
 } as const;
 
+/** How a guest can pay, for every public line that names methods. */
+export function guestPaymentMethods(): string[] {
+  return [...payments.methods];
+}
+
+/** The same list as a sentence: "Easypaisa, JazzCash or bank transfer". */
+export function guestPaymentSentence(): string {
+  const words = guestPaymentMethods().map((m, i) => (i > 0 && m === "Bank transfer" ? "bank transfer" : m));
+  return words.length > 1 ? `${words.slice(0, -1).join(", ")} or ${words[words.length - 1]}` : (words[0] ?? "");
+}
+
 // Guest support contact (shown in emails / messages).
 export const support = {
   whatsapp: "923325977626",

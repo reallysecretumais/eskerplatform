@@ -1,250 +1,253 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { stayPath } from "@/lib/slug";
-import { Sparkles, ShieldCheck, Star, Clock, Wallet, Headphones, ArrowRight, ChevronDown, MessageCircle } from "lucide-react";
 import { brand } from "@/lib/brand";
 import { SiteNav } from "@/components/SiteNav";
+import { SiteFooter } from "@/components/SiteFooter";
 import { ConciergeSearch } from "@/components/ConciergeSearch";
 import { CategoryShowcase } from "@/components/CategoryShowcase";
 import { StayCard } from "@/components/StayCard";
-import { HeroCollage } from "@/components/HeroCollage";
-import { getListings, getMarkets, pickCollagePhotos, slimListings, type PublicListing } from "@/lib/data/listings";
-import { homeSections, categoryCounts, MORE_SECTION_MAX } from "@/lib/listings";
+import { getListings, getMarkets, slimListings, type PublicListing } from "@/lib/data/listings";
+import { homeSections, categoryCounts, byStrength, MORE_SECTION_MAX, EXCLUSIVE_SECTION_MAX } from "@/lib/listings";
 import { activeMarkets, byMarket, citiesText, liveCities } from "@/lib/geo";
+import { guestPaymentSentence } from "@/lib/payments";
+import { crop } from "@/lib/img";
 import { getAccount } from "@/lib/auth";
 import { getWebsiteAi } from "@/lib/settings";
 import { JsonLd } from "@/components/JsonLd";
-import { EskerLogo } from "@/components/EskerLogo";
 import { organizationLd, websiteLd } from "@/lib/seo";
 
-// Homepage — now reads LIVE from the database (public_listings). Real photos
-// lead the cross-fading hero; real Esker Exclusive listings sell the inventory.
-// Renders gracefully when there are few/no public listings yet.
+// The homepage, from the Website board (esker-platform-app/design/live/
+// Website.dc.html, 1440 wide). Everything a guest reads that could be a number,
+// a city, a card or a category comes from the live listing window — the board's
+// own figures are placeholders and never appear here.
 
-const TRUST = [
-  { Icon: ShieldCheck, text: "Verified, managed stays" },
-  { Icon: Star, text: "Esker Exclusive guarantee" },
-  { Icon: Clock, text: "Fast local support" },
-];
+const TRUST = ["Verified, managed stays", "Advance held until check-in", "Real people on WhatsApp"];
 
-const WHY = [
-  { Icon: ShieldCheck, title: "Professionally managed", body: "Every Esker Exclusive stay is inspected and run to a guaranteed standard." },
-  { Icon: Wallet, title: "Easy local payment", body: "Pay the way you already do — Easypaisa, JazzCash, or bank transfer." },
-  { Icon: Headphones, title: "Real human support", body: "Quick, friendly help before, during, and after your stay." },
+// "Pay the way you pay" reads the one list of methods that actually work.
+const STANDARD = [
+  { title: "Inspected and managed", body: "Every Exclusive stay is run by our own team." },
+  { title: "Held until you're in", body: "Your advance is released at check-in, not before." },
+  { title: "Pay the way you pay", body: `${guestPaymentSentence()}.` },
+  { title: "Real people", body: "On WhatsApp before, during and after your stay." },
 ];
 
 export default async function HomePage() {
-  const listings = await getListings();
-  const collagePhotos = pickCollagePhotos(listings, 8, 18);
-  const account = await getAccount();
+  const [listings, markets, account, ai] = await Promise.all([getListings(), getMarkets(), getAccount(), getWebsiteAi()]);
   const slim = slimListings(listings); // client components get only what cards need
-  const ai = await getWebsiteAi(); // CRM kill switches for the hero search + voice
 
-  // Every stay is shown. While inventory is small that's ONE grid (splitting a
-  // handful into two headed sections looks emptier, not richer); it upgrades
+  // Every stay is shown. While inventory is small that's ONE grid; it upgrades
   // itself to "Esker Exclusive" + the rest once there's enough stock. See
   // lib/listings.ts homeSections.
   const sections = homeSections(listings);
   const counts = categoryCounts(listings);
 
   // Geography is DATA: the cities line and the section layout derive from the
-  // markets that actually have live listings. Publishing the first listing in a
-  // new market (e.g. Murree) re-writes the copy and switches the grid to one
-  // section per market — zero deploys. With one market, nothing changes.
-  const markets = await getMarkets();
+  // markets that actually have live listings. A second market's first listing
+  // switches the grid to one section per market — zero deploys.
   const liveCityNames = liveCities(listings, markets);
   const cities = citiesText(liveCityNames) || brand.launchCities.join(" & ");
-  const activeMkts = activeMarkets(listings, markets);
-  const marketGroups = activeMkts.length >= 2 ? byMarket(sections.all, markets) : [];
+  const marketGroups = activeMarkets(listings, markets).length >= 2 ? byMarket(sections.all, markets) : [];
+
+  // The hero's three photos: the strongest stays' lead shots, Exclusives first.
+  const heroPhotos = [...listings]
+    .sort(byStrength)
+    .map((l) => l.photos?.[0])
+    .filter((p): p is string => !!p)
+    .slice(0, 3);
+
+  // Footer quick links: the board's Farmhouses link, for whichever categories
+  // actually have stays (plural labels, as the category tiles use).
+  const liveCategories = [...new Set(listings.map((l) => l.category).filter((c): c is string => !!c))]
+    .filter((c) => !/^apartment|^penthouse/i.test(c))
+    .map((c) => (c.endsWith("s") ? c : `${c}s`));
 
   return (
     <main className="min-h-full">
       <JsonLd data={[organizationLd(liveCityNames.length ? liveCityNames : undefined), websiteLd()]} />
-      {/* ── Hero: concierge fused with cross-fading real photography ── */}
-      <section className="relative isolate flex min-h-[92vh] flex-col overflow-hidden bg-ink text-white">
-        {/* Living photo-wall of the property's top photos */}
-        <HeroCollage photos={collagePhotos} />
 
-        <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col px-6">
+      {/* ── Hero: the only place text sits on a photo, under a 68% black overlay ── */}
+      <section className="relative overflow-hidden bg-ink text-warm">
+        <div className="absolute inset-0 flex" aria-hidden>
+          {heroPhotos.map((p, i) => (
+            // eslint-disable-next-line @next/next/no-img-element -- Supabase transforms are the image CDN
+            <img
+              key={p}
+              src={crop(p, 720, 1000, 60)}
+              alt=""
+              fetchPriority={i === 0 ? "high" : "auto"}
+              decoding="async"
+              className={`block h-full min-w-0 flex-1 object-cover ${i > 0 ? "max-sm:hidden" : ""}`}
+            />
+          ))}
+        </div>
+        <div className="absolute inset-0 bg-ink/[0.68]" aria-hidden />
+
+        <div className="relative mx-auto max-w-[1248px] px-5 sm:px-6">
           <SiteNav account={account} />
-
-          <div className="mx-auto my-auto max-w-2xl py-12 text-center">
-            <div className="rise rise-1 mb-5 flex items-center justify-center gap-2 text-xs uppercase tracking-[0.22em] text-gold">
-              <Sparkles size={14} />
-              AI concierge
-            </div>
-            <h1 className="rise rise-2 font-display text-[2.1rem] font-semibold leading-[1.08] tracking-tight drop-shadow-sm sm:text-5xl lg:text-[4.1rem]">
-              Where would you like to <em className="font-serif font-medium italic text-gold">stay</em>?
+          <div className="flex flex-col items-center gap-6 pb-20 pt-14 text-center sm:pb-24 sm:pt-[92px]">
+            <span className="label flex items-center gap-2 text-xs text-ice">
+              <span className="h-[7px] w-[7px] rounded-full bg-ice" aria-hidden />
+              AI concierge · English or Roman Urdu
+            </span>
+            <h1 className="headline stretch-82 max-w-[900px] text-[clamp(48px,8vw,104px)] leading-[0.9] tracking-[-0.03em] [text-wrap:balance]">
+              Where would you like to <span className="text-ice">stay?</span>
             </h1>
-            <p className="rise rise-3 mx-auto mt-4 max-w-md text-white/80">
-              Describe it in your own words — even in Roman Urdu. We&apos;ll find
-              the right place from real, available stays.
+            <p className="max-w-[520px] text-lg leading-normal text-veil">
+              Describe it in your own words. We&apos;ll find the right place from real, available stays.
             </p>
-
-            <div className="rise rise-4 mt-8">
-              <ConciergeSearch listings={slim} aiEnabled={ai.search.enabled} voiceEnabled={ai.voice.enabled} />
-            </div>
-
-            <div className="rise rise-5 mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-white/75">
-              {TRUST.map(({ Icon, text }) => (
-                <span key={text} className="inline-flex items-center gap-1.5">
-                  <Icon size={14} className="text-gold" /> {text}
-                </span>
+            <ConciergeSearch listings={slim} aiEnabled={ai.search.enabled} voiceEnabled={ai.voice.enabled} />
+            <ul className="mt-2 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-veil">
+              {TRUST.map((t) => (
+                <li key={t} className="flex items-center gap-2">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="text-ice" aria-hidden>
+                    <path d="M3 8.5 6.5 12 13 4.5" />
+                  </svg>
+                  {t}
+                </li>
               ))}
-            </div>
-
-            <p className="rise rise-6 mt-5 text-xs text-white/65">
-              Now in {cities} · {brand.expansionNote}
-            </p>
-          </div>
-
-          {/* Scroll cue — the world continues below */}
-          <div className="pointer-events-none mb-5 flex justify-center">
-            <ChevronDown size={20} className="scroll-cue text-white/60" />
+            </ul>
           </div>
         </div>
       </section>
 
-      {/* ── Our stays — every live listing from the DB ────────────── */}
+      {/* ── Stays — every live listing from the DB ── */}
       {marketGroups.length >= 2 ? (
         // Multi-market: one section per market, in market order — a guest
-        // planning Murree never wades through Islamabad stays (and vice versa).
-        // Each section's listings keep the same strength sort as the one-grid
-        // layout; the Exclusive badge still marks the tier on every card.
-        marketGroups.map(({ market, listings: mls }, i) => (
-          <section key={market.slug} className={`mx-auto max-w-6xl px-6 pb-12 ${i === 0 ? "pt-16" : ""}`}>
-            <div className="mb-1 flex items-baseline justify-between">
-              <h2 className="font-display text-2xl font-semibold tracking-tight text-ink">Stays in {market.name}</h2>
-              <Link href={`/stays?market=${encodeURIComponent(market.slug)}`} className="flex items-center gap-1 text-sm text-muted hover:text-ink">
-                See all {market.count} <ArrowRight size={15} />
-              </Link>
-            </div>
-            {i === 0 && (
-              <p className="mb-5 text-sm text-muted">
-                <span className="text-gold-deep">{brand.exclusiveTier}</span> marked in gold.
-              </p>
-            )}
+        // planning Murree never wades through Islamabad stays.
+        marketGroups.map(({ market, listings: mls }) => (
+          <Section
+            key={market.slug}
+            title={<>Stays in {market.name}</>}
+            link={{ href: `/stays?market=${encodeURIComponent(market.slug)}`, label: `See all ${market.count}` }}
+          >
             <StayGrid listings={mls.slice(0, MORE_SECTION_MAX)} />
-          </section>
+          </Section>
         ))
-      ) : sections.mode === "unified"
-        ? sections.all.length > 0 && (
-            <section className="mx-auto max-w-6xl px-6 pb-12 pt-16">
-              <div className="mb-1 flex items-baseline justify-between">
-                <h2 className="font-display text-2xl font-semibold tracking-tight text-ink">Our stays</h2>
-                <Link href="/stays" className="flex items-center gap-1 text-sm text-muted hover:text-ink">
-                  Explore all stays <ArrowRight size={15} />
-                </Link>
+      ) : sections.mode === "unified" ? (
+        sections.all.length > 0 && (
+          <Section title={<>Our stays in {cities}</>} link={{ href: "/stays", label: "Explore all stays" }}>
+            <StayGrid listings={sections.all} />
+          </Section>
+        )
+      ) : (
+        <>
+          <Section
+            title={
+              <>
+                Esker <span className="text-brand">{brand.exclusiveTier.replace(/^Esker /, "")}</span>
+              </>
+            }
+            lead="Personally inspected and managed by Esker to one standard."
+            link={{ href: "/stays?tier=exclusive", label: "See all" }}
+            large
+          >
+            <div className="grid gap-x-6 gap-y-10 md:grid-cols-2">
+              {sections.exclusive.slice(0, EXCLUSIVE_SECTION_MAX).map((l) => (
+                <Card key={l.id} listing={l} size="feature" />
+              ))}
+            </div>
+          </Section>
+          <Section title={<>More stays in {cities}</>} link={{ href: "/stays", label: "Explore all stays" }}>
+            <StayGrid listings={sections.rest.slice(0, MORE_SECTION_MAX)} />
+          </Section>
+        </>
+      )}
+
+      {/* ── The Esker Standard ── */}
+      <section className="mx-auto mt-24 max-w-[1248px] px-5 sm:px-6">
+        <div className="flex flex-wrap items-start gap-12 rounded-[36px] bg-brand p-[clamp(28px,5vw,64px)] text-warm">
+          <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-4">
+            <span className="label text-xs text-ice">The Esker Standard</span>
+            <h2 className="headline stretch-82 text-[clamp(36px,4.4vw,60px)] leading-[0.92]">
+              Places don&apos;t travel. <span className="text-ice">A standard does.</span>
+            </h2>
+          </div>
+          <div className="grid min-w-0 flex-[1_1_420px] gap-x-8 gap-y-7 sm:grid-cols-2">
+            {STANDARD.map((p) => (
+              <div key={p.title} className="flex flex-col gap-2">
+                <span className="h-[1.5px] w-10 bg-ice" aria-hidden />
+                <span className="text-lg font-bold">{p.title}</span>
+                <span className="text-[15px] leading-[1.45] text-ice-soft">{p.body}</span>
               </div>
-              {/* Explains the gold badge, which the homepage never did before. */}
-              <p className="mb-5 text-sm text-muted">
-                Every place we manage in {cities} — <span className="text-gold-deep">{brand.exclusiveTier}</span> marked in gold.
-              </p>
-              <StayGrid listings={sections.all} />
-            </section>
-          )
-        : (
-            <>
-              <section className="mx-auto max-w-6xl px-6 pb-12 pt-16">
-                <div className="mb-1 flex items-baseline justify-between">
-                  <h2 className="font-display text-2xl font-semibold tracking-tight text-ink">{brand.exclusiveTier}</h2>
-                  <Link href="/stays?tier=exclusive" className="flex items-center gap-1 text-sm text-muted hover:text-ink">
-                    See all <ArrowRight size={15} />
-                  </Link>
-                </div>
-                <p className="mb-5 text-sm text-muted">Personally inspected and managed by Esker to a guaranteed standard.</p>
-                <StayGrid listings={sections.exclusive} />
-              </section>
+            ))}
+          </div>
+        </div>
+      </section>
 
-              <section className="mx-auto max-w-6xl px-6 pb-12">
-                <div className="mb-5 flex items-baseline justify-between">
-                  <h2 className="font-display text-2xl font-semibold tracking-tight text-ink">More stays in {cities}</h2>
-                  <Link href="/stays" className="flex items-center gap-1 text-sm text-muted hover:text-ink">
-                    Explore all stays <ArrowRight size={15} />
-                  </Link>
-                </div>
-                <StayGrid listings={sections.rest.slice(0, MORE_SECTION_MAX)} />
-              </section>
-            </>
-          )}
-
-      {/* ── Browse by category — visual showcase ──────────────────── */}
-      <section className="mx-auto max-w-6xl px-6 pb-14 pt-4">
-        <h2 className="mb-5 font-display text-2xl font-semibold tracking-tight text-ink">Browse by category</h2>
+      {/* ── Browse by category ── */}
+      <section className="mx-auto flex max-w-[1248px] flex-col gap-7 px-5 pt-24 sm:px-6">
+        <h2 className="headline text-[clamp(30px,3.4vw,42px)] tracking-[-0.02em]">
+          Browse by <span className="text-brand">category</span>
+        </h2>
         <CategoryShowcase counts={counts} />
       </section>
 
-      {/* ── Why Esker — trust strip ──────────────────────────────── */}
-      <section className="border-y border-line bg-surface-2/40">
-        <div className="mx-auto grid max-w-6xl gap-6 px-6 py-12 sm:grid-cols-3">
-          {WHY.map(({ Icon, title, body }) => (
-            <div key={title} className="flex gap-3.5">
-              <Icon size={22} className="mt-0.5 shrink-0 text-gold" strokeWidth={1.5} />
-              <div>
-                <div className="text-sm font-medium text-ink">{title}</div>
-                <p className="mt-1 text-sm text-muted">{body}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── Footer ───────────────────────────────────────────────── */}
-      <footer className="border-t border-line">
-        <div className="mx-auto max-w-6xl px-6 py-10 text-sm text-muted">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <EskerLogo className="text-ink" />
-              <p className="mt-2">{brand.tagline}</p>
-            </div>
-            <div className="flex flex-wrap gap-x-6 gap-y-2">
-              <Link href="/stays" className="hover:text-ink">Browse all stays</Link>
-              <Link href="/stays?tier=exclusive" className="hover:text-ink">{brand.exclusiveTier}</Link>
-              <Link href="/contact" className="hover:text-ink">Contact</Link>
-              <Link href="/legal/terms" className="hover:text-ink">Terms</Link>
-              <Link href="/legal/cancellation" className="hover:text-ink">Cancellation &amp; refunds</Link>
-              <Link href="/legal/service-delivery" className="hover:text-ink">Service delivery</Link>
-              <Link href="/legal/privacy" className="hover:text-ink">Privacy</Link>
-            </div>
-          </div>
-
-          {/* Quiet trust signals where hesitant guests look */}
-          <div className="mt-8 flex flex-col gap-3 border-t border-line pt-6 text-xs text-dim sm:flex-row sm:items-center sm:justify-between">
-            <span>Pay the way you already do — {brand.payments.join(" · ")}</span>
-            <a
-              href={`https://wa.me/${brand.whatsapp}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-muted transition hover:text-ink"
-            >
-              <MessageCircle size={14} className="text-gold" /> WhatsApp support — replies in minutes
-            </a>
-          </div>
-        </div>
-      </footer>
+      <div className="mt-[110px]">
+        <SiteFooter cities={liveCityNames} categories={liveCategories} />
+      </div>
     </main>
   );
 }
 
-/** One card grid, used by both the unified and split layouts so the two can
- *  never drift apart. StayCard's 4:3 background-image render is deliberate —
- *  don't swap it for <img>/srcset (see SESSION_HANDOFF). */
+/** A homepage section head from the board: headline (+ lead) left, link right. */
+function Section({
+  title,
+  lead,
+  link,
+  large = false,
+  children,
+}: {
+  title: ReactNode;
+  lead?: string;
+  link: { href: string; label: string };
+  large?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <section className="mx-auto flex max-w-[1248px] flex-col gap-7 px-5 pt-[72px] sm:px-6 sm:pt-[88px]">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <h2
+            className={`headline ${large ? "text-[clamp(34px,4vw,52px)]" : "text-[clamp(30px,3.4vw,42px)] tracking-[-0.02em]"}`}
+          >
+            {title}
+          </h2>
+          {lead && <p className="text-base leading-normal text-muted">{lead}</p>}
+        </div>
+        <Link href={link.href} className="text-[15px] font-bold text-brand hover:text-brand-ink">
+          {link.label} →
+        </Link>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** The 3-across grid, used by every non-Exclusive section so they can never drift apart. */
 function StayGrid({ listings }: { listings: PublicListing[] }) {
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+    <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
       {listings.map((l) => (
-        <StayCard
-          key={l.id}
-          title={l.title}
-          category={l.category ?? "Stay"}
-          area={l.area ?? ""}
-          city={l.city}
-          price={l.price}
-          priceUnit={l.price_unit}
-          exclusive={l.esker_exclusive}
-          photo={l.photos?.[0] ?? undefined}
-          href={stayPath(l)}
-        />
+        <Card key={l.id} listing={l} size="standard" />
       ))}
     </div>
+  );
+}
+
+function Card({ listing: l, size }: { listing: PublicListing; size: "feature" | "standard" }) {
+  return (
+    <StayCard
+      title={l.title}
+      category={l.category ?? "Stay"}
+      area={l.area ?? ""}
+      city={l.city}
+      price={l.price}
+      priceUnit={l.price_unit}
+      exclusive={l.esker_exclusive}
+      photo={l.photos?.[0] ?? undefined}
+      href={stayPath(l)}
+      size={size}
+    />
   );
 }

@@ -4,7 +4,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { MessageCircle, Mic, Search, ArrowRight } from "lucide-react";
+import { ArrowRight, Mic, Search } from "lucide-react";
 import type { SlimListing } from "@/lib/data/listings";
 import { unlockAudio } from "@/lib/voiceAudio";
 
@@ -12,10 +12,15 @@ import { unlockAudio } from "@/lib/voiceAudio";
 // so it's loaded lazily — the hero stays light and fast on first paint.
 const VoiceConcierge = dynamic(() => import("@/components/VoiceConcierge").then((m) => m.VoiceConcierge), { ssr: false });
 
-const CHIPS = ["Pool, sleeps 6, this weekend", "Ground floor for my parents", "Under ₨20k near Centaurus"];
+// Example prompts, in the guest's own words (BUILD_REFERENCE "Voice and copy").
+const CHIPS = ["Pool, sleeps 6, this weekend", "Ground floor for my parents", "Under Rs 20k near Centaurus"];
 
-// Concierge input shell: type OR speak. The text box routes to the results page;
-// the mic opens the full-screen voice concierge (English or Urdu, hands-free).
+const chip =
+  "inline-flex h-[38px] items-center rounded-full px-4 text-sm font-semibold text-warm shadow-[inset_0_0_0_1.5px_rgba(244,243,239,0.45)] transition-colors hover:bg-warm/10";
+
+// The Ask Esker field from the Website board: type OR speak. Typing routes to
+// the results page; the mic opens the full-screen voice concierge (English or
+// Urdu, hands-free). Both are CRM kill-switchable.
 export function ConciergeSearch({
   listings = [],
   aiEnabled = true,
@@ -43,85 +48,77 @@ export function ConciergeSearch({
     router.push(q ? `/stays?q=${encodeURIComponent(q)}` : "/stays");
   };
 
-  // ── AI search switched off → browse, don't disappear ─────────────────────
-  const voiceEntry = voiceEnabled && (
-    <div className="mt-4 flex justify-center">
-      <button
-        type="button"
-        onClick={() => {
-          void unlockAudio();
-          setVoiceOpen(true);
-        }}
-        className="group inline-flex items-center gap-2.5 rounded-full border border-gold/40 bg-white/10 py-2.5 pl-2.5 pr-5 text-sm font-medium text-white backdrop-blur-md transition hover:bg-white/20"
-      >
-        <span className="relative grid h-8 w-8 place-items-center rounded-full bg-gold text-ink">
-          <span className="absolute inset-0 animate-ping rounded-full bg-gold/50 [animation-duration:2.2s]" />
-          <Mic size={16} className="relative" />
-        </span>
-        Speak to Esker — <span className="text-gold">English or Urdu</span>
-      </button>
-    </div>
-  );
+  const openVoice = () => {
+    void unlockAudio();
+    setVoiceOpen(true);
+  };
 
+  // ── AI search switched off → browse, don't disappear ─────────────────────
   if (!aiEnabled) {
     return (
-      <div className="mx-auto max-w-xl">
-        <div className="flex flex-col items-center gap-3">
-          <Link
-            href="/stays"
-            className="inline-flex items-center gap-2 rounded-2xl bg-gold px-6 py-3 text-sm font-medium text-ink shadow-2xl shadow-black/40 transition hover:brightness-105"
-          >
-            <Search size={16} /> Browse all stays <ArrowRight size={15} />
+      <div className="flex w-full flex-col items-center gap-4">
+        <Link
+          href="/stays"
+          className="inline-flex h-[58px] items-center gap-2.5 rounded-full bg-brand px-7 text-base font-bold text-warm transition-colors hover:bg-brand-pressed"
+        >
+          Browse all stays <ArrowRight size={18} className="text-ice" />
+        </Link>
+        <div className="flex flex-wrap justify-center gap-2.5">
+          <Link href="/stays?tier=exclusive" className={chip}>
+            Esker Exclusive
           </Link>
-          <div className="flex flex-wrap justify-center gap-2">
-            <Link href="/stays?tier=exclusive" className="rounded-full border border-white/40 bg-black/10 px-3.5 py-1.5 text-xs text-white/90 backdrop-blur-sm transition hover:bg-white/15">
-              Esker Exclusive
-            </Link>
-            <Link href="/stays" className="rounded-full border border-white/40 bg-black/10 px-3.5 py-1.5 text-xs text-white/90 backdrop-blur-sm transition hover:bg-white/15">
-              Filter by area &amp; type
-            </Link>
-          </div>
+          <Link href="/stays" className={chip}>
+            Filter by area &amp; type
+          </Link>
+          {voiceEnabled && (
+            <button type="button" onClick={openVoice} className={`${chip} gap-2`}>
+              <Mic size={16} className="text-ice" /> Speak to Esker
+            </button>
+          )}
         </div>
-        {voiceEntry}
         {voiceOpen && <VoiceConcierge listings={listings} onClose={() => setVoiceOpen(false)} />}
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-xl">
+    <div className="flex w-full flex-col items-center gap-6">
       <form
         onSubmit={submit}
-        className="flex items-center gap-2 rounded-2xl bg-white p-2.5 shadow-2xl shadow-black/50 ring-1 ring-black/5 focus-within:ring-2 focus-within:ring-gold/50"
+        className="box-border flex h-[66px] w-full max-w-[640px] items-center gap-3 rounded-full bg-warm pl-6 pr-[9px] text-left text-ink focus-within:shadow-[0_0_0_3px_var(--color-ice)]"
       >
-        <MessageCircle size={18} className="ml-2 shrink-0 text-gold" />
+        <Search size={20} strokeWidth={2} className="shrink-0" aria-hidden />
         <input
           ref={inputRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="mujhe F-7 mein 2 din ke liye apartment chahiye…"
-          aria-label="Tell the concierge what you're looking for"
-          className="min-w-0 flex-1 bg-transparent px-1 py-1.5 text-[15px] text-ink outline-none placeholder:text-dim"
+          placeholder="Mujhe F-7 mein 2 din ke liye apartment chahiye…"
+          aria-label="Describe the stay you're looking for"
+          className="min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-dim"
         />
+        {voiceEnabled && (
+          <button
+            type="button"
+            onClick={openVoice}
+            aria-label="Speak to Esker — English or Urdu"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-brand transition-colors hover:bg-ice-tint"
+          >
+            <Mic size={20} strokeWidth={2} />
+          </button>
+        )}
         <button
           type="submit"
-          className="shimmer shrink-0 rounded-xl bg-gold px-5 py-2.5 text-sm font-medium text-ink transition hover:brightness-105"
+          aria-label="Ask Esker"
+          className="inline-flex h-12 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-brand text-[15px] font-bold text-warm transition-colors hover:bg-brand-pressed max-sm:w-12 sm:px-[22px]"
         >
-          Ask Esker
+          <span className="max-sm:hidden">Ask Esker</span>
+          <ArrowRight size={20} className="text-ice sm:hidden" aria-hidden />
         </button>
       </form>
 
-      {/* Voice entry — the signature moment */}
-      {voiceEntry}
-
-      <div className="mt-5 flex flex-wrap justify-center gap-2">
+      <div className="flex flex-wrap justify-center gap-2.5">
         {CHIPS.map((c) => (
-          <button
-            key={c}
-            type="button"
-            onClick={() => fill(c)}
-            className="rounded-full border border-white/40 bg-black/10 px-3.5 py-1.5 text-xs text-white/90 backdrop-blur-sm transition hover:bg-white/15"
-          >
+          <button key={c} type="button" onClick={() => fill(c)} className={chip}>
             {c}
           </button>
         ))}

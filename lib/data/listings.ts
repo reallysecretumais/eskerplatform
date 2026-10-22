@@ -261,27 +261,3 @@ export async function getAvailability(id: string): Promise<BusyRange[]> {
   }
   return (data ?? []) as BusyRange[];
 }
-
-/**
- * Photos for the hero photo-wall. Takes the top `perProperty` photos of each
- * property (the first ones are the best), interleaved round-robin across
- * properties for variety, capped at `max`.
- */
-export function pickCollagePhotos(listings: PublicListing[], perProperty = 6, max = 12): string[] {
-  const lists = listings.map((l) => (l.photos ?? []).slice(0, perProperty));
-  const out: string[] = [];
-  let row = 0;
-  let added = true;
-  while (out.length < max && added) {
-    added = false;
-    for (const arr of lists) {
-      if (arr[row]) {
-        out.push(arr[row]);
-        added = true;
-        if (out.length >= max) break;
-      }
-    }
-    row++;
-  }
-  return out;
-}

@@ -21,12 +21,29 @@ export function unitForCategory(category: string): { mode: BookingModeName; unit
   return { mode: "nightly", unit: "night" }; // apartments, penthouses, villas, farmhouses
 }
 
-const NF = new Intl.NumberFormat("en-PK");
+// ── Money, as a guest reads it ───────────────────────────────────────────────
+// BUILD_REFERENCE "Formats": "Rs 35,000" — never "₨35000" or "PKR 35k" — and
+// "Rs 35,000 / night" in prose, "Rs 35,000 / NIGHT" in a price chip. Every
+// rupee figure on the website goes through `rs()`, so the format lives here once.
 
-/** Returns the formatted amount + the unit word, e.g. { amount: "₨31,000", unit: "night" }.
+/** Grouped digits, no currency: "35,000". */
+export const NF = new Intl.NumberFormat("en-PK");
+
+/** "Rs 35,000". Rounds to whole rupees; a negative reads "−Rs 2,000". */
+export function rs(amount: number): string {
+  const n = Math.round(Number(amount) || 0);
+  return n < 0 ? `−Rs ${NF.format(-n)}` : `Rs ${NF.format(n)}`;
+}
+
+/** The chip's unit, in small caps: "night" → "/ NIGHT". */
+export function unitLabel(unit: string): string {
+  return `/ ${unit.toUpperCase()}`;
+}
+
+/** Returns the formatted amount + the unit word, e.g. { amount: "Rs 31,000", unit: "night" }.
  *  Pass `listing.price_unit` straight through — never a hardcoded unit. */
 export function formatPrice(price: number, unit: string): { amount: string; unit: string } {
-  return { amount: `₨${NF.format(price)}`, unit };
+  return { amount: rs(price), unit };
 }
 
 /** True when a mode sells time-of-day rather than nights (blocks or hourly).
@@ -108,6 +125,9 @@ const SPLIT_AT = 10;
 const MIN_EXCLUSIVE_FOR_SECTION = 2;
 /** Cap on the second section once split; the rest live behind "Explore all stays". */
 export const MORE_SECTION_MAX = 6;
+/** Esker Exclusive cards on the homepage once split: two rows of the board's
+ *  two-across feature cards; the rest live behind "See all". */
+export const EXCLUSIVE_SECTION_MAX = 4;
 
 export type HomeSections<T> = {
   mode: "unified" | "split";

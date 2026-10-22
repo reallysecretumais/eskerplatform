@@ -26,6 +26,8 @@ export const company = {
 
   /** Callable number, E.164. Same line as WhatsApp. */
   phone: "+923325977626",
+  /** The same number as a guest reads it. */
+  phoneDisplay: "+92 332 5977626",
   /** Digits only, no +, for wa.me links. */
   whatsapp: "923325977626",
   email: "admin@eskerrentals.com",

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Sora } from "next/font/google";
+import { Instrument_Sans, Manrope } from "next/font/google";
 import "./globals.css";
 import { brand } from "@/lib/brand";
 import { SITE_URL, SITE_NAME, defaultTitle, defaultDesc, keywords } from "@/lib/seo";
@@ -9,19 +9,21 @@ import { MetaPixel } from "@/components/MetaPixel";
 import { ChatDock } from "@/components/chat/ChatDock";
 import { Suspense } from "react";
 
-// Clean sans for UI (Inter) + a modern, minimal display face (Sora) for the
-// brand wordmark and headings. (Sora 400 is unused — only 500/600/700 ship.)
-const inter = Inter({
+// Two families, two jobs (BUILD_REFERENCE "Typography"). Instrument Sans says
+// things — headlines and reading — and is loaded with its WIDTH axis, because
+// the headlines sit at 82–88% (`headline`, `stretch-*` in globals.css).
+// Manrope gives facts: every price, date, count and small-caps label.
+const instrument = Instrument_Sans({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-instrument",
   display: "swap",
+  axes: ["wdth"],
 });
 
-const display = Sora({
+const manrope = Manrope({
   subsets: ["latin"],
-  variable: "--font-sora",
+  variable: "--font-manrope",
   display: "swap",
-  weight: ["500", "600", "700"],
 });
 
 // Every property photo comes from Supabase storage — warm the connection before
@@ -37,7 +39,7 @@ const SUPABASE_ORIGIN = (() => {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#0c0a07", // Esker near-black — matches the hero + PWA chrome
+  themeColor: "#0b0b0b", // Esker black — matches the hero, the footer and PWA chrome
 };
 
 // Site-wide metadata derives from the cities that actually have LIVE listings
@@ -86,7 +88,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${display.variable} h-full`}>
+    <html lang="en" className={`${instrument.variable} ${manrope.variable} h-full`}>
       <head>{SUPABASE_ORIGIN && <link rel="preconnect" href={SUPABASE_ORIGIN} crossOrigin="anonymous" />}</head>
       <body className="min-h-full">
         <MetaPixel />
