@@ -4,7 +4,7 @@ export const metadata = { title: "Cancellation & Refund Policy — Esker Stays" 
 
 export default function CancellationPolicy() {
   return (
-    <LegalPage title="Cancellation & Refund Policy" updated="29 June 2026">
+    <LegalPage title="Cancellation & Refund Policy" updated="23 October 2026">
       <p>
         We know plans change. This policy explains what happens to your advance if you cancel, and how refunds work. It applies to bookings made through the Esker Stays website.
       </p>
@@ -16,8 +16,8 @@ export default function CancellationPolicy() {
 
       <h2>If you cancel</h2>
       <ul>
-        <li><strong>7 or more days before check-in:</strong> your advance is fully refunded (less any bank/transfer charges), or kept as Esker credit toward a future stay — your choice.</li>
-        <li><strong>3 to 7 days before check-in:</strong> 50% of your advance is refunded; the rest is retained.</li>
+        <li><strong>7 or more days before check-in (day 7 included):</strong> your advance is fully refunded (less any bank/transfer charges), or kept as Esker credit toward a future stay — your choice.</li>
+        <li><strong>3 to 6 days before check-in:</strong> 50% of your advance is refunded; the rest is retained.</li>
         <li><strong>Less than 72 hours before check-in, or no-show:</strong> the advance is non-refundable.</li>
       </ul>
       <p>You are never charged the remaining balance if you cancel before check-in.</p>

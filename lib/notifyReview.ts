@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email";
 import { reviewRequestEmail } from "@/lib/emailTemplates";
 import { SITE_URL } from "@/lib/seo";
+import { guestTitle } from "@/lib/listings";
 
 // Gentle post-stay review nudge for ONE completed booking: email now (Titan) +
 // WhatsApp queued into the guest_messages outbox (the CRM inbox delivers it when
@@ -36,7 +37,7 @@ export async function sendReviewRequest(bookingId: string): Promise<ReviewNudgeR
     b.guest_id ? admin.from("guests").select("name, phone").eq("id", b.guest_id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
 
-  const propertyTitle = String(listing?.title ?? "your Esker stay");
+  const propertyTitle = guestTitle(listing?.title) || "your Esker stay";
   const locationLabel = pretty([listing?.category, listing?.area]) || "Islamabad";
   const guestName = (acct?.name || guest?.name || "").trim() || "there";
 

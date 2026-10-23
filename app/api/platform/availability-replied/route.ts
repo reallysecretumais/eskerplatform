@@ -5,6 +5,7 @@ import { notifyChatEmail } from "@/lib/notifyChat";
 import { sendWhatsappTemplate } from "@/lib/whatsapp";
 import { sendPush } from "@/lib/push";
 import { SITE_URL } from "@/lib/seo";
+import { guestTitle } from "@/lib/listings";
 
 // Meta utility template. Body vars: {{1}} guest first name · {{2}} property ·
 // {{3}} dates. URL button base "https://eskerrentals.com/r/" + one dynamic suffix
@@ -113,7 +114,7 @@ export async function POST(req: NextRequest) {
     admin.from("accounts").select("id, name, email, phone, notify_email, notify_whatsapp").eq("id", accountId).maybeSingle(),
     admin.from("public_listings").select("title, category").eq("id", listingId).maybeSingle(),
   ]);
-  const title = (listing?.title as string) || "the apartment";
+  const title = guestTitle(listing?.title as string) || "the apartment";
   const dates = `${fmt(checkin)}–${fmt(checkout)}`;
 
   const available = status === "available";

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getMyThread, getThreadMessages, getMyThreads, type ChatThread, type ChatMessage } from "@/lib/data/chat";
 import { notifyChatEmail } from "@/lib/notifyChat";
+import { guestTitle } from "@/lib/listings";
 
 // Guest chat actions. Reads are RLS-scoped (lib/data/chat.ts); ALL writes here go
 // through the service role AFTER verifying the session account owns the thread —
@@ -198,7 +199,7 @@ export async function ensureThread(context?: ChatContext): Promise<ChatResult> {
       const { data: listing } = await admin.from("public_listings").select("id, title").eq("id", context.propertyId).maybeSingle();
       if (listing) {
         await admin.from("conversations").update({ property_id: listing.id, updated_at: new Date().toISOString() }).eq("id", convo.id);
-        await insertSystemLine(admin, convo.id as string, `Guest is viewing: ${listing.title}`);
+        await insertSystemLine(admin, convo.id as string, `Guest is viewing: ${guestTitle(listing.title)}`);
       }
     }
     if (context?.bookingId && context.bookingId !== convo.booking_id) {

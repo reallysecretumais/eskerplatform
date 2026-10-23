@@ -31,6 +31,19 @@ export const NF = new Intl.NumberFormat("en-PK");
 
 /** "Rs 35,000". Rounds to whole rupees; a negative reads "−Rs 2,000". The
  *  space is non-breaking, so "Rs" never wraps away from its figure. */
+/**
+ * A stay's name as a guest sees it. CRM names often start with the owner's
+ * first name ("Sayan's 2BHK Onyx Apartment") so the team can tell units apart;
+ * guests are never shown it (founder, 23 Oct 2026). One leading possessive name
+ * comes off; everything else stays exactly as written. Staff-facing notices
+ * keep the full name.
+ */
+export function guestTitle(title: string | null | undefined): string {
+  const t = (title ?? "").trim();
+  const stripped = t.replace(/^\p{Lu}[\p{L}.-]*(?:\s+\p{Lu}[\p{L}.-]*)?\s*['’]s\s+(?=\S)/u, "");
+  return stripped || t;
+}
+
 export function rs(amount: number): string {
   const n = Math.round(Number(amount) || 0);
   return n < 0 ? `−Rs\u00a0${NF.format(-n)}` : `Rs\u00a0${NF.format(n)}`;

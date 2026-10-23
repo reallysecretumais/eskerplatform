@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { crop } from "@/lib/img";
 import { appTrip, paymentsInFlight } from "@/lib/app/trips";
 import { pkDay } from "@/lib/pkDate";
+import { guestTitle } from "@/lib/listings";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,7 +61,7 @@ export const GET = guard(async () => {
   const { data: listings } = ids.length
     ? await supabase.from("public_listings").select("id, title, area, photos").in("id", ids)
     : { data: [] as { id: string; title: string; area: string | null; photos: string[] | null }[] };
-  const byId = new Map((listings ?? []).map((l) => [l.id as string, l]));
+  const byId = new Map((listings ?? []).map((l) => [l.id as string, { ...l, title: guestTitle(l.title as string) }]));
 
   return ok({
     trips: bookings.map((b) => appTrip(b, paying.get(b.id))),

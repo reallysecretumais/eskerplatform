@@ -116,8 +116,9 @@ export function hostCommission(total: number): number {
 
 // ── Cancellation policy (single source of truth) ─────────────────────────────
 // Mirrors the published policy in app/legal/cancellation/page.tsx:
-//   • 7 or more days before check-in  → full advance refunded
-//   • 3 to 7 days before check-in     → 50% of the advance refunded
+//   • 7 or more days before check-in  → full advance refunded (day 7 included,
+//                                       founder 23 Oct 2026)
+//   • 3 to 6 days before check-in     → 50% of the advance refunded
 //   • less than 72 hours / no-show    → non-refundable
 // Used by BOTH the account UI (preview) and the cancel action (authoritative), so
 // the number a guest is shown is exactly the number they get.

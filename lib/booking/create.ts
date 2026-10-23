@@ -8,7 +8,7 @@ import { notifyBookingReceived } from "@/lib/notifyGuest";
 import { capiEvent } from "@/lib/analytics";
 import { getExternalBookability, hasAuthorizedRequest, refreshExternalCalendar } from "@/lib/data/externalBooking";
 import { blocksDates, holdUntil, isExpiringHold } from "@/lib/booking/hold";
-import { rs } from "@/lib/listings";
+import { guestTitle, rs } from "@/lib/listings";
 import { toE164Pk } from "@/lib/otp";
 import { pkToday } from "@/lib/pkDate";
 import { company } from "@/lib/contact";
@@ -296,6 +296,7 @@ export async function createBookingCore(input: CreateBookingInput): Promise<Book
   //    (external rows live in `external_properties`, so property_id must be NULL).
   const { data: listing } = await admin.from("public_listings").select("id, title, price, area, category, esker_exclusive, source").eq("id", propertyId).maybeSingle();
   if (!listing) return fail("unavailable", "This place isn't available to book.");
+  listing.title = guestTitle(listing.title);
   const isExternal = (listing as { source?: string }).source === "external";
 
   // 2. Dates.

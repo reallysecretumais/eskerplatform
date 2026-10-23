@@ -1,4 +1,5 @@
 import "server-only";
+import { guestTitle } from "@/lib/listings";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient, bearerToken } from "@/lib/supabase/server";
@@ -132,7 +133,7 @@ export async function getMyBookings(): Promise<MyBooking[]> {
 
   const ids = [...new Set(bookings.map(listingIdOf).filter((id): id is string => !!id))];
   const { data: listings } = await supabase.from("public_listings").select("id, title, area, category, photos").in("id", ids);
-  const byId = new Map((listings ?? []).map((l) => [l.id, l as BookingListing]));
+  const byId = new Map((listings ?? []).map((l) => [l.id, { ...l, title: guestTitle(l.title) } as BookingListing]));
 
   return bookings.map((b) => {
     const amount = num(b.amount);
@@ -187,7 +188,7 @@ export async function getMyBooking(id: string): Promise<MyBookingDetail | null> 
     paymentStatus: b.payment_status ?? null,
     status: b.status,
     nights: b.nights,
-    listing: (listing as BookingListing) ?? null,
+    listing: listing ? ({ ...listing, title: guestTitle(listing.title) } as BookingListing) : null,
     ...holdOf(b),
     guests: b.guest_count ?? null,
     rateAtBooking: b.rate_at_booking != null ? Number(b.rate_at_booking) : null,

@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 import { createClient as createAnonClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { unitForCategory } from "@/lib/listings";
+import { guestTitle, unitForCategory } from "@/lib/listings";
 import type { MarketRow } from "@/lib/geo";
 import { parseStayKey, matchesKey } from "@/lib/slug";
 
@@ -140,6 +140,7 @@ function normalizeListing(row: Record<string, unknown>): PublicListing {
   const fallback = unitForCategory(category ?? "");
   return {
     ...(row as PublicListing),
+    title: guestTitle(row.title as string | null),
     city: (row.city as string | null) ?? null,
     market: (row.market as string | null) ?? null,
     market_slug: (row.market_slug as string | null) ?? null,
@@ -158,7 +159,9 @@ const cachedListings = unstable_cache(
     if (error) throw new Error(`public_listings read failed: ${error.message}`);
     return (data ?? []).map(normalizeListing);
   },
-  ["public-listings"],
+  // v2: titles lost the owner's name (guestTitle); a new key so a deploy
+  // never serves the old names from the data cache for its first 10 minutes.
+  ["public-listings-v2"],
   { tags: ["listings"], revalidate: 600 },
 );
 
@@ -206,7 +209,7 @@ const cachedListing = unstable_cache(
     }
     return data ? normalizeListing(data) : null;
   },
-  ["public-listing"],
+  ["public-listing-v2"],
   { tags: ["listings"], revalidate: 600 },
 );
 

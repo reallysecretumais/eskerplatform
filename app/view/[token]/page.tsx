@@ -5,7 +5,7 @@ import { SiteNav } from "@/components/SiteNav";
 import { Gallery } from "@/components/Gallery";
 import { AmenityList } from "@/components/AmenityList";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatPrice } from "@/lib/listings";
+import { guestTitle, formatPrice } from "@/lib/listings";
 import { company } from "@/lib/contact";
 import { brand } from "@/lib/brand";
 
@@ -53,7 +53,7 @@ async function findUnit(token: string): Promise<Unit | null> {
     };
     return {
       id: p.id,
-      title: p.public_title || p.short_name || p.name,
+      title: guestTitle(p.public_title || p.short_name || p.name),
       area: p.location?.name ?? null,
       bedrooms: p.bedrooms,
       capacity: p.capacity,

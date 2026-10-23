@@ -2,6 +2,12 @@ import { Block, CardSkeleton, HeaderSkeleton } from "@/components/Skeletons";
 
 // /stays while it renders: the heading, the Ask Esker bar, the filter pills and
 // the 3-across grid, in the shapes they arrive in.
+//
+// It lives in the (list) group so it wraps /stays only. A loading boundary also
+// covers every page below it, and a page that starts streaming can no longer
+// answer with a real status: a stay's 308 to its current link became a 200
+// with a meta refresh, and a missing stay a 200 instead of a 404. Stay pages
+// have no skeleton for the same reason.
 export default function Loading() {
   return (
     <main className="min-h-full">

@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { currentUser } from "@/lib/auth";
+import { guestTitle } from "@/lib/listings";
 
 // The guest's chat, read with the SESSION client under the account-scoped RLS
 // from phase24 (conversations.account_id = auth.uid()) — a guest sees ONLY their
@@ -116,7 +117,7 @@ export async function getMyThreads(): Promise<ThreadSummary[]> {
   const titles = new Map<string, string>();
   if (propIds.length) {
     const { data: listings } = await supabase.from("public_listings").select("id, title").in("id", propIds);
-    for (const l of (listings ?? []) as { id: string; title: string }[]) titles.set(l.id, l.title);
+    for (const l of (listings ?? []) as { id: string; title: string }[]) titles.set(l.id, guestTitle(l.title));
   }
 
   const threads: ThreadSummary[] = rows.map((r) => {
