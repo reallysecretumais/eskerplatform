@@ -37,6 +37,8 @@ export type AppTrip = {
   /** "2:00 PM" · "12:00 PM" — company-wide until stays carry their own. */
   checkInTime: string;
   checkOutTime: string;
+  /** How many guests, when the booking says. */
+  guests: number | null;
   amount: number;
   advancePaid: number;
   balance: number;
@@ -99,6 +101,7 @@ export function appTrip(b: MyBooking, paying: "card" | "transfer" | undefined): 
     nights: b.nights,
     checkInTime: company.checkIn,
     checkOutTime: company.checkOut,
+    guests: b.guests,
     amount: b.amount,
     advancePaid: b.advancePaid,
     balance: b.balance,

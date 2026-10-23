@@ -19,6 +19,7 @@ export const dynamic = "force-dynamic";
  *   payMethod   "card" | "transfer"
  *   name?, email?                      the account's own are used when absent
  *   scheme?     the build's URL scheme, so the payment page reopens THIS app
+ *   guests?     how many are coming (stored as guest_count)
  *   docType?    "cnic" | "passport"    first booking only, with
  *   idFront?, idBack?                  the ID photos (files)
  *   proof?                             transfer screenshot (file)
@@ -30,6 +31,7 @@ const STATUS: Partial<Record<BookingErrorCode, number>> = {
   unavailable: 404,
   dates_taken: 409,
   request_first: 409,
+  already_booked: 409,
   check_failed: 503,
   payment_failed: 502,
   booking_failed: 503,
@@ -98,6 +100,7 @@ export const POST = guard(async (req: Request) => {
     accountId: account.id,
     channel: "app",
     appScheme: text(body.scheme),
+    guests: Number(text(body.guests)) || undefined,
   });
 
   if (!result.ok) {

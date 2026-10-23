@@ -2,7 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyId } from "@/lib/ai/idcheck";
 import { advanceAmount, advanceLabel } from "@/lib/payments";
-import { createSafepayCheckout, isSafepayConfigured } from "@/lib/safepay";
+import { createSafepayCheckout, isSafepayConfigured, SAFEPAY_PAID_STATE, trackerState } from "@/lib/safepay";
 import { SITE_URL } from "@/lib/seo";
 import { notifyBookingReceived } from "@/lib/notifyGuest";
 import { capiEvent } from "@/lib/analytics";
@@ -53,6 +53,8 @@ export type CreateBookingInput = {
   channel: BookingChannel;
   /** App only: which build's scheme the payment return page opens. */
   appScheme?: string;
+  /** How many guests, when the caller asks (the app does); stored as guest_count. */
+  guests?: number;
 };
 
 /**
@@ -74,7 +76,8 @@ export type BookingErrorCode =
   | "upload_failed"
   | "card_unavailable"
   | "payment_failed"
-  | "booking_failed";
+  | "booking_failed"
+  | "already_booked";
 
 export type BookingResult = {
   ok: boolean;
@@ -227,19 +230,34 @@ export async function bookingPath(listingId: string, accountId: string | null, c
  * replaces a guest's own hold. If Safepay settles it after all, the CRM moves
  * it to payment_collected and it blocks again on its own; money is never lost.
  */
-export async function releaseCardHold(bookingId: string, accountId: string): Promise<"released" | "paid" | "not_found" | "not_card"> {
+export type ReleaseResult = "released" | "paid" | "unknown" | "gone" | "not_found" | "not_card";
+
+export async function releaseCardHold(bookingId: string, accountId: string): Promise<ReleaseResult> {
   const admin = createAdminClient();
   const { data: b } = await admin.from("bookings").select("id, account_id, status, source, notes").eq("id", bookingId).maybeSingle();
   if (!b || b.account_id !== accountId) return "not_found";
+  // Cancelled meanwhile: nothing to release, and nothing was paid.
+  if (b.status === "cancelled") return "gone";
   // Settled while the guest was coming back (or moved on some other way).
   if (b.status !== "awaiting_payment") return "paid";
   if (!isExpiringHold(b)) return "not_card";
   const [{ data: anchors }, { data: proofs }] = await Promise.all([
-    admin.from("gateway_payments").select("status").eq("booking_id", bookingId),
+    admin.from("gateway_payments").select("status, tracker").eq("booking_id", bookingId),
     admin.from("booking_payments").select("id").eq("booking_id", bookingId).not("proof_url", "is", null).limit(1),
   ]);
   if (proofs?.length || !anchors?.length) return "not_card";
   if (anchors.some((g) => g.status === "paid")) return "paid";
+  // The guest may have paid and closed the page before Safepay's webhook
+  // landed here: ask Safepay itself before giving anything back. A paid
+  // tracker keeps its hold (the webhook, or the CRM's reconcile cron, settles
+  // it); one Safepay can't be asked about keeps it too, and the 30-minute hold
+  // ends on its own. Only a checkout Safepay says is unpaid is released.
+  for (const g of anchors) {
+    if (!g.tracker) continue;
+    const state = await trackerState(String(g.tracker));
+    if (state === null) return "unknown";
+    if (state === SAFEPAY_PAID_STATE) return "paid";
+  }
   const stamp = new Date().toLocaleString("en-GB", { timeZone: "Asia/Karachi" });
   await admin
     .from("bookings")
@@ -349,9 +367,22 @@ export async function createBookingCore(input: CreateBookingInput): Promise<Book
     ? await admin.from("guests").select("id").eq("phone", phone).limit(1).maybeSingle()
     : { data: null };
   type Clash = { id: string; status: string; source: string | null; created_at: string; hold_until: string | null; account_id: string | null; guest_id: string | null };
-  const isMine = (c: Clash) =>
+  const ownHold = (c: Clash) =>
     isExpiringHold(c) && (c.account_id ? c.account_id === accountId : !!phoneGuest && c.guest_id === phoneGuest.id);
   const rows = (clashes ?? []) as Clash[];
+  // A booking of the guest's own that came WITH a transfer screenshot is not a
+  // hold to replace: the money may already be on its way, and replacing it
+  // would put those dates back on sale while it waits to be verified. Booking
+  // the same nights again is answered with where that booking is.
+  const ownIds = rows.filter(ownHold).map((c) => c.id);
+  const { data: proofed } = ownIds.length
+    ? await admin.from("booking_payments").select("booking_id").in("booking_id", ownIds).not("proof_url", "is", null)
+    : { data: [] as { booking_id: string }[] };
+  const sent = new Set((proofed ?? []).map((p) => p.booking_id as string));
+  if (rows.some((c) => sent.has(c.id) && blocksDates(c))) {
+    return fail("already_booked", "You already have a booking for these dates, waiting for us to confirm your transfer. It's in your trips.");
+  }
+  const isMine = (c: Clash) => ownHold(c) && !sent.has(c.id);
   const myHolds = rows.filter(isMine).map((c) => c.id);
   const realClash = rows.some((c) => !isMine(c) && blocksDates(c));
   if (realClash) return fail("dates_taken", "Sorry — those dates were just taken. Please pick others.");
@@ -482,18 +513,33 @@ export async function createBookingCore(input: CreateBookingInput): Promise<Book
   //    (isMine only matches awaiting_payment website holds); a late card
   //    payment on the old one moves it out of awaiting_payment, and it blocks
   //    again on its own.
+  // The booking's id is chosen here so a transfer's screenshot can go up
+  // FIRST, at its usual place (payments/<booking id>/). A screenshot that
+  // can't be uploaded must never leave a booking holding dates with nothing
+  // for the team to verify.
+  const bookingId = crypto.randomUUID();
+  let proofPath: string | null = null;
+  if (!viaSafepay) {
+    proofPath = `payments/${bookingId}/pay-${Date.now()}.${ext(proof!)}`;
+    const upP = await admin.storage.from(BUCKET).upload(proofPath, proof!, { contentType: proof!.type, upsert: false });
+    if (upP.error) return fail("upload_failed", "Couldn't upload your payment screenshot. Please try again.");
+  }
+
   if (myHolds.length) {
     await admin.from("bookings").update({ hold_until: new Date().toISOString() }).in("id", myHolds);
   }
   const hold = holdUntil(viaSafepay ? "card" : "transfer", checkout);
+  const guestCount = Number.isInteger(input.guests) && input.guests! > 0 && input.guests! <= 50 ? input.guests! : null;
   const note = `${channel === "app" ? "App" : "Website"} booking — ${advanceLabel(amount, exclusive)} advance ${rs(advance)} of ${rs(amount)} (balance ${rs(balance)} due at check-in). ${
     viaSafepay ? "Paying by Safepay — confirms automatically when the gateway settles." : "Verify the payment screenshot."
   }${email ? ` Email: ${email}.` : ""}${idNote}`;
   const { data: booking, error: bErr } = await admin
     .from("bookings")
     .insert({
+      id: bookingId,
       guest_id: guestId,
       account_id: accountId,
+      ...(guestCount ? { guest_count: guestCount } : {}),
       // External (resale) units live in `external_properties`, so property_id
       // MUST stay null; `cost` is what Esker pays the owner and drives margin
       // everywhere in the CRM.
@@ -522,7 +568,10 @@ export async function createBookingCore(input: CreateBookingInput): Promise<Book
     })
     .select("id")
     .single();
-  if (bErr || !booking) return fail("booking_failed", "Could not create your booking. Please try again.");
+  if (bErr || !booking) {
+    if (proofPath) await admin.storage.from(BUCKET).remove([proofPath]);
+    return fail("booking_failed", "Could not create your booking. Please try again.");
+  }
 
   // 7. Payment.
   //    Safepay: mint the hosted checkout NOW (booking id in tracker metadata is
@@ -572,16 +621,13 @@ export async function createBookingCore(input: CreateBookingInput): Promise<Book
     await admin.from("gateway_payments").update({ tracker: gateway.tracker }).eq("id", anchor.id);
     checkoutUrl = gateway.url;
   } else {
-    const proofPath = `payments/${booking.id}/pay-${Date.now()}.${ext(proof!)}`;
-    const upP = await admin.storage.from(BUCKET).upload(proofPath, proof!, { contentType: proof!.type, upsert: false });
-    if (!upP.error) {
-      await admin.from("booking_payments").insert({
-        booking_id: booking.id,
-        amount: advance,
-        proof_url: proofPath,
-        note: `${channel === "app" ? "App" : "Website"} advance (${exclusive ? "50%" : "25%"}) — verify this screenshot.`,
-      });
-    }
+    // The screenshot is already up (above); record it for the team to verify.
+    await admin.from("booking_payments").insert({
+      booking_id: booking.id,
+      amount: advance,
+      proof_url: proofPath,
+      note: `${channel === "app" ? "App" : "Website"} advance (${exclusive ? "50%" : "25%"}) — verify this screenshot.`,
+    });
   }
 
   // 8. Notify the guest (email now; WhatsApp queued for the inbox) + the team.

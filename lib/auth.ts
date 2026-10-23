@@ -90,6 +90,8 @@ export type MyBooking = {
   holdUntil: string | null;
   /** An unpaid website/app booking whose hold has run out: its dates are free again. */
   holdEnded: boolean;
+  /** How many guests, when the booking says. */
+  guests: number | null;
 };
 
 // Full detail for one booking (adds rate + source + created_at to MyBooking).
@@ -123,7 +125,7 @@ export async function getMyBookings(): Promise<MyBooking[]> {
 
   const { data: bookings } = await supabase
     .from("bookings")
-    .select("id, property_id, external_property_id, checkin, checkout, amount, advance_paid, payment_status, status, nights, source, created_at, hold_until")
+    .select("id, property_id, external_property_id, checkin, checkout, amount, advance_paid, payment_status, status, nights, source, created_at, hold_until, guest_count")
     .eq("account_id", user.id)
     .order("checkin", { ascending: false });
   if (!bookings || bookings.length === 0) return [];
@@ -147,6 +149,7 @@ export async function getMyBookings(): Promise<MyBooking[]> {
       nights: b.nights,
       listing: byId.get(listingIdOf(b) ?? "") ?? null,
       ...holdOf(b),
+      guests: b.guest_count ?? null,
     };
   });
 }
@@ -160,7 +163,7 @@ export async function getMyBooking(id: string): Promise<MyBookingDetail | null> 
 
   const { data: b } = await supabase
     .from("bookings")
-    .select("id, property_id, external_property_id, checkin, checkout, amount, advance_paid, payment_status, status, nights, rate_at_booking, source, created_at, hold_until")
+    .select("id, property_id, external_property_id, checkin, checkout, amount, advance_paid, payment_status, status, nights, rate_at_booking, source, created_at, hold_until, guest_count")
     .eq("id", id)
     .eq("account_id", user.id)
     .maybeSingle();
@@ -186,6 +189,7 @@ export async function getMyBooking(id: string): Promise<MyBookingDetail | null> 
     nights: b.nights,
     listing: (listing as BookingListing) ?? null,
     ...holdOf(b),
+    guests: b.guest_count ?? null,
     rateAtBooking: b.rate_at_booking != null ? Number(b.rate_at_booking) : null,
     source: b.source ?? null,
     createdAt: b.created_at ?? null,

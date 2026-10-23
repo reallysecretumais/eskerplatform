@@ -3,6 +3,7 @@ import { getMyBookings } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { crop } from "@/lib/img";
 import { appTrip, paymentsInFlight } from "@/lib/app/trips";
+import { pkDay } from "@/lib/pkDate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,7 +40,12 @@ export const GET = guard(async () => {
   const paying = await paymentsInFlight(bookings);
 
   // A request the guest has since booked is a trip, not a request.
-  const booked = new Set(bookings.filter((b) => b.status !== "cancelled").map((b) => `${b.listing?.id}|${b.checkin}|${b.checkout}`));
+  // Bookings carry timestamps, requests plain days: compare Pakistani days.
+  const booked = new Set(
+    bookings
+      .filter((b) => b.status !== "cancelled" && b.checkin && b.checkout)
+      .map((b) => `${b.listing?.id}|${pkDay(b.checkin!)}|${pkDay(b.checkout!)}`),
+  );
   const open = (asked ?? []).filter((r) => !booked.has(`${r.external_property_id}|${r.checkin}|${r.checkout}`));
   // One answer per stay and dates: the newest ask wins.
   const seen = new Set<string>();

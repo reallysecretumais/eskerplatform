@@ -35,6 +35,29 @@ const CHECKOUT_HOSTS = {
 type SafepayEnv = keyof typeof HOSTS;
 const env = (): SafepayEnv => (process.env.SAFEPAY_ENV === "production" ? "production" : "sandbox");
 
+/** Safepay's state for a tracker that was paid (the CRM's SAFEPAY_PAID_STATE). */
+export const SAFEPAY_PAID_STATE = "TRACKER_ENDED";
+
+/**
+ * What Safepay says about a checkout: "TRACKER_ENDED" once it's paid. Null when
+ * Safepay couldn't be asked, which callers must read as "don't know", never
+ * as "unpaid". The same reporter call the CRM's gateway-reconcile cron makes
+ * (Esker OS app/api/cron/gateway-reconcile): a sanctioned duplicate, as the
+ * two repos share a database but no package.
+ */
+export async function trackerState(tracker: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${HOSTS[env()]}/reporter/api/v1/payments/${encodeURIComponent(tracker)}`, {
+      headers: { Accept: "application/json", "x-sfpy-merchant-secret": process.env.SAFEPAY_SECRET_KEY ?? "" },
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!res.ok) return null;
+    return ((await res.json()) as { data?: { state?: string } })?.data?.state ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function isSafepayConfigured(): boolean {
   return Boolean(process.env.SAFEPAY_API_KEY && process.env.SAFEPAY_SECRET_KEY);
 }
