@@ -1,4 +1,5 @@
 import { brand } from "@/lib/brand";
+import { CARD_HOLD_MINUTES, minutesLabel } from "@/lib/booking/hold";
 
 /** Terminal pay-link states on the brand domain — already paid, cancelled,
  *  invalid, or gateway trouble. Calm wording: a guest re-tapping an old link
@@ -17,6 +18,10 @@ const COPY: Record<string, { title: string; body: string }> = {
   expired: {
     title: "This payment link has expired",
     body: "Payment links stay valid for 7 days so that prices and availability stay accurate. Nothing was charged — message us on WhatsApp and we'll send you a fresh link straight away.",
+  },
+  held: {
+    title: "Your hold on these dates has ended",
+    body: `We hold dates for ${minutesLabel(CARD_HOLD_MINUTES)} while you pay by card, and that time has passed. Nothing was charged. Book again on eskerrentals.com if the dates are still free, or message us on WhatsApp and we'll help.`,
   },
   invalid: {
     title: "This link isn't valid",

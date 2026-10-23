@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSafepayCheckout, isSafepayConfigured } from "@/lib/safepay";
+import { blocksDates } from "@/lib/booking/hold";
 
 // Public tap target for WhatsApp pay-links: eskerrentals.com/pay/<anchor-id> —
 // the frozen base URL of the approved `payment_link` template's button.
@@ -32,10 +33,37 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!isSafepayConfigured()) return gone("unavailable");
 
   const admin = createAdminClient();
-  const { data: anchor } = await admin.from("gateway_payments").select("id, amount, status, created_at").eq("id", id).maybeSingle();
+  const { data: anchor } = await admin.from("gateway_payments").select("id, amount, status, created_at, booking_id").eq("id", id).maybeSingle();
   if (!anchor) return gone("invalid");
   if (anchor.status === "paid" || anchor.status === "refunded") return gone("paid");
   if (anchor.status !== "pending") return gone("cancelled");
+
+  // A link for a booking only pays while that booking still holds its dates.
+  // An unpaid website card booking holds them for 30 minutes (lib/booking/
+  // hold.ts); once that ends the nights may already be someone else's, and a
+  // late payment would buy them twice. Staff and paid bookings never expire,
+  // so their links keep the full 7 days below. Checked at tap time, like the
+  // 7-day rule: no scheduler to fail.
+  if (anchor.booking_id) {
+    const { data: booking } = await admin
+      .from("bookings")
+      .select("status, source, created_at, hold_until")
+      .eq("id", anchor.booking_id)
+      .maybeSingle();
+    const ended = booking?.status === "cancelled" ? "cancelled" : booking && !blocksDates(booking) ? "held" : null;
+    if (ended) {
+      await admin
+        .from("gateway_payments")
+        .update({
+          status: "cancelled",
+          last_error: ended === "held" ? "The booking's date hold ended before payment." : "The booking was cancelled.",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .eq("status", "pending");
+      return gone(ended);
+    }
+  }
 
   // Links die after 7 days (founder, 28 Aug) — a pay-link carries a price that
   // was true when quoted, and dates we may since have sold. Checked at TAP
