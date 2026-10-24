@@ -29,8 +29,6 @@ export function unitForCategory(category: string): { mode: BookingModeName; unit
 /** Grouped digits, no currency: "35,000". */
 export const NF = new Intl.NumberFormat("en-PK");
 
-/** "Rs 35,000". Rounds to whole rupees; a negative reads "−Rs 2,000". The
- *  space is non-breaking, so "Rs" never wraps away from its figure. */
 /**
  * A stay's name as a guest sees it. CRM names often start with the owner's
  * first name ("Sayan's 2BHK Onyx Apartment") so the team can tell units apart;
@@ -44,6 +42,8 @@ export function guestTitle(title: string | null | undefined): string {
   return stripped || t;
 }
 
+/** "Rs 35,000". Rounds to whole rupees; a negative reads "−Rs 2,000". The
+ *  space is non-breaking, so "Rs" never wraps away from its figure. */
 export function rs(amount: number): string {
   const n = Math.round(Number(amount) || 0);
   return n < 0 ? `−Rs\u00a0${NF.format(-n)}` : `Rs\u00a0${NF.format(n)}`;

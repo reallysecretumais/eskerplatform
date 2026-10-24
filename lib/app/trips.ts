@@ -42,6 +42,8 @@ export type AppTrip = {
   amount: number;
   advancePaid: number;
   balance: number;
+  /** A promo code taken off the check-in balance; amount and balance are after it. */
+  promo: { code: string; discount: number } | null;
   state: TripState;
   /** ISO; only while an unpaid hold is running. */
   holdUntil: string | null;
@@ -105,6 +107,7 @@ export function appTrip(b: MyBooking, paying: "card" | "transfer" | undefined): 
     amount: b.amount,
     advancePaid: b.advancePaid,
     balance: b.balance,
+    promo: b.promo,
     state,
     holdUntil: state === "paying" || state === "verifying" || state === "awaiting" ? b.holdUntil : null,
   };

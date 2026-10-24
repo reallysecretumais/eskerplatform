@@ -69,6 +69,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
           <Row label="Nights" value={String(b.nights ?? 0)} />
         </div>
         <div className="rounded-[22px] border border-line bg-surface p-5">
+          {b.promo && <Row label={`Promo ${b.promo.code}`} value={rs(-b.promo.discount)} tone="brand" />}
           <Row label="Total" value={rs(b.amount)} />
           <Row label="Advance paid" value={rs(b.advancePaid)} tone="green" />
           <Row label="Balance" value={b.balance > 0 ? rs(b.balance) : "Fully paid"} tone={b.balance > 0 ? "brand" : "green"} strong />

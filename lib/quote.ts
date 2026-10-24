@@ -6,7 +6,7 @@
  * `app/book/[id]/page.tsx` AND again in `createBooking`. Adding day-use blocks
  * and hourly windows would have made that three places × three modes, which is
  * how a guest ends up seeing one price and being charged another. Everything
- * prices here now.
+ * prices here now, a promo code included (`withPromo`).
  *
  * Pure and side-effect free (no DB, no clock beyond what's passed in) so it can
  * run on the server for a quote, again for the authoritative charge, and be unit
@@ -30,7 +30,10 @@ export type Quote = {
   unitPrice: number;
   total: number;
   advance: number;
+  /** What's left to pay at check-in: total − advance − the promo's discount. */
   balance: number;
+  /** A promo code applied to this stay (judged by lib/promo.ts), or null. */
+  promo: QuotePromo | null;
   advancePct: number;
   /** "50%" / "25%" / "minimum" / "full amount" — honest about the floor. */
   advanceNote: string;
@@ -42,6 +45,9 @@ export type Quote = {
 };
 
 export type QuoteError = { error: string; message: string };
+
+/** A promo takes rupees off what is paid AT CHECK-IN; the advance never changes. */
+export type QuotePromo = { code: string; discount: number };
 
 /** Whole nights between two ISO dates (checkout exclusive). */
 export function nightsBetween(checkin: string, checkout: string): number {
@@ -178,6 +184,7 @@ function finish(p: {
     total: p.total,
     advance,
     balance: Math.max(0, p.total - advance),
+    promo: null,
     advancePct: advancePct(p.exclusive),
     advanceNote: advanceLabel(p.total, p.exclusive),
     when: p.when,
@@ -187,3 +194,17 @@ function finish(p: {
 }
 
 export const isQuoteError = (q: Quote | QuoteError): q is QuoteError => "error" in q;
+
+/** What a promo is judged against: the stay's value, and what's due at check-in. */
+export const promoBasis = (q: Quote) => ({ subtotal: q.total, owed: Math.max(0, q.total - q.advance) });
+
+/**
+ * The quote with a judged promo applied: the advance is untouched and the
+ * discount comes off the check-in balance (promo_check already caps it there).
+ * The stay's value after the code is `total - promo.discount`.
+ */
+export function withPromo(q: Quote, promo: QuotePromo | null): Quote {
+  if (!promo) return { ...q, promo: null };
+  const discount = Math.min(Math.max(0, Math.round(promo.discount)), promoBasis(q).owed);
+  return { ...q, promo: { code: promo.code, discount }, balance: Math.max(0, q.total - q.advance - discount) };
+}

@@ -1,7 +1,8 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyId } from "@/lib/ai/idcheck";
-import { advanceAmount, advanceLabel } from "@/lib/payments";
+import { quote, isQuoteError, withPromo, type QuotePromo } from "@/lib/quote";
+import { judgePromo, promoRaceRefusal, type JudgedPromo, type PromoErrorCode } from "@/lib/promo";
 import { createSafepayCheckout, isSafepayConfigured, SAFEPAY_PAID_STATE, trackerState } from "@/lib/safepay";
 import { SITE_URL } from "@/lib/seo";
 import { notifyBookingReceived } from "@/lib/notifyGuest";
@@ -55,6 +56,8 @@ export type CreateBookingInput = {
   appScheme?: string;
   /** How many guests, when the caller asks (the app does); stored as guest_count. */
   guests?: number;
+  /** A promo code as the guest typed it (lib/promo.ts judges it). */
+  promo?: string;
 };
 
 /**
@@ -77,7 +80,8 @@ export type BookingErrorCode =
   | "card_unavailable"
   | "payment_failed"
   | "booking_failed"
-  | "already_booked";
+  | "already_booked"
+  | PromoErrorCode;
 
 export type BookingResult = {
   ok: boolean;
@@ -122,12 +126,6 @@ function ext(file: File): string {
   const fromName = file.name.split(".").pop();
   if (fromName && fromName.length <= 5) return fromName.toLowerCase();
   return (file.type.split("/")[1] || "jpg").toLowerCase();
-}
-
-function nightsBetween(checkin: string, checkout: string): number {
-  const ci = new Date(`${checkin}T00:00:00`);
-  const co = new Date(`${checkout}T00:00:00`);
-  return Math.round((co.getTime() - ci.getTime()) / 86_400_000);
 }
 
 // Ensure the booker has a website account so they can track the booking + chat.
@@ -230,6 +228,45 @@ export async function bookingPath(listingId: string, accountId: string | null, c
  * replaces a guest's own hold. If Safepay settles it after all, the CRM moves
  * it to payment_collected and it blocks again on its own; money is never lost.
  */
+/**
+ * Is `bookingId` a still-live unpaid website hold on exactly these nights of
+ * this stay? That is the booking the guest just tried to pay by card; its own
+ * hold must not read as "taken" to them, nor as an earlier booking to a
+ * first-booking promo. createBookingCore applies the same own-hold rule.
+ * The id is a v4 uuid that only reaches this guest, via Safepay's cancel link.
+ */
+export async function isOwnLiveHold(bookingId: string, listingId: string, checkin: string, checkout: string): Promise<boolean> {
+  if (!/^[0-9a-f-]{36}$/i.test(bookingId)) return false;
+  const { data } = await createAdminClient()
+    .from("bookings")
+    .select("status, source, created_at, hold_until, lost_reason, checkin, checkout, property_id, external_property_id")
+    .eq("id", bookingId)
+    .maybeSingle();
+  if (!data || data.lost_reason) return false;
+  const sameStay = data.property_id === listingId || data.external_property_id === listingId;
+  const sameNights = String(data.checkin).slice(0, 10) === checkin && String(data.checkout).slice(0, 10) === checkout;
+  return sameStay && sameNights && isExpiringHold(data) && blocksDates(data);
+}
+
+/**
+ * The signed-in account's own still-live unpaid hold on exactly these nights
+ * of this stay, if there is one: the booking a new one replaces. The app has
+ * no Safepay cancel link to carry its id, so it is looked up by account.
+ */
+export async function ownLiveHoldFor(accountId: string, listingId: string, checkin: string, checkout: string): Promise<string | null> {
+  const { data } = await createAdminClient()
+    .from("bookings")
+    .select("id, status, source, created_at, hold_until, lost_reason, checkin, checkout")
+    .eq("account_id", accountId)
+    .eq("status", "awaiting_payment")
+    .or(`property_id.eq.${listingId},external_property_id.eq.${listingId}`)
+    .limit(10);
+  const own = (data ?? []).find(
+    (b) => !b.lost_reason && String(b.checkin).slice(0, 10) === checkin && String(b.checkout).slice(0, 10) === checkout && isExpiringHold(b) && blocksDates(b),
+  );
+  return own?.id ?? null;
+}
+
 export type ReleaseResult = "released" | "paid" | "unknown" | "gone" | "not_found" | "not_card";
 
 export async function releaseCardHold(bookingId: string, accountId: string): Promise<ReleaseResult> {
@@ -304,8 +341,12 @@ export async function createBookingCore(input: CreateBookingInput): Promise<Book
   if (!checkin || !checkout || checkin < today || checkout <= checkin) {
     return fail("dates_invalid", "Please pick valid check-in and check-out dates.");
   }
-  const nights = nightsBetween(checkin, checkout);
-  if (nights < 1) return fail("dates_invalid", "Your stay must be at least one night.");
+  // The one price calculation (lib/quote.ts): the same numbers the checkout and
+  // the app's quote showed. A promo comes off it further down, once judged.
+  const exclusive = Boolean((listing as { esker_exclusive?: boolean }).esker_exclusive);
+  const priced = quote({ mode: "nightly", price: Number(listing.price) || 0, exclusive, checkin, checkout });
+  if (isQuoteError(priced)) return fail("dates_invalid", priced.message);
+  const nights = priced.units;
 
   // 2b. SAFETY GATE — never take money for an external (resale) unit whose owner
   //     calendar we can't currently see. Esker doesn't control that calendar, so
@@ -317,12 +358,6 @@ export async function createBookingCore(input: CreateBookingInput): Promise<Book
       "We need to confirm these dates with the owner before taking payment. Please request them and we'll come back to you shortly.",
     );
   }
-  const price = Number(listing.price) || 0;
-  const amount = Math.round(price * nights);
-  const exclusive = Boolean((listing as { esker_exclusive?: boolean }).esker_exclusive);
-  const advance = advanceAmount(amount, exclusive);
-  const balance = amount - advance;
-
   // What Esker pays the owner for this stay, SNAPSHOTTED now (whole-stay total,
   // like the CRM's staff flow) so a later change to the owner's rate never
   // rewrites this booking's margin. Read server-side only — `typical_cost` is
@@ -444,6 +479,26 @@ export async function createBookingCore(input: CreateBookingInput): Promise<Book
     if (proof.size > MAX_BYTES) return fail("proof_too_large", "That screenshot is too large (max 10 MB).");
   }
 
+  // 4a. A promo code, judged with this booking's phone before anything is
+  //     created or uploaded. The guest's own unpaid hold on these nights is
+  //     the booking this one replaces, so it never counts as an earlier one.
+  //     The database judges it again on insert (step 6).
+  const promoCode = (input.promo ?? "").trim();
+  let promo: JudgedPromo | null = null;
+  if (promoCode) {
+    const verdict = await judgePromo({ code: promoCode, phone, quote: priced, bookingId: myHolds[0] ?? null });
+    if (!verdict.ok) return fail(verdict.error, verdict.message);
+    promo = verdict.promo;
+  }
+  const q = withPromo(priced, promo);
+  // The booking's value is the stay less the promo (founder: the code only
+  // ever shrinks the check-in balance), so every balance, invoice and split
+  // downstream already reflects it. The advance is the full stay's.
+  const promoLine: QuotePromo | null = q.promo;
+  const amount = q.total - (promoLine?.discount ?? 0);
+  const advance = q.advance;
+  const balance = q.balance;
+
   // 4b. Give every booker an account (if not already signed in) so they can track
   //     this booking and message us. Best-effort: needs an email to be reachable;
   //     never blocks the booking.
@@ -531,7 +586,9 @@ export async function createBookingCore(input: CreateBookingInput): Promise<Book
   }
   const hold = holdUntil(viaSafepay ? "card" : "transfer", checkout);
   const guestCount = Number.isInteger(input.guests) && input.guests! > 0 && input.guests! <= 50 ? input.guests! : null;
-  const note = `${channel === "app" ? "App" : "Website"} booking — ${advanceLabel(amount, exclusive)} advance ${rs(advance)} of ${rs(amount)} (balance ${rs(balance)} due at check-in). ${
+  const note = `${channel === "app" ? "App" : "Website"} booking — ${q.advanceNote} advance ${rs(advance)} of ${rs(amount)} (balance ${rs(balance)} due at check-in).${
+    promoLine ? ` Promo ${promoLine.code}: ${rs(promoLine.discount)} off the check-in balance (stay ${rs(q.total)}).` : ""
+  } ${
     viaSafepay ? "Paying by Safepay — confirms automatically when the gateway settles." : "Verify the payment screenshot."
   }${email ? ` Email: ${email}.` : ""}${idNote}`;
   const { data: booking, error: bErr } = await admin
@@ -552,8 +609,10 @@ export async function createBookingCore(input: CreateBookingInput): Promise<Book
       nights,
       // Per-NIGHT guest price. `rate_at_booking` is NOT NULL DEFAULT 0, so
       // leaving it unset silently yields 0 and breaks invoices (x0 bug).
-      rate_at_booking: price,
+      rate_at_booking: q.unitPrice,
       amount,
+      // The code and its rupees; trg_bookings_promo_guard re-judges them here.
+      ...(promo && promoLine ? { promo_code_id: promo.id, promo_discount: promoLine.discount } : {}),
       status: "awaiting_payment",
       payment_status: "partial",
       // The CHANNEL, not the inventory type — `is_external` marks resale. App
@@ -571,6 +630,10 @@ export async function createBookingCore(input: CreateBookingInput): Promise<Book
     .single();
   if (bErr || !booking) {
     if (proofPath) await admin.storage.from(BUCKET).remove([proofPath]);
+    // Lost a race for the code (its last use, or a second first booking):
+    // the guard's own guest line, under the promo field.
+    const race = promoRaceRefusal(bErr);
+    if (race) return fail(race.error, race.message);
     return fail("booking_failed", "Could not create your booking. Please try again.");
   }
 
@@ -650,6 +713,7 @@ export async function createBookingCore(input: CreateBookingInput): Promise<Book
     total: amount,
     advance,
     balance,
+    promo: promoLine,
     accountLink: accountMagicLink,
     // Card checkout: the guest has a payment URL and has paid NOTHING. Suppress
     // everything addressed to them until the money lands; the team alert still

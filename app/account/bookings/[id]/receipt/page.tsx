@@ -61,6 +61,13 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
           <div className="px-4 py-3 text-sm">
+            {/* rate × nights must reconcile: the stay, its promo, then the total. */}
+            {b.promo && (
+              <>
+                <Line label="Stay" value={rs(b.amount + b.promo.discount)} />
+                <Line label={`Promo ${b.promo.code}`} value={rs(-b.promo.discount)} />
+              </>
+            )}
             <Line label="Stay total" value={rs(b.amount)} />
             <Line label="Advance paid" value={`− ${rs(b.advancePaid)}`} />
             <div className="mt-2 flex items-center justify-between border-t border-line pt-2 print:border-black/15">

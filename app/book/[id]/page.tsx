@@ -3,19 +3,18 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
 import { CheckoutForm } from "@/components/CheckoutForm";
+import { PromoProvider, OrderMoney } from "@/components/CheckoutPromo";
 import { getListing, getAvailability, AvailabilityUnavailable } from "@/lib/data/listings";
 import { getAccount } from "@/lib/auth";
-import { formatPrice } from "@/lib/listings";
-import { advanceAmount, advanceLabel as advancePctLabel } from "@/lib/payments";
+import { rs } from "@/lib/listings";
+import { quote, isQuoteError } from "@/lib/quote";
 import { isSafepayConfigured } from "@/lib/safepay";
 import { crop } from "@/lib/img";
 import { stayPath } from "@/lib/slug";
 import { TrackEvent } from "@/components/TrackEvent";
 import type { Metadata } from "next";
 import { getBankAccounts } from "@/lib/data/bankAccounts";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { blocksDates, isExpiringHold } from "@/lib/booking/hold";
-import { realEmail, realName } from "@/lib/booking/create";
+import { isOwnLiveHold, realEmail, realName } from "@/lib/booking/create";
 
 export const metadata: Metadata = { title: "Confirm & pay", robots: { index: false, follow: false } };
 
@@ -51,9 +50,9 @@ export default async function BookPage({
   if (!listing) notFound();
 
   const today = new Date().toISOString().slice(0, 10);
-  const nights =
-    checkin && checkout ? Math.round((new Date(`${checkout}T00:00:00`).getTime() - new Date(`${checkin}T00:00:00`).getTime()) / 86_400_000) : 0;
-  if (!checkin || !checkout || checkin < today || nights < 1) redirect(`/stays/${id}`);
+  // The one price calculation (lib/quote.ts), as the booking will charge it.
+  const q = checkin && checkout ? quote({ mode: "nightly", price: listing.price, exclusive: listing.esker_exclusive, checkin, checkout }) : null;
+  if (!q || isQuoteError(q) || checkin < today) redirect(`/stays/${id}`);
 
   // Don't allow checkout for taken dates — except the guest's own card hold,
   // when Safepay sends them back here after a payment that didn't go through.
@@ -87,7 +86,7 @@ export default async function BookPage({
       </main>
     );
   }
-  const resumed = sp.resume ? await ownHold(sp.resume, id, checkin, checkout) : false;
+  const resumed = sp.resume ? await isOwnLiveHold(sp.resume, id, checkin, checkout) : false;
   // Where a transfer should go — the CRM's Settings, read server-side because
   // CheckoutForm is a client component.
   const accounts = await getBankAccounts();
@@ -98,16 +97,7 @@ export default async function BookPage({
     }
   }
 
-  const price = listing.price;
-  const total = price * nights;
-  const unit = listing.price_unit;
-  const totalLabel = formatPrice(total, unit).amount;
-  const exclusive = listing.esker_exclusive;
-  const advance = advanceAmount(total, exclusive);
-  const balance = total - advance;
-  const advanceLabel = formatPrice(advance, unit).amount;
-  const balanceLabel = formatPrice(balance, unit).amount;
-  const pctLabel = advancePctLabel(total, exclusive);
+  const nights = q.units;
   const account = await getAccount();
   // Never prefill WhatsApp sign-up's placeholders ("Guest", a no-mail address).
   const prefill = { name: realName(account?.name), email: realEmail(account?.email), phone: account?.phone ?? "" };
@@ -115,7 +105,7 @@ export default async function BookPage({
   return (
     <main className="min-h-full pb-16">
       <SiteNav theme="light" width="narrow" account={account} />
-      <TrackEvent event="InitiateCheckout" params={{ content_ids: [id], value: advance, currency: "PKR" }} />
+      <TrackEvent event="InitiateCheckout" params={{ content_ids: [id], value: q.advance, currency: "PKR" }} />
 
       <div className="mx-auto max-w-[1104px] px-5 py-8 sm:px-6">
         <Link href={stayPath(listing)} className="-my-2 inline-flex items-center gap-1 py-2 text-sm font-semibold text-muted hover:text-ink">
@@ -123,9 +113,21 @@ export default async function BookPage({
         </Link>
         <h1 className="headline mt-4 text-[clamp(34px,4.4vw,44px)]">Confirm and pay</h1>
 
+        <PromoProvider base={{ total: q.total, advance: q.advance, balance: q.balance }}>
         <div className="mt-6 grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <CheckoutForm propertyId={id} checkin={checkin} checkout={checkout} advanceLabel={advanceLabel} balanceLabel={balanceLabel} pctLabel={pctLabel} prefill={prefill} accounts={accounts} safepayReady={isSafepayConfigured()} cardDeclined={resumed} />
+            <CheckoutForm
+              propertyId={id}
+              checkin={checkin}
+              checkout={checkout}
+              advanceLabel={rs(q.advance)}
+              pctLabel={q.advanceNote}
+              prefill={prefill}
+              accounts={accounts}
+              safepayReady={isSafepayConfigured()}
+              cardDeclined={resumed}
+              resume={resumed ? sp.resume : undefined}
+            />
           </div>
 
           {/* Order summary */}
@@ -145,49 +147,16 @@ export default async function BookPage({
                 <div className="space-y-1.5 border-t border-line pt-3 text-sm">
                   <Row label="Check-in" value={fmt(checkin)} />
                   <Row label="Check-out" value={fmt(checkout)} />
-                  <Row label={`${formatPrice(price, unit).amount} × ${nights} ${nights === 1 ? "night" : "nights"}`} value={totalLabel} />
                 </div>
-                <div className="flex items-baseline justify-between border-t border-line pt-3">
-                  <span className="text-sm font-semibold text-ink">Total</span>
-                  <span className="tnum text-[15px] font-bold text-ink">{totalLabel}</span>
-                </div>
-                <div className="rounded-[18px] bg-ice-tint p-4">
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-sm font-semibold text-brand-ink">Pay now <span className="font-medium">({pctLabel})</span></span>
-                    <span className="tnum text-xl font-bold text-brand">{advanceLabel}</span>
-                  </div>
-                  <div className="mt-1.5 flex items-baseline justify-between text-[13px] text-brand-ink">
-                    <span>At check-in</span>
-                    <span className="tnum">{balanceLabel}</span>
-                  </div>
-                </div>
+                <OrderMoney rateLabel={`${rs(q.unitPrice)} × ${nights} ${nights === 1 ? "night" : "nights"}`} pctLabel={q.advanceNote} />
               </div>
             </div>
           </aside>
         </div>
+        </PromoProvider>
       </div>
     </main>
   );
-}
-
-/**
- * Is `bookingId` a still-live unpaid website hold on exactly these nights of
- * this stay? That is the booking the guest just tried to pay by card; its own
- * hold must not read as "taken" to them. createBooking applies the same
- * own-hold rule server-side, so this only decides what the page shows.
- * The id is a v4 uuid that only reaches this guest, via Safepay's cancel link.
- */
-async function ownHold(bookingId: string, listingId: string, checkin: string, checkout: string): Promise<boolean> {
-  if (!/^[0-9a-f-]{36}$/i.test(bookingId)) return false;
-  const { data } = await createAdminClient()
-    .from("bookings")
-    .select("status, source, created_at, hold_until, lost_reason, checkin, checkout, property_id, external_property_id")
-    .eq("id", bookingId)
-    .maybeSingle();
-  if (!data || data.lost_reason) return false;
-  const sameStay = data.property_id === listingId || data.external_property_id === listingId;
-  const sameNights = String(data.checkin).slice(0, 10) === checkin && String(data.checkout).slice(0, 10) === checkout;
-  return sameStay && sameNights && isExpiringHold(data) && blocksDates(data);
 }
 
 function Row({ label, value }: { label: string; value: string }) {

@@ -6,7 +6,10 @@ import { verifyId, type IdSide } from "@/lib/ai/idcheck";
 import { notifyStaff } from "@/lib/notifyStaff";
 // The result type lives with the core (lib/booking/create.ts): a "use server"
 // file may only export async functions, and a re-exported type breaks the build.
-import { createBookingCore, type BookingResult } from "@/lib/booking/create";
+import { createBookingCore, isOwnLiveHold, type BookingResult } from "@/lib/booking/create";
+import { getListing } from "@/lib/data/listings";
+import { quote, isQuoteError, withPromo } from "@/lib/quote";
+import { judgePromo } from "@/lib/promo";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -36,11 +39,42 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
     idFront: formData.get("cnicFront") as File | null,
     idBack: formData.get("cnicBack") as File | null,
     docType: String(formData.get("docType") || "cnic") === "passport" ? "passport" : "cnic",
+    promo: String(formData.get("promo") || ""),
     // Guest checkout allowed: null books without an account (the core gives
     // one to anyone who leaves an email).
     accountId: user?.id ?? null,
     channel: "website",
   });
+}
+
+export type PromoCheckResult = { ok: true; code: string; discount: number; balance: number } | { ok: false; error: string; message: string };
+
+/**
+ * Checkout's Apply: judge a promo code for this stay and the phone the
+ * checkout books with (lib/promo.ts; the SQL's own refusal line comes back).
+ * Nothing is reserved: createBooking judges it again, and the database once
+ * more as the booking is saved.
+ */
+export async function checkPromo(formData: FormData): Promise<PromoCheckResult> {
+  const code = String(formData.get("promo") || "").trim();
+  const propertyId = String(formData.get("propertyId") || "");
+  const checkin = String(formData.get("checkin") || "");
+  const checkout = String(formData.get("checkout") || "");
+  const resume = String(formData.get("resume") || "");
+  if (!code) return { ok: false, error: "promo_unknown", message: "Code not recognised" };
+
+  const listing = await getListing(propertyId);
+  if (!listing) return { ok: false, error: "unavailable", message: "This place isn't available to book." };
+  const priced = quote({ mode: "nightly", price: listing.price, exclusive: listing.esker_exclusive, checkin, checkout });
+  if (isQuoteError(priced)) return { ok: false, error: priced.error, message: priced.message };
+
+  // The guest's own card hold on these nights (back from Safepay) is the
+  // booking this one would replace; it doesn't make them a returning guest.
+  const own = resume && (await isOwnLiveHold(resume, propertyId, checkin, checkout)) ? resume : null;
+  const verdict = await judgePromo({ code, phone: String(formData.get("phone") || ""), quote: priced, bookingId: own });
+  if (!verdict.ok) return { ok: false, error: verdict.error, message: verdict.message };
+  const q = withPromo(priced, verdict.promo);
+  return { ok: true, code: verdict.promo.code, discount: q.promo?.discount ?? 0, balance: q.balance };
 }
 
 export type RequestDatesResult = { ok: boolean; message: string; pending?: boolean };

@@ -14,6 +14,8 @@ export type BookingReceivedData = {
   advanceLabel: string;
   balanceLabel: string;
   totalLabel: string;
+  /** "SAIR −Rs 1,000": a promo taken off the check-in balance; Total is after it. */
+  promoLabel?: string | null;
   accountLink?: string | null; // one-tap link to view the booking + message us
 };
 
@@ -51,6 +53,7 @@ export function bookingReceivedEmail(d: BookingReceivedData): { subject: string;
                 ${row("Check-in", d.checkinLabel)}
                 ${row("Check-out", d.checkoutLabel)}
                 ${row("Length of stay", d.nightsLabel)}
+                ${d.promoLabel ? row("Promo code", d.promoLabel) : ""}
                 ${row("Total", d.totalLabel)}
               </table>
             </td></tr>
@@ -89,6 +92,7 @@ export function bookingReceivedEmail(d: BookingReceivedData): { subject: string;
     `Check-in: ${d.checkinLabel}`,
     `Check-out: ${d.checkoutLabel}`,
     `Stay: ${d.nightsLabel}`,
+    ...(d.promoLabel ? [`Promo code: ${d.promoLabel}`] : []),
     `Total: ${d.totalLabel}`,
     `Advance paid: ${d.advanceLabel}`,
     `Balance due at check-in: ${d.balanceLabel}`,

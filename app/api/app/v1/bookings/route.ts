@@ -23,6 +23,7 @@ export const dynamic = "force-dynamic";
  *   docType?    "cnic" | "passport"    first booking only, with
  *   idFront?, idBack?                  the ID photos (files)
  *   proof?                             transfer screenshot (file)
+ *   promo?      a promo code; a refusal is fail(<promo_*>, <the SQL's line>), 409
  *
  * → { bookingId, checkoutUrl?, holdUntil }  the app opens checkoutUrl for a card.
  */
@@ -101,11 +102,14 @@ export const POST = guard(async (req: Request) => {
     channel: "app",
     appScheme: text(body.scheme),
     guests: Number(text(body.guests)) || undefined,
+    promo: text(body.promo),
   });
 
   if (!result.ok) {
     const code = result.code ?? "booking_failed";
-    return fail(code, result.message ?? "Could not create your booking. Please try again.", STATUS[code] ?? 400);
+    // A refused promo code is a 409 like a clash; failing to check one isn't.
+    const status = code === "promo_check_failed" ? 503 : code.startsWith("promo_") ? 409 : (STATUS[code] ?? 400);
+    return fail(code, result.message ?? "Could not create your booking. Please try again.", status);
   }
   return ok({ bookingId: result.bookingId, checkoutUrl: result.checkoutUrl ?? null, holdUntil: result.holdUntil ?? null });
 });

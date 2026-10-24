@@ -93,6 +93,8 @@ export type MyBooking = {
   holdEnded: boolean;
   /** How many guests, when the booking says. */
   guests: number | null;
+  /** A promo code taken off the check-in balance; `amount` is already after it. */
+  promo: { code: string; discount: number } | null;
 };
 
 // Full detail for one booking (adds rate + source + created_at to MyBooking).
@@ -117,6 +119,12 @@ function holdOf(b: HoldRef): { holdUntil: string | null; holdEnded: boolean } {
   return { holdUntil: until, holdEnded: !blocksDates(b) };
 }
 
+// A booking's promo line (phase96): the code's snapshot and the rupees it took.
+function promoOf(b: { promo_code?: string | null; promo_discount?: number | null }): MyBooking["promo"] {
+  const discount = num(b.promo_discount);
+  return b.promo_code && discount > 0 ? { code: b.promo_code, discount } : null;
+}
+
 // The signed-in guest's own bookings (RLS-scoped to account_id), joined to the
 // public listing for display. Returns [] when signed out.
 export async function getMyBookings(): Promise<MyBooking[]> {
@@ -126,7 +134,7 @@ export async function getMyBookings(): Promise<MyBooking[]> {
 
   const { data: bookings } = await supabase
     .from("bookings")
-    .select("id, property_id, external_property_id, checkin, checkout, amount, advance_paid, payment_status, status, nights, source, created_at, hold_until, guest_count")
+    .select("id, property_id, external_property_id, checkin, checkout, amount, advance_paid, payment_status, status, nights, source, created_at, hold_until, guest_count, promo_code, promo_discount")
     .eq("account_id", user.id)
     .order("checkin", { ascending: false });
   if (!bookings || bookings.length === 0) return [];
@@ -151,6 +159,7 @@ export async function getMyBookings(): Promise<MyBooking[]> {
       listing: byId.get(listingIdOf(b) ?? "") ?? null,
       ...holdOf(b),
       guests: b.guest_count ?? null,
+      promo: promoOf(b),
     };
   });
 }
@@ -164,7 +173,7 @@ export async function getMyBooking(id: string): Promise<MyBookingDetail | null> 
 
   const { data: b } = await supabase
     .from("bookings")
-    .select("id, property_id, external_property_id, checkin, checkout, amount, advance_paid, payment_status, status, nights, rate_at_booking, source, created_at, hold_until, guest_count")
+    .select("id, property_id, external_property_id, checkin, checkout, amount, advance_paid, payment_status, status, nights, rate_at_booking, source, created_at, hold_until, guest_count, promo_code, promo_discount")
     .eq("id", id)
     .eq("account_id", user.id)
     .maybeSingle();
@@ -191,6 +200,7 @@ export async function getMyBooking(id: string): Promise<MyBookingDetail | null> 
     listing: listing ? ({ ...listing, title: guestTitle(listing.title) } as BookingListing) : null,
     ...holdOf(b),
     guests: b.guest_count ?? null,
+    promo: promoOf(b),
     rateAtBooking: b.rate_at_booking != null ? Number(b.rate_at_booking) : null,
     source: b.source ?? null,
     createdAt: b.created_at ?? null,

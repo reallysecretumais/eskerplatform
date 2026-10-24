@@ -1,7 +1,9 @@
-import { ok, fail, guard, readJson } from "@/lib/app/api";
+import { ok, fail, guard, readJson, appAccount } from "@/lib/app/api";
 import { getListing, getAvailability } from "@/lib/data/listings";
 import { getSlots, getBusyTimes, isSlotFree, slotRunsOn } from "@/lib/data/slots";
-import { quote, isQuoteError, nightsBetween } from "@/lib/quote";
+import { quote, isQuoteError, nightsBetween, withPromo, type Quote } from "@/lib/quote";
+import { judgePromo, type PromoRefusal } from "@/lib/promo";
+import { ownLiveHoldFor } from "@/lib/booking/create";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,7 +18,27 @@ type Body = {
   slotId?: string;
   startTime?: string;
   hours?: number;
+  /** A promo code as typed; judged for the signed-in account's phone. */
+  promo?: string;
 };
+
+/**
+ * The quote with the guest's promo code applied, or the quote as it was plus
+ * why the code was refused (`promoError`, the SQL's own guest line). A code
+ * needs the account's phone ("first booking" is by phone), so a signed-out
+ * quote is refused with promo_needs_phone; the app's Pay step is signed in.
+ */
+async function promoted(q: Quote, body: Body): Promise<{ quote: Quote; promoError?: PromoRefusal }> {
+  const code = (body.promo ?? "").trim();
+  if (!code) return { quote: q };
+  const account = await appAccount();
+  if (!account?.phone) return { quote: q, promoError: { error: "promo_needs_phone", message: "Add your phone number to use this code" } };
+  // The account's own unpaid hold on these nights is what this booking replaces.
+  const own = body.listingId && body.checkin && body.checkout ? await ownLiveHoldFor(account.id, body.listingId, body.checkin, body.checkout) : null;
+  const verdict = await judgePromo({ code, phone: account.phone, quote: q, bookingId: own });
+  if (!verdict.ok) return { quote: q, promoError: { error: verdict.error, message: verdict.message } };
+  return { quote: withPromo(q, verdict.promo) };
+}
 
 /**
  * POST /api/app/v1/bookings/quote — what this will cost, decided by the server.
@@ -28,6 +50,9 @@ type Body = {
  *
  * Public (no auth): a guest can price a stay before signing in — the account is
  * only required to actually book. Nothing here reveals more than the stay page.
+ *
+ * `promo` (optional): → { quote, promoError? }. quote.promo is { code, discount }
+ * or null and quote.balance is after it; a refused code comes back without it.
  */
 export const GET_NOT_ALLOWED = undefined; // quotes are POSTs (they carry a selection)
 
@@ -64,7 +89,7 @@ export const POST = guard(async (req: Request) => {
         return fail("dates_taken", "Those dates were just taken. Please pick another range.", 409);
       }
     }
-    return ok({ quote: q });
+    return ok(await promoted(q, body));
   }
 
   // ── Day-use blocks ────────────────────────────────────────────────
@@ -96,7 +121,7 @@ export const POST = guard(async (req: Request) => {
       endTime: slot.endTime,
     });
     if (isQuoteError(q)) return fail(q.error, q.message);
-    return ok({ quote: q, slot: { id: slot.id, label: slot.label } });
+    return ok({ ...(await promoted(q, body)), slot: { id: slot.id, label: slot.label } });
   }
 
   // ── Hourly ────────────────────────────────────────────────────────
@@ -123,7 +148,7 @@ export const POST = guard(async (req: Request) => {
     if (busy.some((b) => new Date(b.startsAt).getTime() < end && new Date(b.endsAt).getTime() > start)) {
       return fail("slot_taken", "That time was just taken. Please pick another.", 409);
     }
-    return ok({ quote: q });
+    return ok(await promoted(q, body));
   }
 
   // `session` (experiences) is named in the plan but not built — say so plainly

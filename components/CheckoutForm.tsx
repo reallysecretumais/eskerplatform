@@ -7,6 +7,8 @@ import { Copy, Check, Camera, ShieldCheck, Loader2, CheckCircle2, AlertCircle } 
 import { createBooking, verifyIdUpload } from "@/app/book/actions";
 import type { BankAccount } from "@/lib/bankAccounts";
 import { HOLD_LINE } from "@/lib/booking/hold";
+import { PromoField, usePromo } from "@/components/CheckoutPromo";
+import { rs } from "@/lib/listings";
 
 type IdStatus = "idle" | "checking" | "ok" | "bad";
 
@@ -17,18 +19,17 @@ export function CheckoutForm({
   checkin,
   checkout,
   advanceLabel,
-  balanceLabel,
   pctLabel,
   prefill,
   accounts,
   safepayReady = false,
   cardDeclined = false,
+  resume,
 }: {
   propertyId: string;
   checkin: string;
   checkout: string;
   advanceLabel: string;
-  balanceLabel: string;
   pctLabel: string;
   prefill: Prefill;
   /** Read from the CRM's Settings by the server parent — this is a client
@@ -40,8 +41,13 @@ export function CheckoutForm({
   /** Safepay sent the guest back without a payment. Their dates are still
    *  held; offer the other method (BUILD_REFERENCE "Payment failed"). */
   cardDeclined?: boolean;
+  /** The guest's own card hold being retried (back from Safepay). */
+  resume?: string;
 }) {
   const router = useRouter();
+  // The check-in balance follows a promo code (CheckoutPromo).
+  const promo = usePromo();
+  const balanceLabel = rs(promo.balance);
   const formRef = useRef<HTMLFormElement>(null);
   const [busy, setBusy] = useState(false);
   // Online-first (founder decision): Safepay is the default whenever available;
@@ -129,6 +135,14 @@ export function CheckoutForm({
         window.location.assign(res.checkoutUrl);
         return;
       }
+      // A code refused at booking (judged again, or its last use just went):
+      // the guest reads why under the promo field, and the booking waits.
+      if (!res.ok && res.code?.startsWith("promo_")) {
+        promo.drop(res.message ?? "Code not recognised");
+        document.getElementById("co-promo-anchor")?.scrollIntoView({ behavior: "smooth", block: "center" });
+        setBusy(false);
+        return;
+      }
       if (res.ok) {
         router.push(`/book/${propertyId}/confirmation${res.bookingId ? `?b=${res.bookingId}` : ""}`);
         return;
@@ -165,7 +179,8 @@ export function CheckoutForm({
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor="co-phone" className={label}>Phone</label>
-              <input id="co-phone" name="phone" type="tel" defaultValue={prefill.phone} className={input} required autoComplete="tel" placeholder="03xx xxxxxxx" />
+              {/* A first-booking code is judged for this number: a new one needs Apply again. */}
+              <input id="co-phone" name="phone" type="tel" defaultValue={prefill.phone} onChange={() => promo.applied && promo.drop(null)} className={input} required autoComplete="tel" placeholder="03xx xxxxxxx" />
             </div>
             <div>
               <label htmlFor="co-email" className={label}>Email</label>
@@ -221,6 +236,10 @@ export function CheckoutForm({
         <p className="mt-1 text-sm text-muted">
           Pay the <span className="font-semibold text-ink">{pctLabel} advance, <span className="tnum">{advanceLabel}</span></span>, now to secure your booking. The balance, <span className="tnum">{balanceLabel}</span>, is paid at check-in.
         </p>
+
+        <div id="co-promo-anchor">
+          <PromoField propertyId={propertyId} checkin={checkin} checkout={checkout} resume={resume} />
+        </div>
 
         {/* Method choice — online-first when Safepay is live on this deployment. */}
         {safepayReady && (

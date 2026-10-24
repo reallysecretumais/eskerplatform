@@ -24,9 +24,12 @@ type BookingReceived = {
   checkin: string;
   checkout: string;
   nights: number;
+  /** The booking's value: the stay less any promo. advance + balance = total. */
   total: number;
   advance: number;
   balance: number;
+  /** A promo on this booking, shown as its own line. */
+  promo?: { code: string; discount: number } | null;
   accountLink?: string | null; // magic link to the guest's account (auto-provisioned)
   /**
    * TRUE for a card checkout, where the guest has been handed a payment URL and
@@ -65,6 +68,7 @@ export async function notifyBookingReceived(b: BookingReceived): Promise<void> {
         advanceLabel: pkr(b.advance),
         balanceLabel: pkr(b.balance),
         totalLabel: pkr(b.total),
+        promoLabel: b.promo ? `${b.promo.code} −${pkr(b.promo.discount)}` : null,
         accountLink: b.accountLink ?? null,
       });
       const r = await sendEmail({ to: b.email, subject: mail.subject, html: mail.html, text: mail.text });
