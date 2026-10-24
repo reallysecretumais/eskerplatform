@@ -1,8 +1,19 @@
 # SESSION HANDOFF — Esker Stays
 
-> Read this first to resume. Pairs with `CLAUDE.md` (rules), `PROJECT_ARCHITECTURE.md` (how it's built), `ROADMAP.md`, `PHASE1_LAUNCH_CHECKLIST.md` (status + founder actions), `DEPLOYMENT.md`, and `Esker_Platform_AI_First_Master_Plan.md` (vision). Last updated: **2026‑10‑22**.
+> Read this first to resume. Pairs with `CLAUDE.md` (rules), `PROJECT_ARCHITECTURE.md` (how it's built), `ROADMAP.md`, `PHASE1_LAUNCH_CHECKLIST.md` (status + founder actions), `DEPLOYMENT.md`, and `Esker_Platform_AI_First_Master_Plan.md` (vision). Last updated: **2026‑10‑24**.
 
-## NEW 2026‑10‑22 — Esker Blue website, D5 hold, fail-closed availability (COMMITTED, NOT PUSHED)
+## NEW 2026‑10‑24 — owner names off titles, day 7 in full, pay links die with the hold (DEPLOYED)
+
+Founder decisions, 23–24 Oct (settled; don't reopen):
+- **No owner names in anything a guest sees.** `guestTitle()` (`lib/listings.ts`) takes one leading possessive name off a title ("Sayan's 2BHK Onyx Apartment" → "2BHK Onyx Apartment"). Applied at every guest-facing read: `normalizeListing` (website, app API, SEO, sitemap, concierge, stay URLs), `lib/auth.ts` (account, trips, receipts), app trips, `/view/<token>`, the guest's chat lines, `notifyReview`, availability replies, and the booking core (Safepay label, guest notices, the "Booked:" line). Staff notices and the CRM keep the full name. The host's name belongs in the "Hosted by {first name}" card (`components/HostCard.tsx`, self-listed hosts only), which is the platform direction the founder wants. Old stay links 308 to the new ones. Listing caches are keyed `-v2` so a deploy never serves the old names.
+- **Day 7 refunds in full.** The code always did (`cancellationQuote`, `days >= 7`); the policy page now says "7 or more days (day 7 included)" and "3 to 6 days".
+- **A `/pay/<anchor>` link stops minting checkouts once its booking's hold ends** (`blocksDates`) or the booking is cancelled → `/pay/closed?why=held`. Staff and paid bookings never expire, so their links keep 7 days. **The CRM half** (a guest paying on an already-open Safepay page after the hold) is being built in the Esker OS repo: on a late payment whose nights were resold, record it and alert staff, never confirm.
+
+⚠️ **No `loading.tsx` above a page that redirects or 404s.** A page that starts streaming can't send a status: stay links answered 200 + meta refresh instead of 308. The `/stays` skeleton lives in the `app/stays/(list)` route group for that reason, and stay pages have none.
+
+Three titles come out generic ("2BHK Apartment", "1BHK Apartment", "1BHK (Park Towers)"); a `public_title` in the CRM fixes each.
+
+## 2026‑10‑22 — Esker Blue website, D5 hold, fail-closed availability (deployed)
 
 Six commits on local `main`, waiting on the founder's OK to push (a push deploys eskerrentals.com). **Migration `24_booking_holds.sql` must be run BEFORE the push**: the booking insert writes `bookings.hold_until`.
 
@@ -12,7 +23,7 @@ Six commits on local `main`, waiting on the founder's OK to push (a push deploys
 - **D5 hold** (`0864379`): `lib/booking/hold.ts` (card 30 min; transfer — changed 22 Oct — holds until the team verifies or cancels, stamped to check-out day 12:00 PM, and the team confirms within 30 min) stamps `hold_until`; migration 24 makes both availability views read it. A guest's own unpaid hold isn't a clash against them; Safepay's cancel link returns them to checkout with "Your card payment didn't go through". Test: `node scripts/hold.test.mts`.
 - **Fail closed** (`9ee4991`): `getBusyByProperty`/`getAvailability` throw `AvailabilityUnavailable` instead of returning "everything free"; app routes answer 503, the stay calendar and checkout say they couldn't check. `/api/health` reports `availability.readable`.
 
-**Open for the founder:** the day‑7 cancellation wording (code already refunds day 7 in full); every external listing's public title starts with what looks like the owner's first name ("Sayan's…", "Talal's…"); the CRM's verify panel still counts 18 h for card checkouts; a Safepay link stays payable for 7 days while the card hold is 30 minutes.
+**Open for the founder:** ~~day‑7 wording~~ and ~~owner names in titles~~ settled 23 Oct (see above); ~~7‑day Safepay link~~ closed on the website side 24 Oct; the CRM's verify panel still counts 18 h for card checkouts.
 
 ## NEW 2026‑08‑02 — AVAILABILITY IS THREE‑VALUED (deployed) → read `AVAILABILITY_TRUTH_PLAN.md`
 
