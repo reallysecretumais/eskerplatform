@@ -10,6 +10,7 @@ import { getSlots, getBusyTimes } from "@/lib/data/slots";
 import { getExternalBookability } from "@/lib/data/externalBooking";
 import { advancePct } from "@/lib/payments";
 import { isSlottedMode } from "@/lib/listings";
+import { mapArea } from "@/lib/app/cards";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -80,6 +81,8 @@ export const GET = guard(async (req: Request, { params }: { params: Promise<{ id
       photos: listing.photos ?? [],
       publicFacts: listing.public_facts ?? null,
       exclusive: listing.esker_exclusive,
+      /** The map's circle before booking (area, never the building), or null. */
+      mapArea: mapArea(listing),
       /** The stay's page on the website, for Share — built by the one function that builds them. */
       url: `${SITE_URL}${stayPath(listing)}`,
       /** Standard times; the stay page and trip pass show these (website lib/contact.ts). */

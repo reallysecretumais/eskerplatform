@@ -56,6 +56,11 @@ export type PublicListing = {
    *  sources from another owner. Drives AVAILABILITY + BOOKING logic only —
    *  guests must never see a difference (founder decision), so never render it. */
   source?: "esker" | "external";
+  /** The AREA's centre for the map before booking (migration 26,
+   *  listing_approx_point): the true point is always within 350 m of it.
+   *  Null until a location is set in Esker OS. The exact point is never here. */
+  approx_lat: number | null;
+  approx_lng: number | null;
 };
 
 // To ask whether a listing sells time-of-day rather than nights, use
@@ -146,6 +151,9 @@ function normalizeListing(row: Record<string, unknown>): PublicListing {
     market_slug: (row.market_slug as string | null) ?? null,
     // Same deploy-order safety: null until migration 21 adds it to the view.
     video_url: (row.video_url as string | null) ?? null,
+    // Same again: null until migration 26 adds the area centre.
+    approx_lat: (row.approx_lat as number | null) ?? null,
+    approx_lng: (row.approx_lng as number | null) ?? null,
     booking_mode: (row.booking_mode as BookingMode | null) ?? fallback.mode,
     price_unit: (row.price_unit as string | null) ?? fallback.unit,
   };
@@ -159,9 +167,9 @@ const cachedListings = unstable_cache(
     if (error) throw new Error(`public_listings read failed: ${error.message}`);
     return (data ?? []).map(normalizeListing);
   },
-  // v2: titles lost the owner's name (guestTitle); a new key so a deploy
-  // never serves the old names from the data cache for its first 10 minutes.
-  ["public-listings-v2"],
+  // A new key whenever the row's shape changes (v2 owner names off titles, v3
+  // the map area), so a deploy never serves old rows for its first 10 minutes.
+  ["public-listings-v3"],
   { tags: ["listings"], revalidate: 600 },
 );
 
@@ -209,7 +217,7 @@ const cachedListing = unstable_cache(
     }
     return data ? normalizeListing(data) : null;
   },
-  ["public-listing-v2"],
+  ["public-listing-v3"],
   { tags: ["listings"], revalidate: 600 },
 );
 

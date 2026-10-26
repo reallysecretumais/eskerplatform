@@ -2,7 +2,7 @@ import { ok, guard, unauthorized, appAccount } from "@/lib/app/api";
 import { getMyBookings } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { crop } from "@/lib/img";
-import { appTrip, paymentsInFlight } from "@/lib/app/trips";
+import { appTrip, paymentsInFlight, tripLocations } from "@/lib/app/trips";
 import { pkDay } from "@/lib/pkDate";
 import { guestTitle } from "@/lib/listings";
 
@@ -39,6 +39,8 @@ export const GET = guard(async () => {
       .order("created_at", { ascending: false }),
   ]);
   const paying = await paymentsInFlight(bookings);
+  // The exact place, for confirmed and staying trips only.
+  const located = await tripLocations(bookings, paying);
 
   // A request the guest has since booked is a trip, not a request.
   // Bookings carry timestamps, requests plain days: compare Pakistani days.
@@ -64,7 +66,7 @@ export const GET = guard(async () => {
   const byId = new Map((listings ?? []).map((l) => [l.id as string, { ...l, title: guestTitle(l.title as string) }]));
 
   return ok({
-    trips: bookings.map((b) => appTrip(b, paying.get(b.id))),
+    trips: bookings.map((b) => appTrip(b, paying.get(b.id), located)),
     requests: requests.map((r) => {
       const l = byId.get(r.external_property_id as string);
       const photo = l?.photos?.[0];
@@ -78,6 +80,8 @@ export const GET = guard(async () => {
         checkout: r.checkout as string,
         status: r.status as "pending" | "available" | "unavailable",
         askedAt: r.created_at as string,
+        // Not booked: the area only, from the stay's own page.
+        location: null,
       };
     }),
   });
