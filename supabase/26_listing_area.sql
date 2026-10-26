@@ -1,23 +1,27 @@
 -- ─────────────────────────────────────────────────────────────────────────
 -- Esker Platform — 26: the AREA a stay is in, for the map before booking.
 --
--- Esker OS phase97 adds each listing's exact point (latitude, longitude,
--- place_id, place_name, address) to properties + external_properties, set in
--- the CRM's Location card. Before a guest books, the app shows only an area:
--- a soft circle, never the building (founder, 26 Oct). 18 of 25 stays are
--- owner-listed, and the building lets a guest go around Esker.
+-- Esker OS phase97 adds `listing_locations`: each property's or external
+-- listing's exact point (set in the CRM's Location card) and its area centre.
+-- Before a guest books, the app shows only an area: a soft circle, never the
+-- building (founder, 26 Oct). 18 of 25 stays are owner-listed, and the
+-- building lets a guest go around Esker.
 --
 -- This migration publishes only the area's CENTRE, `approx_lat` /
--- `approx_lng`, from phase97's `listing_approx_point()`: a fixed, salted
--- 120–300 m offset per listing, so the true point is always inside a 350 m
--- circle around it and the circle never moves. The exact columns are NEVER
--- selected here. The guest who booked gets the exact point from the trip API
--- (service role), once the trip is confirmed.
+-- `approx_lng`. phase97's trigger sets it when a point is saved: a fixed,
+-- salted 120–300 m offset per listing, so the true point is always inside a
+-- 350 m circle around it and the circle never moves. This view reads ONLY
+-- those two columns; latitude, longitude, place_id, place_name and address
+-- are never selected. The guest who booked gets the exact point from the trip
+-- API (service role), once the trip is confirmed.
+--
+-- `listing_locations` is staff-only (RLS; no grants to anon). Reading it here
+-- works because this view runs as its owner (security_invoker = false), and
+-- it calls no function: Postgres checks a view's function calls against the
+-- CALLER, so a function revoked from anon would blank the site for visitors.
 --
 -- ⚠️ RUN ORDER: Esker OS `supabase/phase97_locations.sql` MUST run first: this
--- view reads p.latitude / e.latitude and calls listing_approx_point().
--- listing_approx_point is revoked from anon and authenticated; it works here
--- because this view runs as its owner (security_invoker = false).
+-- view joins public.listing_locations.
 --
 -- The definition below is 21_listing_videos.sql's public_listings verbatim,
 -- with `approx_lat` and `approx_lng` appended to BOTH branches of the union
@@ -62,8 +66,8 @@ with (security_invoker = false) as
     p.esker_exclusive,
     p.public_facts,
     'esker'::text                              as source,
-    a.lat                                      as approx_lat,
-    a.lng                                      as approx_lng
+    ll.approx_lat                              as approx_lat,
+    ll.approx_lng                              as approx_lng
   from public.properties p
   left join public.locations      l  on l.id = p.location_id
   left join public.markets        m  on m.id = l.market_id
@@ -73,7 +77,7 @@ with (security_invoker = false) as
     from public.property_slots ps
     where ps.property_id = p.id and ps.active
   ) s on true
-  left join lateral public.listing_approx_point(p.id, p.latitude, p.longitude) a on true
+  left join public.listing_locations ll on ll.property_id = p.id
   where p.public_listing = true
     and coalesce(p.listing_status, 'live') = 'live'
 
@@ -100,18 +104,18 @@ with (security_invoker = false) as
     e.esker_exclusive,
     null                                        as public_facts,
     'external'::text                            as source,
-    a.lat                                       as approx_lat,
-    a.lng                                       as approx_lng
+    ll.approx_lat                               as approx_lat,
+    ll.approx_lng                               as approx_lng
   from public.external_properties e
   left join public.locations      l  on l.id = e.location_id
   left join public.markets        m  on m.id = l.market_id
   left join public.category_modes cm on cm.category = lower(trim(e.kind))
-  left join lateral public.listing_approx_point(e.id, e.latitude, e.longitude) a on true
+  left join public.listing_locations ll on ll.external_property_id = e.id
   where e.public_listing = true
     and e.active = true;
 
 comment on view public.public_listings is
-  'Public read window: safe listing fields for published Esker-run + external inventory. Geography = market/city/area. booking_mode + price_unit come from category_modes so web and app cannot diverge. price is mode-correct (blocks = cheapest block). Gated on listing_status = live. video_url = optional walkthrough video. approx_lat/approx_lng = the AREA centre only (listing_approx_point; the true point is within 350 m); exact coordinates are never exposed. Exposed to anon.';
+  'Public read window: safe listing fields for published Esker-run + external inventory. Geography = market/city/area. booking_mode + price_unit come from category_modes so web and app cannot diverge. price is mode-correct (blocks = cheapest block). Gated on listing_status = live. video_url = optional walkthrough video. approx_lat/approx_lng = the AREA centre only, from listing_locations (staff-only; set by its trigger; the true point is within 350 m); exact coordinates are never exposed. Exposed to anon.';
 
 -- REQUIRED: the drop above removed this view's grants.
 grant select on public.public_listings to anon, authenticated;
@@ -124,10 +128,9 @@ commit;
 --   -- approx_* is null until a location is set in Esker OS, then 120–300 m
 --   -- from the true point:
 --   select pl.title,
---          round((6371000 * acos(least(1, cos(radians(p.latitude)) * cos(radians(pl.approx_lat))
---            * cos(radians(pl.approx_lng) - radians(p.longitude)) + sin(radians(p.latitude)) * sin(radians(pl.approx_lat)))))::numeric) as metres_off
---     from public.public_listings pl join public.properties p on p.id = pl.id
---    where p.latitude is not null;
+--          round((6371000 * acos(least(1, cos(radians(ll.latitude)) * cos(radians(pl.approx_lat))
+--            * cos(radians(pl.approx_lng) - radians(ll.longitude)) + sin(radians(ll.latitude)) * sin(radians(pl.approx_lat)))))::numeric) as metres_off
+--     from public.public_listings pl join public.listing_locations ll on ll.listing_id = pl.id;
 --   -- and as an ANON client (or in an incognito browser hitting the site):
 --   -- the listings grid must still load. If it 401s, the grant did not apply.
 -- ─────────────────────────────────────────────────────────────────────────

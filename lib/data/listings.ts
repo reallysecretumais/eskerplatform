@@ -56,8 +56,8 @@ export type PublicListing = {
    *  sources from another owner. Drives AVAILABILITY + BOOKING logic only —
    *  guests must never see a difference (founder decision), so never render it. */
   source?: "esker" | "external";
-  /** The AREA's centre for the map before booking (migration 26,
-   *  listing_approx_point): the true point is always within 350 m of it.
+  /** The AREA's centre for the map before booking (migration 26, from the
+   *  staff-only listing_locations): the true point is always within 350 m of it.
    *  Null until a location is set in Esker OS. The exact point is never here. */
   approx_lat: number | null;
   approx_lng: number | null;

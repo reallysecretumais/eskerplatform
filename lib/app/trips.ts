@@ -100,30 +100,27 @@ const BOOKED = [...CONFIRMED, "currently_staying"];
 const seesExact = (b: MyBooking, state: TripState) => (state === "confirmed" || state === "staying") && BOOKED.includes(b.status);
 
 /**
- * The exact place of each booked trip's stay (phase97: latitude, longitude,
- * place_id, place_name, address on properties / external_properties), keyed
- * by listing id. Before a guest books, only an area is public (founder,
- * 26 Oct: an owner-listed building lets a guest go around Esker), so this is
- * read with the service role, and only for trips that may see it. A stay with
- * no location set, or a database without phase97, gives no entry: the pass
- * shows no map rather than failing.
+ * The exact place of each booked trip's stay, keyed by listing id, from
+ * phase97's `listing_locations` (staff-only by RLS; one row per property or
+ * external listing, `listing_id` = whichever it is). Before a guest books,
+ * only an area is public (founder, 26 Oct: an owner-listed building lets a
+ * guest go around Esker), so this is read with the service role, and only for
+ * trips that may see it. A stay with no location set, or a database without
+ * phase97, gives no entry: the pass shows no map rather than failing.
  */
 export async function tripLocations(bookings: MyBooking[], paying: Map<string, "card" | "transfer">): Promise<Map<string, TripLocation>> {
   const ids = [...new Set(bookings.filter((b) => seesExact(b, tripState(b, paying.get(b.id)))).map((b) => b.listing?.id).filter((id): id is string => !!id))];
   const out = new Map<string, TripLocation>();
   if (!ids.length) return out;
-  const admin = createAdminClient();
-  const cols = "id, latitude, longitude, place_name, address, place_id";
-  // An Esker-run property or an external (resale) unit; ids are unique across both.
-  const [own, ext] = await Promise.all([
-    admin.from("properties").select(cols).in("id", ids),
-    admin.from("external_properties").select(cols).in("id", ids),
-  ]);
-  for (const r of [...(own.data ?? []), ...(ext.data ?? [])] as Record<string, unknown>[]) {
+  const { data } = await createAdminClient()
+    .from("listing_locations")
+    .select("listing_id, latitude, longitude, place_name, address, place_id")
+    .in("listing_id", ids);
+  for (const r of (data ?? []) as Record<string, unknown>[]) {
     const lat = r.latitude as number | null;
     const lng = r.longitude as number | null;
     if (lat == null || lng == null) continue;
-    out.set(r.id as string, {
+    out.set(r.listing_id as string, {
       lat,
       lng,
       name: (r.place_name as string | null) ?? null,
