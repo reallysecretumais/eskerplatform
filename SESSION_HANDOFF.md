@@ -2,6 +2,16 @@
 
 > Read this first to resume. Pairs with `CLAUDE.md` (rules), `PROJECT_ARCHITECTURE.md` (how it's built), `ROADMAP.md`, `PHASE1_LAUNCH_CHECKLIST.md` (status + founder actions), `DEPLOYMENT.md`, and `Esker_Platform_AI_First_Master_Plan.md` (vision). Last updated: **2026‑10‑26**.
 
+## NEW 2026‑10‑26 — the map: an area before booking, the exact place once booked (COMMITTED, NOT PUSHED)
+
+Commits `0e47be7`, `9f98bb2`, `1d03dfe` on local `main`. **Before pushing, run in Supabase, in this order:** Esker OS `supabase/phase97_locations.sql`, then this repo's `supabase/26_listing_area.sql`. Then check the view live (anon still reads `public_listings`; each centre 120–300 m from its point) and get the founder's go-ahead.
+
+- Founder, 26 Oct: Google Maps, dark. Before booking only an AREA (a 350 m circle), never the building: 18 of 25 stays are owner-listed, and the building lets a guest go around Esker. Once confirmed or staying: the exact place and Directions.
+- **Where locations live:** phase97's `listing_locations` (staff-only by RLS, no anon grants), one row per property or external listing (`listing_id`). A trigger sets `approx_lat/approx_lng`: a salted 120–300 m offset, so nothing a client can call computes it.
+- **Migration 26:** `public_listings` = 21 verbatim + `approx_lat/approx_lng` from `listing_locations`, via a plain left join. ⚠️ No function call in the view: Postgres checks a view's function EXECUTE against the CALLER, so a function revoked from anon would blank the site. (The first design did exactly that, and was replaced before anything ran.)
+- **App API:** stay cards (`/search`, `/home`) and `/listings/:id` add `mapArea: { lat, lng, radiusM: 350 } | null`. It's not `area`, which is already the area's NAME. `/trips` and `/trips/[id]` add `location` (exact), only when the state is confirmed or staying AND the status is a known booked one. Requests carry `location: null`. `tripLocations` logs a failed read.
+- Everything degrades to null before the migrations run. Listing cache keys are `-v3`.
+
 ## NEW 2026‑10‑26 — promo codes (SAIR) and releasing a card hold on return (DEPLOYED)
 
 - **Promo codes.** The rules live in the shared SQL (CRM repo `supabase/phase96_promo_codes.sql`, run in production 24 Oct): `promo_codes`, `promo_check()` (service role only; the one judge for website, app and WhatsApp) and a guard trigger on `bookings`. A promo is money off the **check-in balance**; the advance never changes. `bookings.amount` = stay − `promo_discount`, so every balance already reflects it. SAIR = Rs 1,000, first booking only (by phone), 100 uses, to 31 Jan 2027.
