@@ -1,12 +1,14 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyId, type IdSide } from "@/lib/ai/idcheck";
 import { notifyStaff } from "@/lib/notifyStaff";
 // The result type lives with the core (lib/booking/create.ts): a "use server"
 // file may only export async functions, and a re-exported type breaks the build.
-import { createBookingCore, isOwnLiveHold, type BookingResult } from "@/lib/booking/create";
+import { createBookingCore, isOwnLiveHold, releaseCardHold, type BookingResult, type ReleaseResult } from "@/lib/booking/create";
+import { CARD_HOLD_COOKIE, CARD_HOLD_MINUTES } from "@/lib/booking/hold";
 import { getListing } from "@/lib/data/listings";
 import { quote, isQuoteError, withPromo } from "@/lib/quote";
 import { judgePromo } from "@/lib/promo";
@@ -25,7 +27,7 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
     data: { user },
   } = await session.auth.getUser();
 
-  return createBookingCore({
+  const result = await createBookingCore({
     propertyId: String(formData.get("propertyId") || ""),
     checkin: String(formData.get("checkin") || ""),
     checkout: String(formData.get("checkout") || ""),
@@ -45,6 +47,34 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
     accountId: user?.id ?? null,
     channel: "website",
   });
+  // A card checkout is about to open: remember it in this browser, so coming
+  // back unpaid gives the dates back at once (releaseCheckoutHold).
+  if (result.ok && result.checkoutUrl && result.bookingId) {
+    (await cookies()).set(CARD_HOLD_COOKIE, result.bookingId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: CARD_HOLD_MINUTES * 60,
+    });
+  }
+  return result;
+}
+
+/**
+ * The guest is back at checkout from Safepay without paying (its cancel link,
+ * or Back): release their card hold now rather than in 30 minutes. Only the
+ * booking this browser opened (CARD_HOLD_COOKIE) can be released, and only if
+ * Safepay says it's unpaid; "paid" sends the guest to their confirmation.
+ */
+export async function releaseCheckoutHold(bookingId: string): Promise<ReleaseResult> {
+  const jar = await cookies();
+  if (!bookingId || jar.get(CARD_HOLD_COOKIE)?.value !== bookingId) return "not_found";
+  const r = await releaseCardHold(bookingId, null);
+  // Done with it either way, except when Safepay couldn't be asked: then the
+  // hold stands, and a later visit may try again.
+  if (r !== "unknown") jar.delete(CARD_HOLD_COOKIE);
+  return r;
 }
 
 export type PromoCheckResult = { ok: true; code: string; discount: number; balance: number } | { ok: false; error: string; message: string };

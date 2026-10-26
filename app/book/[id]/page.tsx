@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { SiteNav } from "@/components/SiteNav";
@@ -15,6 +16,7 @@ import { TrackEvent } from "@/components/TrackEvent";
 import type { Metadata } from "next";
 import { getBankAccounts } from "@/lib/data/bankAccounts";
 import { isOwnLiveHold, realEmail, realName } from "@/lib/booking/create";
+import { CARD_HOLD_COOKIE } from "@/lib/booking/hold";
 
 export const metadata: Metadata = { title: "Confirm & pay", robots: { index: false, follow: false } };
 
@@ -86,7 +88,10 @@ export default async function BookPage({
       </main>
     );
   }
-  const resumed = sp.resume ? await isOwnLiveHold(sp.resume, id, checkin, checkout) : false;
+  // The guest's own card checkout, back from Safepay: named by its cancel link,
+  // or (after Back) by the cookie this browser got when the checkout opened.
+  const resumeId = sp.resume || (await cookies()).get(CARD_HOLD_COOKIE)?.value || "";
+  const resumed = resumeId ? await isOwnLiveHold(resumeId, id, checkin, checkout) : false;
   // Where a transfer should go — the CRM's Settings, read server-side because
   // CheckoutForm is a client component.
   const accounts = await getBankAccounts();
@@ -126,7 +131,7 @@ export default async function BookPage({
               accounts={accounts}
               safepayReady={isSafepayConfigured()}
               cardDeclined={resumed}
-              resume={resumed ? sp.resume : undefined}
+              resume={resumed ? resumeId : undefined}
             />
           </div>
 

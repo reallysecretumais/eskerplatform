@@ -37,6 +37,16 @@ export type HoldMethod = "card" | "transfer";
 /** How long a card checkout holds the dates. */
 export const CARD_HOLD_MINUTES = 30;
 
+/**
+ * The website's proof that a card checkout is this browser's own: an httpOnly
+ * cookie holding the booking id, set when the checkout opens and living as
+ * long as its hold. A guest who comes back from Safepay unpaid (its cancel
+ * button, or simply Back) releases their dates at once instead of waiting
+ * out the 30 minutes (founder, 24 Oct). The app does the same through
+ * POST /api/app/v1/trips/[id]/release.
+ */
+export const CARD_HOLD_COOKIE = "esker_card_hold";
+
 /** The team's promise for checking a transfer screenshot (D7). */
 export const TRANSFER_CONFIRM_MINUTES = 30;
 

@@ -269,10 +269,16 @@ export async function ownLiveHoldFor(accountId: string, listingId: string, check
 
 export type ReleaseResult = "released" | "paid" | "unknown" | "gone" | "not_found" | "not_card";
 
-export async function releaseCardHold(bookingId: string, accountId: string): Promise<ReleaseResult> {
+/**
+ * Give an unpaid card checkout's dates back now. `accountId` is the signed-in
+ * guest who must own it (the app); `null` means the caller proved ownership
+ * another way: the website's httpOnly CARD_HOLD_COOKIE from the browser that
+ * opened the checkout. Safepay is asked first, so a paid one is never released.
+ */
+export async function releaseCardHold(bookingId: string, accountId: string | null): Promise<ReleaseResult> {
   const admin = createAdminClient();
   const { data: b } = await admin.from("bookings").select("id, account_id, status, source, notes").eq("id", bookingId).maybeSingle();
-  if (!b || b.account_id !== accountId) return "not_found";
+  if (!b || (accountId !== null && b.account_id !== accountId)) return "not_found";
   // Cancelled meanwhile: nothing to release, and nothing was paid.
   if (b.status === "cancelled") return "gone";
   // Settled while the guest was coming back (or moved on some other way).

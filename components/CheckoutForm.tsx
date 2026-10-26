@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Copy, Check, Camera, ShieldCheck, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
-import { createBooking, verifyIdUpload } from "@/app/book/actions";
+import { createBooking, releaseCheckoutHold, verifyIdUpload } from "@/app/book/actions";
 import type { BankAccount } from "@/lib/bankAccounts";
 import { HOLD_LINE } from "@/lib/booking/hold";
 import { PromoField, usePromo } from "@/components/CheckoutPromo";
@@ -48,6 +48,7 @@ export function CheckoutForm({
   // The check-in balance follows a promo code (CheckoutPromo).
   const promo = usePromo();
   const balanceLabel = rs(promo.balance);
+
   const formRef = useRef<HTMLFormElement>(null);
   const [busy, setBusy] = useState(false);
   // Online-first (founder decision): Safepay is the default whenever available;
@@ -57,6 +58,35 @@ export function CheckoutForm({
     cardDeclined ? "Your card payment didn't go through. Try again, or pay by bank transfer." : null,
   );
   const [copied, setCopied] = useState<string | null>(null);
+
+  // Back from Safepay unpaid: give the dates back now, not in 30 minutes.
+  // `resume` is the guest's own card hold (the server matched it to these
+  // nights); a restored page (Back, from the browser's cache) only knows the
+  // booking it just opened. Safepay is asked first: paid goes to the
+  // confirmation instead.
+  const openedCard = useRef<string | null>(null);
+  useEffect(() => {
+    const release = (bookingId: string) =>
+      releaseCheckoutHold(bookingId)
+        .then((r) => {
+          if (r === "paid") router.push(`/book/${propertyId}/confirmation?b=${bookingId}&via=safepay`);
+        })
+        .catch(() => {
+          /* the 30-minute hold still ends on its own */
+        });
+    if (resume) release(resume);
+    const onShow = (e: PageTransitionEvent) => {
+      if (!e.persisted || !openedCard.current) return;
+      const id = openedCard.current;
+      openedCard.current = null;
+      setBusy(false);
+      setError("Your card payment didn't go through. Try again, or pay by bank transfer.");
+      release(id);
+    };
+    window.addEventListener("pageshow", onShow);
+    return () => window.removeEventListener("pageshow", onShow);
+  }, [resume, propertyId, router]);
+
   const [docType, setDocType] = useState<"cnic" | "passport">("cnic");
   const [frontStatus, setFrontStatus] = useState<IdStatus>("idle");
   const [frontMsg, setFrontMsg] = useState<string | null>(null);
@@ -132,6 +162,7 @@ export function CheckoutForm({
         // (not router.push — it's an external origin), and `busy` deliberately
         // STAYS true so the button can't double-fire while the browser leaves
         // (a `finally` reset here re-armed the button mid-navigation).
+        openedCard.current = res.bookingId ?? null;
         window.location.assign(res.checkoutUrl);
         return;
       }
