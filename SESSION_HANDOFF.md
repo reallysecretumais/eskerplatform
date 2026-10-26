@@ -1,6 +1,17 @@
 # SESSION HANDOFF — Esker Stays
 
-> Read this first to resume. Pairs with `CLAUDE.md` (rules), `PROJECT_ARCHITECTURE.md` (how it's built), `ROADMAP.md`, `PHASE1_LAUNCH_CHECKLIST.md` (status + founder actions), `DEPLOYMENT.md`, and `Esker_Platform_AI_First_Master_Plan.md` (vision). Last updated: **2026‑10‑24**.
+> Read this first to resume. Pairs with `CLAUDE.md` (rules), `PROJECT_ARCHITECTURE.md` (how it's built), `ROADMAP.md`, `PHASE1_LAUNCH_CHECKLIST.md` (status + founder actions), `DEPLOYMENT.md`, and `Esker_Platform_AI_First_Master_Plan.md` (vision). Last updated: **2026‑10‑26**.
+
+## NEW 2026‑10‑26 — promo codes (SAIR) and releasing a card hold on return (DEPLOYED)
+
+- **Promo codes.** The rules live in the shared SQL (CRM repo `supabase/phase96_promo_codes.sql`, run in production 24 Oct): `promo_codes`, `promo_check()` (service role only; the one judge for website, app and WhatsApp) and a guard trigger on `bookings`. A promo is money off the **check-in balance**; the advance never changes. `bookings.amount` = stay − `promo_discount`, so every balance already reflects it. SAIR = Rs 1,000, first booking only (by phone), 100 uses, to 31 Jan 2027.
+  - `lib/quote.ts` is the one price calculation (`withPromo`, `promoBasis`); `lib/promo.ts` wraps the rpc (`judgePromo`) and reads the guard's race refusal (P0001, hint = the code). The SQL's `message` is shown as-is everywhere.
+  - Checkout: "Have a promo code?" → Apply (`checkPromo` action, judged with the phone typed). Changing the phone drops the code; Enter applies, never submits. The booking core judges it again before any upload, then the trigger on insert.
+  - The guest's own live hold on the same nights is passed as `p_booking`, so retrying a checkout never reads as a returning guest.
+  - App API contract (agreed with the guest-app session): `/bookings/quote` takes `promo` → `{ quote, promoError? }`; `/bookings` takes `promo` (refusal 409, `promo_check_failed` 503); trips carry `promo`.
+  - Test: `node scripts/quote-promo.test.mts`.
+- **Back from Safepay unpaid = dates released now.** Opening a card checkout sets the httpOnly `CARD_HOLD_COOKIE` (booking id, 30 min). Back at checkout (cancel link or browser Back), the page recognises the guest's own hold and `releaseCheckoutHold()` → `releaseCardHold(id, null)`, which asks Safepay first; paid → confirmation. The app uses `/api/app/v1/trips/[id]/release`.
+- Known, left as is: `/book/[id]` has a `loading.tsx`, so its `notFound()`/`redirect()` answer 200 (soft). Harmless there (noindex, redirects still work for people); see the loading.tsx trap below.
 
 ## NEW 2026‑10‑24 — owner names off titles, day 7 in full, pay links die with the hold (DEPLOYED)
 
