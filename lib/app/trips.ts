@@ -105,17 +105,20 @@ const seesExact = (b: MyBooking, state: TripState) => (state === "confirmed" || 
  * external listing, `listing_id` = whichever it is). Before a guest books,
  * only an area is public (founder, 26 Oct: an owner-listed building lets a
  * guest go around Esker), so this is read with the service role, and only for
- * trips that may see it. A stay with no location set, or a database without
- * phase97, gives no entry: the pass shows no map rather than failing.
+ * trips that may see it. A stay with no location set gives no entry, and so
+ * does a read that fails (logged): the pass shows no map rather than failing.
  */
 export async function tripLocations(bookings: MyBooking[], paying: Map<string, "card" | "transfer">): Promise<Map<string, TripLocation>> {
   const ids = [...new Set(bookings.filter((b) => seesExact(b, tripState(b, paying.get(b.id)))).map((b) => b.listing?.id).filter((id): id is string => !!id))];
   const out = new Map<string, TripLocation>();
   if (!ids.length) return out;
-  const { data } = await createAdminClient()
+  const { data, error } = await createAdminClient()
     .from("listing_locations")
     .select("listing_id, latitude, longitude, place_name, address, place_id")
     .in("listing_id", ids);
+  // Still no map on a failed read, but never silently: "couldn't read" is
+  // not "no location set", and a booked guest has lost their Directions.
+  if (error) console.error("[trips] listing_locations read failed:", error.message);
   for (const r of (data ?? []) as Record<string, unknown>[]) {
     const lat = r.latitude as number | null;
     const lng = r.longitude as number | null;
