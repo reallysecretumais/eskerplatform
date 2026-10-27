@@ -1,10 +1,10 @@
 # SESSION HANDOFF — Esker Stays
 
-> Read this first to resume. Pairs with `CLAUDE.md` (rules), `PROJECT_ARCHITECTURE.md` (how it's built), `ROADMAP.md`, `PHASE1_LAUNCH_CHECKLIST.md` (status + founder actions), `DEPLOYMENT.md`, and `Esker_Platform_AI_First_Master_Plan.md` (vision). Last updated: **2026‑10‑26**.
+> Read this first to resume. Pairs with `CLAUDE.md` (rules), `PROJECT_ARCHITECTURE.md` (how it's built), `ROADMAP.md`, `PHASE1_LAUNCH_CHECKLIST.md` (status + founder actions), `DEPLOYMENT.md`, and `Esker_Platform_AI_First_Master_Plan.md` (vision). Last updated: **2026‑10‑27**.
 
-## NEW 2026‑10‑26 — the map: an area before booking, the exact place once booked (COMMITTED, NOT PUSHED)
+## NEW 2026‑10‑26 — the map: an area before booking, the exact place once booked (DEPLOYED 27 Oct)
 
-Commits `0e47be7`, `9f98bb2`, `1d03dfe` on local `main`. **Before pushing, run in Supabase, in this order:** Esker OS `supabase/phase97_locations.sql`, then this repo's `supabase/26_listing_area.sql`. Then check the view live (anon still reads `public_listings`; each centre 120–300 m from its point) and get the founder's go-ahead.
+Commits `0e47be7`, `9f98bb2`, `1d03dfe`. Esker OS `phase97_locations.sql` and this repo's `26_listing_area.sql` ran in production on 26 Oct, in that order. Checked live: anon reads `public_listings` (25 rows, no exact columns), and anon is refused `listing_locations` (42501). No stay had a location saved yet, so the first circle and the first confirmed-trip place are still to be seen.
 
 - Founder, 26 Oct: Google Maps, dark. Before booking only an AREA (a 350 m circle), never the building: 18 of 25 stays are owner-listed, and the building lets a guest go around Esker. Once confirmed or staying: the exact place and Directions.
 - **Where locations live:** phase97's `listing_locations` (staff-only by RLS, no anon grants), one row per property or external listing (`listing_id`). A trigger sets `approx_lat/approx_lng`: a salted 120–300 m offset, so nothing a client can call computes it.
