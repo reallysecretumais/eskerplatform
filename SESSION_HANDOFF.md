@@ -2,6 +2,15 @@
 
 > Read this first to resume. Pairs with `CLAUDE.md` (rules), `PROJECT_ARCHITECTURE.md` (how it's built), `ROADMAP.md`, `PHASE1_LAUNCH_CHECKLIST.md` (status + founder actions), `DEPLOYMENT.md`, and `Esker_Platform_AI_First_Master_Plan.md` (vision). Last updated: **2026‑10‑27**.
 
+## NEW 2026‑10‑27 — the stay page draws the area circle too
+
+The founder saw the old map on eskerrentals.com: the 26 Oct work fed the app only. "Where you'll be" (`components/LocationSection.tsx`) now draws the Esker map with the area circled (`components/AreaMap.tsx`) when the stay has a location AND `GOOGLE_MAPS_BROWSER_KEY` is set; otherwise Google's embed of the area name, as before.
+- Same look as the app: `lib/mapStyle.ts` is a deliberate copy of the app's `src/theme/mapStyle.ts` + its map tokens. Both name each other; change one, change both.
+- `lib/map.ts` holds `mapArea()` / `MapArea` (moved out of `lib/app/cards.ts`, which is server-only and app-shaped). One definition for the app API and the stay page.
+- `lib/googleMaps.ts`: the script loads once, only when the map nears the viewport (IntersectionObserver, 400px), `region=PK`. A refused key (`gm_authFailure`) or a failed load swaps in the embed. The fallback is keyed apart from the map's box, or Google's error card stays under it (seen, fixed).
+- Map: raster + JSON styles (not deprecated; no map ID needed), zoom 14 (12–16), cooperative gestures, zoom control only, `colorScheme: DARK`. Circle ice 10% / ring 45%, 1.5px, no pin.
+- Checked locally on a production build: no key → embed, no Google script; fake key → script waits for scroll, InvalidKeyMapError → clean fallback. ⚠️ The styled map itself is unseen until a real key exists (needs billing): screenshot it then, at 390 and 1440.
+
 ## NEW 2026‑10‑26 — the map: an area before booking, the exact place once booked (DEPLOYED 27 Oct)
 
 Commits `0e47be7`, `9f98bb2`, `1d03dfe`. Esker OS `phase97_locations.sql` and this repo's `26_listing_area.sql` ran in production on 26 Oct, in that order. Checked live: anon reads `public_listings` (25 rows, no exact columns), and anon is refused `listing_locations` (42501). No stay had a location saved yet, so the first circle and the first confirmed-trip place are still to be seen.

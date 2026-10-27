@@ -11,6 +11,7 @@ Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4 (`@theme` token
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public, browser-safe; everything reads through these + RLS |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Server-only**; used ONLY by `app/book/actions.ts` via `lib/supabase/admin.ts`. Bypasses RLS. Never client |
 | `OPENAI_API_KEY` / `ESKER_AI_MODEL` (`gpt-4.1-mini`) | Concierge, ID vision check, description generation |
+| `GOOGLE_MAPS_BROWSER_KEY` | Optional. The stay page's Esker map (`components/AreaMap.tsx`): Maps JavaScript API only, locked to eskerrentals.com. Unset → Google's map of the area name |
 
 ## Database (shared with the CRM — ADD only, never duplicate)
 Migrations live in `supabase/` and are run by the founder in the Supabase SQL Editor:

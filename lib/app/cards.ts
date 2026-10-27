@@ -2,6 +2,7 @@ import "server-only";
 import { crop } from "@/lib/img";
 import type { PublicListing } from "@/lib/data/listings";
 import type { RangeState } from "@/lib/data/confidence";
+import { mapArea, type MapArea } from "@/lib/map";
 
 /**
  * The stay card the V3 app draws on Home and Results, in one shape.
@@ -15,23 +16,6 @@ import type { RangeState } from "@/lib/data/confidence";
  * Whether a stay is Esker's own or resold is never sent (founder decision:
  * guests must never see a difference). The app gets `availability` only.
  */
-/** How far the true point can be from the area centre (phase97). */
-export const MAP_AREA_RADIUS_M = 350;
-
-/**
- * The map's circle before booking: the AREA a stay is in, never the building
- * (founder, 26 Oct; 18 of 25 stays are owner-listed). Its centre is
- * public_listings' approx_lat/lng, offset 120–300 m from the true point, which
- * is always inside the circle. Null until a location is set in Esker OS.
- * The exact point reaches only the guest who booked (lib/app/trips.ts).
- */
-export type MapArea = { lat: number; lng: number; radiusM: number };
-
-export function mapArea(l: PublicListing): MapArea | null {
-  if (l.approx_lat == null || l.approx_lng == null) return null;
-  return { lat: l.approx_lat, lng: l.approx_lng, radiusM: MAP_AREA_RADIUS_M };
-}
-
 export type AppCard = {
   id: string;
   title: string;

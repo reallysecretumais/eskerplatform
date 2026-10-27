@@ -10,7 +10,7 @@ import { getSlots, getBusyTimes } from "@/lib/data/slots";
 import { getExternalBookability } from "@/lib/data/externalBooking";
 import { advancePct } from "@/lib/payments";
 import { isSlottedMode } from "@/lib/listings";
-import { mapArea } from "@/lib/app/cards";
+import { mapArea } from "@/lib/map";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

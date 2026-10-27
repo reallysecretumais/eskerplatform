@@ -15,6 +15,7 @@ import { PropertyConcierge } from "@/components/PropertyConcierge";
 import { ChatEntry } from "@/components/chat/ChatEntry";
 import { PakistanDetails } from "@/components/PakistanDetails";
 import { LocationSection } from "@/components/LocationSection";
+import { mapArea } from "@/lib/map";
 import { Reviews } from "@/components/Reviews";
 import { TrackEvent } from "@/components/TrackEvent";
 import { TrackListingView } from "@/components/TrackListingView";
@@ -225,7 +226,7 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
             <PakistanDetails facts={listing.public_facts} />
 
             {/* Where you'll be (§6) */}
-            <LocationSection area={listing.area} city={listing.city} />
+            <LocationSection area={listing.area} city={listing.city} mapArea={mapArea(listing)} />
 
             {/* Hosted by … (self-listed places only) */}
             {host && <HostCard host={host} />}

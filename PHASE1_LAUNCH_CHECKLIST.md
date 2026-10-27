@@ -26,6 +26,7 @@ The "trust & comms wrapper" + polish to take real public bookings safely. Pairs 
 - ✅ SMTP_PASS added (emails send). Migrations **01–08 all run** (`07_reviews` + `08_accounts_links` applied 2026-07-04).
 - **Save the real Esker logo** (vector best) to `public/brand/` → unlocks app icons + PWA manifest + the Android/iOS wrap path.
 - **Meta Pixel/CAPI** (for ads): add `NEXT_PUBLIC_META_PIXEL_ID`, `META_PIXEL_ID`, `META_CAPI_TOKEN` in Vercel.
+- **The stay map**: once Google Cloud billing is on, a browser key (Maps JavaScript API only, eskerrentals.com referrers) → `GOOGLE_MAPS_BROWSER_KEY` in Vercel, then redeploy. Until then stays show Google's map of the area name.
 - **`REVALIDATE_SECRET`**: set the same value in BOTH Vercel (website) and Esker OS, so the CRM can bust the listings cache on publish.
 - ✅ Cancellation windows reviewed. Fill **`public_facts`** per property; decide Supabase **"Confirm email"** toggle.
 - After deploy: submit `sitemap.xml` in **Google Search Console**.
